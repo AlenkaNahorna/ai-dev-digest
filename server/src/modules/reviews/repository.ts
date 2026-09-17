@@ -157,6 +157,8 @@ export class ReviewRepository {
       tokensOut: number;
       findingsCount: number;
       grounding: string;
+      /** Actual/estimated LLM cost; null when unknown (e.g. failed before an LLM call). */
+      costUsd?: number | null;
       /** Review score (0-100); null on failed/cancelled runs. */
       score?: number | null;
       /** Findings that tripped the agent's gate; 0 on failed/cancelled runs. */
