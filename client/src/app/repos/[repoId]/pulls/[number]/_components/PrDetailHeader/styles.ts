@@ -67,4 +67,21 @@ export const s = {
     fontSize: 12.5,
     color: "var(--text-muted)",
   } satisfies CSSProperties,
+  severityBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 14,
+  } satisfies CSSProperties,
+  severityButton: (active: boolean): CSSProperties => ({
+    display: "inline-flex",
+    background: "none",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    borderRadius: 5,
+    opacity: active ? 1 : 0.75,
+    outline: active ? "1px solid var(--border-strong)" : "none",
+    outlineOffset: 2,
+  }),
 } as const;

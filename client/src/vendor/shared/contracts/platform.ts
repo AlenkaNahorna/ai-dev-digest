@@ -176,6 +176,15 @@ export const PrMeta = z.object({
   // Sum of cost_usd across every agent run for this PR (list endpoint only;
   // absent on the raw GitHub-sourced PrMeta, same as `score`).
   cost_usd: z.number().nullish(),
+  // Latest-review findings-by-severity counts (list endpoint only; null/absent
+  // until reviewed, same as `score`).
+  findings: z
+    .object({
+      critical: z.number().int(),
+      warning: z.number().int(),
+      suggestion: z.number().int(),
+    })
+    .nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

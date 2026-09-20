@@ -19,6 +19,7 @@ Next.js 15 studio UI. Import repos, browse PRs, run AI reviews, read findings, a
 - `pnpm start` — Run built app
 - `pnpm test` — Component tests (vitest + jsdom; fetch mocked)
 - `pnpm typecheck` — TypeScript validation
+- `pnpm lint` — Client lint/static-analysis command; use `pnpm typecheck` as the enforced check until ESLint is configured.
 
 ## Configuration
 
@@ -102,6 +103,11 @@ See [../TESTING.md](../TESTING.md) for full strategy.
 
 ## Related Documentation
 
+### Read When
+
+- Architecture/UI boundaries: [docs/ui-architecture.md](docs/ui-architecture.md)
+- Route and data contracts: [specs/pages.md](specs/pages.md)
+
 - [UI route diagram](README.md#ui-route-map) — Full page & API map
 - [Component testing guide](README.md#testing) — Test patterns
 - [API reference](../server/CLAUDE.md) — Fastify endpoints consumed here
@@ -111,7 +117,7 @@ See [../TESTING.md](../TESTING.md) for full strategy.
 
 ### 🟢 BEFORE You Start
 
-**Read client/ENGINEERING-INSIGHTS.md** and summarize the top 3 entries relevant to your task:
+**Read client/INSIGHTS.md** and summarize the top 3 entries relevant to your task:
 - Working on pages/routes? → Check "What Works" (RSC by default)
 - Working on components? → Check "What Doesn't Work" (barrel exports, `'use client'` everywhere)
 - Working on data fetching? → Check "Codebase Patterns" (TanStack Query)
@@ -137,5 +143,5 @@ Write insights **only if substantial**. Check ENGINEERING-INSIGHTS.md first for 
 ## Lazy-Load Context
 
 - **Skills**: `/react-best-practices`, `/react-testing-library`, `/next-best-practices`, `/engineering-insights`
-- **Module insights**: See `ENGINEERING-INSIGHTS.md` (append-only learnings from prior sessions)
+- **Module insights**: See `INSIGHTS.md` (append-only learnings from prior sessions)
 - **Related modules**: See [server/CLAUDE.md](../server/CLAUDE.md) (API provider), [e2e/CLAUDE.md](../e2e/CLAUDE.md) (integration tests)

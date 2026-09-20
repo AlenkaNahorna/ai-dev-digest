@@ -131,6 +131,9 @@ export function useRunReview() {
       }),
     onSuccess: (_d, { prId }) => {
       qc.invalidateQueries({ queryKey: ["reviews", prId] });
+      // The PR list derives score/findings/cost from the enriched pulls endpoint.
+      // Refresh it after a review so navigating back shows the same findings.
+      qc.invalidateQueries({ queryKey: ["pulls"] });
     },
   });
 }

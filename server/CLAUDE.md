@@ -20,6 +20,7 @@ Fastify API + Drizzle ORM + PostgreSQL. Imports repos, indexes them with `repo-i
 - `pnpm db:generate` — Regenerate Drizzle types
 - `pnpm test` — Unit tests (no DB needed)
 - `pnpm test:integration` — Tests with real Postgres (testcontainers)
+- `pnpm lint` — Server lint/static-analysis command; use `pnpm typecheck` as the enforced check until ESLint is configured.
 
 ## Key Rules
 
@@ -100,6 +101,11 @@ Dependency injection container allows swapping implementations:
 
 ## Related Documentation
 
+### Read When
+
+- DI, adapters, and request flow: [docs/architecture.md](docs/architecture.md)
+- Review/cost/findings behavior: [specs/review-flow.md](specs/review-flow.md)
+
 - [API map & routes](README.md#api-map) — Full endpoint list
 - [Request & DI flow diagram](README.md#request--di-flow) — Request lifecycle
 - [Testing strategy](../TESTING.md) — Unit vs integration split, CI workflows
@@ -109,7 +115,7 @@ Dependency injection container allows swapping implementations:
 
 ### 🟢 BEFORE You Start
 
-**Read server/ENGINEERING-INSIGHTS.md** and summarize the top 3 entries relevant to your task:
+**Read server/INSIGHTS.md** and summarize the top 3 entries relevant to your task:
 - Working on routes? → Check "What Doesn't Work" (validation patterns)
 - Working on database? → Check "Recurring Errors & Fixes" (migrations, queries)
 - Working on adapters? → Check "Codebase Patterns" (DI container, secrets)
@@ -134,5 +140,5 @@ Write insights **only if substantial**. Check ENGINEERING-INSIGHTS.md first for 
 ## Lazy-Load Context
 
 - **Skills**: `/fastify-best-practices`, `/drizzle-orm-patterns`, `/postgresql-table-design`, `/engineering-insights`
-- **Module insights**: See `ENGINEERING-INSIGHTS.md` (append-only learnings from prior sessions)
+- **Module insights**: See `INSIGHTS.md` (append-only learnings from prior sessions)
 - **Related modules**: See [client/CLAUDE.md](../client/CLAUDE.md) (API consumer), [reviewer-core/CLAUDE.md](../reviewer-core/CLAUDE.md) (review engine)

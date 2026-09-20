@@ -2,9 +2,10 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Badge, Icon, CircularScore, type IconName } from "@devdigest/ui";
-import type { RunSummary, PrCommit } from "@devdigest/shared";
+import { Badge, Icon, CircularScore, SeverityBadge, type IconName, type Severity } from "@devdigest/ui";
+import type { FindingRecord, RunSummary, PrCommit } from "@devdigest/shared";
 import { formatCost } from "@/lib/format-cost";
+import { FindingsPopover } from "../../../_components/FindingsPopover";
 
 /**
  * PR timeline — every agent run interleaved with the PR's commits, newest-first
@@ -61,6 +62,31 @@ const iconBtnStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
+function TimelineFindings({ findings }: { findings: FindingRecord[] }) {
+  const [shown, setShown] = React.useState(false);
+  if (findings.length === 0) return null;
+  return (
+    <div
+      tabIndex={0}
+      role="button"
+      aria-label={`${findings.length} findings in this run`}
+      onMouseEnter={() => setShown(true)}
+      onMouseLeave={() => setShown(false)}
+      onFocus={() => setShown(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setShown(false);
+      }}
+      style={{ position: "relative", display: "flex", gap: 4, marginTop: 2, outline: "none", cursor: "pointer" }}
+    >
+      {(["CRITICAL", "WARNING", "SUGGESTION"] as Severity[]).map((severity) => {
+        const count = findings.filter((finding) => finding.severity === severity).length;
+        return count > 0 ? <SeverityBadge key={severity} severity={severity} count={count} compact /> : null;
+      })}
+      {shown && <FindingsPopover findings={findings} />}
+    </div>
+  );
+}
+
 // Commits are markers, not actions — lighter (dashed, transparent) so they read
 // as separators between the runs they sit chronologically between.
 const commitRowStyle: React.CSSProperties = {
@@ -91,6 +117,7 @@ export function RunHistory({
   onOpenTrace,
   onGoToReview,
   onDelete,
+  findingsByRun,
 }: {
   runs: RunSummary[];
   commits?: PrCommit[];
@@ -99,6 +126,7 @@ export function RunHistory({
   /** Jump to this run's inline review accordion below (clicking the agent name). */
   onGoToReview?: (runId: string) => void;
   onDelete?: (runId: string) => void;
+  findingsByRun?: Map<string, FindingRecord[]>;
 }) {
   const t = useTranslations("prReview");
   if (runs.length === 0 && commits.length === 0) return null;
@@ -190,10 +218,15 @@ export function RunHistory({
                 </div>
               )}
               {settled && (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  {t("runStatus.findings", { count: r.findings_count ?? 0 })}
-                  {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
-                </div>
+                <>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {t("runStatus.findings", { count: r.findings_count ?? 0 })}
+                    {(r.blockers ?? 0) > 0 ? t("runStatus.blockers", { count: r.blockers ?? 0 }) : ""}
+                  </div>
+                  {findingsByRun?.get(r.run_id) && (
+                    <TimelineFindings findings={findingsByRun.get(r.run_id)!} />
+                  )}
+                </>
               )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>

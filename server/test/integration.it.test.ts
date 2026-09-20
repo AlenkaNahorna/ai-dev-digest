@@ -125,6 +125,8 @@ d('Testcontainers: DB-backed routes via app.inject', () => {
     const first = await app.inject({ method: 'GET', url: `/repos/${repoId}/pulls` });
     expect(first.statusCode).toBe(200);
     expect(first.json().length).toBeGreaterThan(0);
+    // never-reviewed PRs: findings is null (never {0,0,0}), same convention as score
+    expect(first.json()[0].findings).toBeNull();
     // import again → still idempotent (unique repo_id+number)
     const second = await app.inject({ method: 'GET', url: `/repos/${repoId}/pulls` });
     expect(second.json().length).toBe(first.json().length);

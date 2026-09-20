@@ -1,16 +1,23 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { Icon, Avatar, Badge, Button, Tabs } from "@devdigest/ui";
+import { Icon, Avatar, Badge, Button, Tabs, SeverityBadge, type Severity } from "@devdigest/ui";
 import { RunReviewDropdown } from "../RunReviewDropdown";
 import { s } from "./styles";
 import type { PrDetail } from "@/lib/types";
+
+/** Severities shown in the counter bar, in display order. */
+const SEVERITY_ORDER: Severity[] = ["CRITICAL", "WARNING", "SUGGESTION"];
 
 interface PrDetailHeaderProps {
   pr: PrDetail;
   prId: string | null;
   tab: string;
   findingsCount: number;
+  /** Non-zero severities only — e.g. {CRITICAL: 3, WARNING: 5}. */
+  severityCounts: Partial<Record<Severity, number>>;
+  severityFilter?: string | null;
+  onSelectSeverity: (severity: Severity) => void;
   /** github.com PR URL; null when the repo's full_name isn't known yet. */
   githubUrl?: string | null;
   onSetTab: (tab: string) => void;
@@ -23,6 +30,9 @@ export function PrDetailHeader({
   prId,
   tab,
   findingsCount,
+  severityCounts,
+  severityFilter,
+  onSelectSeverity,
   githubUrl,
   onSetTab,
   onRunStart,
@@ -106,6 +116,21 @@ export function PrDetailHeader({
             This PR is already {pr.status} — running a review is informational and won't affect the
             merged code.
           </span>
+        </div>
+      )}
+      {SEVERITY_ORDER.some((sev) => severityCounts[sev]) && (
+        <div style={s.severityBar}>
+          {SEVERITY_ORDER.filter((sev) => severityCounts[sev]).map((sev) => (
+            <button
+              key={sev}
+              type="button"
+              onClick={() => onSelectSeverity(sev)}
+              style={s.severityButton(severityFilter === sev)}
+              aria-pressed={severityFilter === sev}
+            >
+              <SeverityBadge severity={sev} count={severityCounts[sev]} />
+            </button>
+          ))}
         </div>
       )}
       <Tabs

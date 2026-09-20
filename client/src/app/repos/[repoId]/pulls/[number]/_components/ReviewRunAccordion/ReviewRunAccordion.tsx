@@ -6,17 +6,19 @@
 "use client";
 
 import React from "react";
-import { Icon, Badge } from "@devdigest/ui";
+import { Icon, Badge, SeverityBadge, type Severity } from "@devdigest/ui";
 import type { ReviewRecord, Verdict } from "@devdigest/shared";
 import { FindingsPanel } from "../FindingsPanel";
 import { VerdictBanner } from "../VerdictBanner";
 import { useDeleteReview } from "../../../../../../../lib/hooks/reviews";
+import { formatCost } from "../../../../../../../lib/format-cost";
 
 const VERDICT_COLOR: Record<string, string> = {
   request_changes: "var(--crit)",
   comment: "var(--warn)",
   approve: "var(--ok)",
 };
+const SEVERITIES: Severity[] = ["CRITICAL", "WARNING", "SUGGESTION"];
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
@@ -31,6 +33,8 @@ export function ReviewRunAccordion({
   headSha,
   targetRunId = null,
   targetNonce = 0,
+  severityFilter,
+  runCost,
 }: {
   review: ReviewRecord;
   prId: string;
@@ -41,8 +45,13 @@ export function ReviewRunAccordion({
    *  (driven from the Timeline: clicking an agent name navigates here). */
   targetRunId?: string | null;
   targetNonce?: number;
+  /** When set, only findings of this severity are shown (page-level severity counter). */
+  severityFilter?: string | null;
+  /** Cost of this run, sourced from the Timeline run summary. */
+  runCost?: number | null;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+  const [runSeverityFilter, setRunSeverityFilter] = React.useState<string | null>(severityFilter ?? null);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (review.run_id && review.run_id === targetRunId) {
@@ -53,6 +62,12 @@ export function ReviewRunAccordion({
   }, [targetRunId, targetNonce, review.run_id]);
   const del = useDeleteReview(prId);
   const findings = review.findings;
+  React.useEffect(() => setRunSeverityFilter(severityFilter ?? null), [severityFilter]);
+  const severityCounts = SEVERITIES.reduce<Partial<Record<Severity, number>>>((counts, severity) => {
+    const count = findings.filter((f) => f.severity === severity).length;
+    if (count > 0) counts[severity] = count;
+    return counts;
+  }, {});
   const blockers = findings.filter((f) => f.severity === "CRITICAL" && !f.dismissed_at).length;
   const verdictColor = review.verdict ? VERDICT_COLOR[review.verdict] ?? "var(--text-muted)" : "var(--text-muted)";
 
@@ -104,6 +119,9 @@ export function ReviewRunAccordion({
           </Badge>
         )}
         <span className="mono" style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          {formatCost(runCost)}
+        </span>
+        <span className="mono" style={{ fontSize: 12, color: "var(--text-muted)" }}>
           {formatWhen(review.created_at)}
         </span>
         <button
@@ -147,11 +165,32 @@ export function ReviewRunAccordion({
               />
             </div>
           )}
+          {SEVERITIES.some((severity) => severityCounts[severity]) && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 10 }} aria-label="Findings by severity">
+              {SEVERITIES.filter((severity) => severityCounts[severity]).map((severity) => (
+                <SeverityBadge key={severity} severity={severity} count={severityCounts[severity]} />
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }} aria-label="Filter findings by severity">
+            {SEVERITIES.map((severity) => (
+              <button
+                key={severity}
+                type="button"
+                aria-pressed={runSeverityFilter === severity}
+                onClick={() => setRunSeverityFilter((current) => (current === severity ? null : severity))}
+                style={{ border: `1px solid ${runSeverityFilter === severity ? "var(--accent)" : "var(--border)"}`, borderRadius: 5, padding: "4px 9px", background: runSeverityFilter === severity ? "var(--accent-bg)" : "transparent", color: "var(--text-secondary)", cursor: "pointer", fontSize: 12, textTransform: "capitalize" }}
+              >
+                {severity.charAt(0) + severity.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
           <FindingsPanel
             findings={findings}
             prId={prId}
             repoFullName={repoFullName}
             headSha={headSha}
+            severityFilter={runSeverityFilter}
           />
         </div>
       )}

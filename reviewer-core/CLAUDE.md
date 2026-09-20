@@ -115,6 +115,11 @@ Extra optional prompt slots (omitted in starter; filled in later lessons):
 
 ## Related Documentation
 
+### Read When
+
+- Pipeline boundaries and dependencies: [docs/architecture.md](docs/architecture.md)
+- Grounding and output contract: [specs/review-contract.md](specs/review-contract.md)
+
 - [Review pipeline diagram](README.md#pipeline) — Full flow
 - [Public API](README.md#public-api) — Exports & contracts
 - [Server integration](../server/CLAUDE.md) — How server runs reviews
@@ -125,7 +130,7 @@ Extra optional prompt slots (omitted in starter; filled in later lessons):
 
 ### 🟢 BEFORE You Start
 
-**Read reviewer-core/ENGINEERING-INSIGHTS.md** and summarize the top 3 entries relevant to your task:
+**Read reviewer-core/INSIGHTS.md** and summarize the top 3 entries relevant to your task:
 - Working on grounding? → Check "What Works" (mechanical citation gate)
 - Working on prompt assembly? → Check "What Doesn't Work" (injection risks, token limits)
 - Working on LLM integration? → Check "Codebase Patterns" (LLMProvider injection)
@@ -151,5 +156,5 @@ Write insights **only if substantial**. Check ENGINEERING-INSIGHTS.md first for 
 ## Lazy-Load Context
 
 - **Skills**: `/security` (for security findings), `/engineering-insights`
-- **Module insights**: See `ENGINEERING-INSIGHTS.md` (append-only learnings from prior sessions)
+- **Module insights**: See `INSIGHTS.md` (append-only learnings from prior sessions)
 - **Related modules**: See [server/CLAUDE.md](../server/CLAUDE.md) (consumer), [e2e/CLAUDE.md](../e2e/CLAUDE.md) (integration tests)

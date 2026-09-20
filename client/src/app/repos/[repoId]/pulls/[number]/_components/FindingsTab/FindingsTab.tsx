@@ -24,6 +24,8 @@ interface FindingsTabProps {
   onOpenTrace: (id: string) => void;
   onDelete: (id: string) => void;
   onRunDone: () => void;
+  /** When set, only findings of this severity are shown (page-level severity counter). */
+  severityFilter?: string | null;
 }
 
 export function FindingsTab({
@@ -40,6 +42,7 @@ export function FindingsTab({
   onOpenTrace,
   onDelete,
   onRunDone,
+  severityFilter,
 }: FindingsTabProps) {
   const handleCancelAll = useCallback(() => {
     liveRunIds.forEach((id) => cancelMutation.mutate(id));
@@ -70,6 +73,10 @@ export function FindingsTab({
   const handleGoToReview = useCallback((runId: string) => {
     setTarget((p) => ({ runId, n: (p?.n ?? 0) + 1 }));
   }, []);
+  const findingsByRun = React.useMemo(
+    () => new Map(runs.filter((review) => review.run_id).map((review) => [review.run_id!, review.findings])),
+    [runs],
+  );
 
   return (
     <section>
@@ -131,6 +138,7 @@ export function FindingsTab({
           <RunHistory
             runs={prRuns ?? []}
             commits={prCommits}
+            findingsByRun={findingsByRun}
             onOpenTrace={handleOpenTrace}
             onGoToReview={handleGoToReview}
             onDelete={handleDelete}
@@ -164,6 +172,8 @@ export function FindingsTab({
             headSha={headSha}
             targetRunId={target?.runId ?? null}
             targetNonce={target?.n ?? 0}
+            severityFilter={severityFilter}
+            runCost={prRuns?.find((run) => run.run_id === review.run_id)?.cost_usd ?? null}
           />
         ))
       )}

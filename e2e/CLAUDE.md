@@ -110,6 +110,11 @@ Failure screenshots are saved to `e2e/test-results/` (git-ignored; uploaded as C
 
 ## Related Documentation
 
+### Read When
+
+- Runner and browser lifecycle: [docs/architecture.md](docs/architecture.md)
+- Flow guarantees and locators: [specs/flow-contract.md](specs/flow-contract.md)
+
 - [Flow spec format](README.md) — Detailed syntax and examples
 - [Running flows locally](README.md#run-locally) — Hermetic vs. dev stack
 - [Agent browser docs](https://github.com/vercel-labs/agent-browser) — CLI reference
@@ -121,7 +126,7 @@ Failure screenshots are saved to `e2e/test-results/` (git-ignored; uploaded as C
 
 ### 🟢 BEFORE You Start
 
-**Read e2e/ENGINEERING-INSIGHTS.md** and summarize the top 3 entries relevant to your task:
+**Read e2e/INSIGHTS.md** and summarize the top 3 entries relevant to your task:
 - Adding a new flow? → Check "What Works" (seeded data, deterministic locators)
 - Debugging a failing flow? → Check "Recurring Errors & Fixes" (timeout, wrong repo, port conflicts)
 - Using hermetic runner? → Check "What Doesn't Work" (don't use `docker compose down -v`)
@@ -148,4 +153,4 @@ Write insights **only if substantial**. Check ENGINEERING-INSIGHTS.md first for 
 
 - **Skills**: `/engineering-insights`
 - **Related modules**: See [client/CLAUDE.md](../client/CLAUDE.md) (UI being tested), [server/CLAUDE.md](../server/CLAUDE.md) (API consumer)
-- **Module insights**: See `ENGINEERING-INSIGHTS.md` (append-only learnings from prior sessions)
+- **Module insights**: See `INSIGHTS.md` (append-only learnings from prior sessions)

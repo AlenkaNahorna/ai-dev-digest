@@ -18,6 +18,7 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 - `pnpm build` / `pnpm start` — Production
 - `pnpm test` — Run test suite
 - `pnpm typecheck` — Type check
+- `pnpm lint` — Run the package lint/static-analysis command when available; in packages without a configured linter, `pnpm typecheck` is the enforced static check.
 - `pnpm db:migrate` (server) — Apply migrations
 - `pnpm db:seed` (server) — Load demo data
 
@@ -45,6 +46,7 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 - `turbo.json` — Build orchestration
 - `docker-compose.yml` — Only Postgres config (use `docker compose` CLI)
 - Migration journal (`server/src/db/migrations/`) — Only add new migrations, never rewrite history
+- Lock files (`pnpm-lock.yaml`, `package-lock.json`) — Do not edit by hand or regenerate during feature work.
 
 ## Links & References
 
@@ -54,6 +56,9 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 - [Client UI Map](client/README.md) — Page routes, component structure
 - [Review Engine](reviewer-core/README.md) — Review pipeline, LLM integration, grounding gate
 - [E2E Tests](e2e/README.md) — Deterministic test flows
+
+Each module also has package-specific architecture/spec documents. Read the relevant
+`docs/*.md` and `specs/*.md` before changing that package's behavior.
 
 **Per-Module Docs**:
 - [Server Module](server/CLAUDE.md) — Fastify, database, indexer
@@ -69,14 +74,14 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 
 ### 🟢 BEFORE You Start Any Work
 
-**MANDATORY**: Read relevant ENGINEERING-INSIGHTS.md **before writing any code**. This prevents context loss and repeated mistakes.
+**MANDATORY**: Read the relevant module `INSIGHTS.md` **before writing any code**. This prevents context loss and repeated mistakes.
 
 **Step 1: Identify the module**
-- API routes / database / indexer? → `server/ENGINEERING-INSIGHTS.md`
-- React / Next.js / UI / components? → `client/ENGINEERING-INSIGHTS.md`
-- Review engine / LLM / grounding? → `reviewer-core/ENGINEERING-INSIGHTS.md`
-- E2E tests / flows / browser? → `e2e/ENGINEERING-INSIGHTS.md`
-- General / architecture / gotchas? → `ENGINEERING-INSIGHTS.md` (root)
+- API routes / database / indexer? → `server/INSIGHTS.md`
+- React / Next.js / UI / components? → `client/INSIGHTS.md`
+- Review engine / LLM / grounding? → `reviewer-core/INSIGHTS.md`
+- E2E tests / flows / browser? → `e2e/INSIGHTS.md`
+- General / architecture / gotchas? → `INSIGHTS.md` (root)
 
 **Step 2: Summarize top 3 entries (FORCED)**
 
@@ -84,7 +89,7 @@ You MUST tell me the top 3 most relevant entries from that file **before proceed
 
 Example:
 ```
-"I've read server/ENGINEERING-INSIGHTS.md. Top 3 relevant to your task:
+"I've read server/INSIGHTS.md. Top 3 relevant to your task:
 
 1. What Doesn't Work: Auto-migration on boot hides broken migrations. 
    Always manual (pnpm db:migrate) to catch issues early.
@@ -156,7 +161,7 @@ You now have:
 
 **BEFORE any task**:
 - **CONDITIONAL**: Module CLAUDE.md auto-loads when you touch code in that folder
-- **EXPLICIT**: Read relevant `ENGINEERING-INSIGHTS.md` (before work; summarize top 3)
+- **EXPLICIT**: Read relevant `INSIGHTS.md` (before work; summarize top 3)
 - **EXPLICIT**: Use `/engineering-insights` command to capture learnings (end of session)
 
 **During work**:

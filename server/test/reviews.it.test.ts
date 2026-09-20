@@ -216,9 +216,12 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     const runs = (await app.inject({ method: 'GET', url: `/pulls/${pr.id}/runs` })).json();
     expect(runs.find((r: { run_id: string }) => r.run_id === runId).cost_usd).toBe(0.001);
 
-    // PR list COST column sums cost_usd across every run for the PR
+    // PR list COST column sums cost_usd across successful runs for the PR
     const pulls = (await app.inject({ method: 'GET', url: `/repos/${repo.id}/pulls` })).json();
-    expect(pulls.find((p: { id: string }) => p.id === pr.id).cost_usd).toBe(0.001);
+    const prListRow = pulls.find((p: { id: string }) => p.id === pr.id);
+    expect(prListRow.cost_usd).toBe(0.001);
+    // PR list FINDINGS column: severity counts from the latest review only
+    expect(prListRow.findings).toEqual({ critical: 1, warning: 0, suggestion: 0 });
 
     await app.close();
   });
