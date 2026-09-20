@@ -107,7 +107,12 @@ export class RepoService {
 
   async list(workspaceId: string): Promise<Repo[]> {
     const rows = await this.repo.list(workspaceId);
-    return rows.map(toRepoDto);
+    // Only un-cloned repos can have a clone error worth showing; skip the
+    // lookup entirely when every repo in the workspace already cloned fine.
+    const cloneErrors = rows.some((r) => r.clonePath == null)
+      ? await this.repo.latestCloneErrors(workspaceId)
+      : new Map<string, string>();
+    return rows.map((r) => toRepoDto(r, r.clonePath == null ? cloneErrors.get(r.id) ?? null : null));
   }
 
   /** Re-fetch the clone for an existing repo (enqueues a fresh `clone` job). */

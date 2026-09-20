@@ -64,6 +64,18 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 [ "${status:-}" = "healthy" ] || { echo "Postgres did not become healthy in time"; exit 1; }
+
+# The container healthcheck runs pg_isready INSIDE the container; right after
+# a fresh start the host-side port publish can lag a beat behind it, so also
+# confirm the published host port itself accepts connections before moving on
+# (avoids a flaky ECONNREFUSED from the migrate step that follows).
+host_port="$(docker port "$CONTAINER" 5432/tcp 2>/dev/null | head -1 | sed 's/.*://')"
+if [ -n "$host_port" ]; then
+  for _ in $(seq 1 30); do
+    (exec 3<>"/dev/tcp/127.0.0.1/$host_port") 2>/dev/null && { exec 3>&-; break; }
+    sleep 0.5
+  done
+fi
 log "Postgres healthy"
 
 # --- install deps (only if missing) ------------------------------------------
@@ -95,9 +107,18 @@ fi
 
 # --- dev servers -------------------------------------------------------------
 SERVER_PID=""
+# `pnpm dev` spawns the real listener (tsx/next) as a GRANDCHILD, so a plain
+# `kill $PID` leaves it orphaned holding the port. Walk the tree leaves-first.
+kill_tree() {
+  local pid="$1"
+  [ -n "$pid" ] || return 0
+  local kid
+  for kid in $(pgrep -P "$pid" 2>/dev/null || true); do kill_tree "$kid"; done
+  kill "$pid" 2>/dev/null || true
+}
 cleanup() {
   log "shutting down dev servers (Postgres stays up; stop it with: docker compose down)"
-  [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true
+  kill_tree "$SERVER_PID"
 }
 trap cleanup EXIT INT TERM
 
@@ -106,7 +127,7 @@ log "starting API on :3001 (server)"
 SERVER_PID=$!
 
 if [ "$RUN_CLIENT" -eq 1 ]; then
-  log "starting web on :3000 (client) — Ctrl-C to stop both"
+  log "starting web on :3005 (client) — Ctrl-C to stop both"
   (cd client && pnpm dev)
 else
   log "API running (PID $SERVER_PID) — Ctrl-C to stop"

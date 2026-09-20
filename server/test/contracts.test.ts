@@ -188,6 +188,7 @@ describe('platform DTOs', () => {
         clone_path: null,
         last_polled_at: null,
         created_by: null,
+        clone_error: null,
       }),
     ).not.toThrow();
     expect(() =>

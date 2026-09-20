@@ -1,6 +1,7 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import * as t from '../../db/schema.js';
+import { CLONE_JOB_KIND } from './constants.js';
 
 /**
  * F1 — repos data-access layer. The ONLY place that touches the `repos`
@@ -31,6 +32,32 @@ export class RepoRepository {
 
   async list(workspaceId: string): Promise<RepoRow[]> {
     return this.db.select().from(t.repos).where(eq(t.repos.workspaceId, workspaceId));
+  }
+
+  /**
+   * Latest failed `clone` job's error per repo (repoId -> message), for repos
+   * that never got a `clone_path` — surfaced on the repo so the UI can show
+   * why a repo never imported instead of leaving it silently stuck.
+   */
+  async latestCloneErrors(workspaceId: string): Promise<Map<string, string>> {
+    const rows = await this.db
+      .select({ payload: t.jobs.payload, error: t.jobs.error })
+      .from(t.jobs)
+      .where(
+        and(
+          eq(t.jobs.workspaceId, workspaceId),
+          eq(t.jobs.kind, CLONE_JOB_KIND),
+          eq(t.jobs.status, 'failed'),
+        ),
+      )
+      .orderBy(desc(t.jobs.finishedAt));
+    const map = new Map<string, string>();
+    for (const row of rows) {
+      const repoId = (row.payload as { repoId?: string } | null)?.repoId;
+      // Rows are newest-first → first seen per repo is the latest failure.
+      if (repoId && row.error && !map.has(repoId)) map.set(repoId, row.error);
+    }
+    return map;
   }
 
   async getById(workspaceId: string, id: string): Promise<RepoRow | undefined> {

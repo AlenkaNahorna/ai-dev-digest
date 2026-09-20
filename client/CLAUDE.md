@@ -14,7 +14,7 @@ Next.js 15 studio UI. Import repos, browse PRs, run AI reviews, read findings, a
 
 ## Commands
 
-- `pnpm dev` — Dev server `:3000` (hot reload)
+- `pnpm dev` — Dev server `:3005` (hot reload)
 - `pnpm build` — Production build (static + server routes)
 - `pnpm start` — Run built app
 - `pnpm test` — Component tests (vitest + jsdom; fetch mocked)

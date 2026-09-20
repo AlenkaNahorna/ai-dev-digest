@@ -56,6 +56,9 @@ export default function PullsPage() {
       const tb = Date.parse(b.updated_at ?? "") || 0;
       return sort === "oldest" ? ta - tb : tb - ta;
     });
+  // A repo that never got a clone_path AND has a recorded clone error failed
+  // to import — show why instead of a permanently-empty PR list.
+  const cloneFailed = Boolean(activeRepo && activeRepo.clone_path == null && activeRepo.clone_error);
   const repoName = activeRepo?.full_name ?? repoId;
   const openCount = (pulls ?? []).filter((p) => OPEN_STATUSES.has(p.status)).length;
   const needsReviewCount = (pulls ?? []).filter((p) => p.status === "needs_review").length;
@@ -117,15 +120,23 @@ export default function PullsPage() {
             onRetry={() => refetch()}
           />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            icon="GitPullRequest"
-            title={t("list.emptyTitle")}
-            body={
-              status === "all"
-                ? t("list.emptyAllBody")
-                : t("list.emptyStatusBody", { status })
-            }
-          />
+          cloneFailed ? (
+            <ErrorState
+              title={t("list.cloneErrorTitle")}
+              body={activeRepo!.clone_error}
+              onRetry={() => refresh.mutate(repoId)}
+            />
+          ) : (
+            <EmptyState
+              icon="GitPullRequest"
+              title={t("list.emptyTitle")}
+              body={
+                status === "all"
+                  ? t("list.emptyAllBody")
+                  : t("list.emptyStatusBody", { status })
+              }
+            />
+          )
         ) : (
           filtered.map((pr) => <PRRow key={pr.number} pr={pr} repoId={repoId} />)
         )}

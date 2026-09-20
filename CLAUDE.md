@@ -13,7 +13,7 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 
 ## Commands
 
-- `./scripts/dev.sh` — Launch everything (Postgres + API `:3001` + Web `:3000`)
+- `./scripts/dev.sh` — Launch everything (Postgres + API `:3001` + Web `:3005`)
 - `pnpm dev` (each package) — Run in dev mode
 - `pnpm build` / `pnpm start` — Production
 - `pnpm test` — Run test suite
@@ -26,7 +26,7 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 | Folder | Package | Role | Port |
 |--------|---------|------|------|
 | `server/` | `@devdigest/api` | REST API + repo indexer (repo-intel) | 3001 |
-| `client/` | `@devdigest/web` | Next.js studio UI | 3000 |
+| `client/` | `@devdigest/web` | Next.js studio UI | 3005 |
 | `reviewer-core/` | `@devdigest/reviewer-core` | Review engine (diff → LLM → findings) | — |
 | `e2e/` | `@devdigest/e2e` | Browser e2e tests (deterministic) | — |
 | `server/src/vendor/shared` | `@devdigest/shared` | Zod contracts (all packages) | — |

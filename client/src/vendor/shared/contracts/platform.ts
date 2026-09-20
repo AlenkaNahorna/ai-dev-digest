@@ -147,6 +147,9 @@ export const Repo = z.object({
   clone_path: z.string().nullable(),
   last_polled_at: z.string().nullable(),
   created_by: z.string().nullable(),
+  // Latest failed `clone` job's error, when clone_path is still null. Null
+  // once cloned, or if the clone hasn't run/failed yet.
+  clone_error: z.string().nullable(),
 });
 export type Repo = z.infer<typeof Repo>;
 

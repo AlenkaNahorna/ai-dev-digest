@@ -70,7 +70,7 @@ From repo root:
 ```
 
 **What it does**:
-1. Spins up isolated Postgres (`:5433`, ephemeral volume), API (`:3101`), web (`:3100`)
+1. Spins up isolated Postgres (`:5434`, ephemeral volume), API (`:3101`), web (`:3100`)
 2. Seeds demo data (`acme/payments-api`, PR #482, agents)
 3. Runs all flows
 4. Tears down the stack

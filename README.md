@@ -12,7 +12,7 @@ aliases, not published modules):
 | Folder           | Package                     | What it is                                            | Port |
 |------------------|-----------------------------|-------------------------------------------------------|------|
 | `server/`        | `@devdigest/api`            | Fastify API + Drizzle/Postgres (pgvector)             | 3001 |
-| `client/`        | `@devdigest/web`            | Next.js 15 web app (the studio)                       | 3000 |
+| `client/`        | `@devdigest/web`            | Next.js 15 web app (the studio)                       | 3005 |
 | `reviewer-core/` | `@devdigest/reviewer-core`  | Pure review engine: diff → prompt → LLM → findings    | —    |
 | `e2e/`           | `@devdigest/e2e`            | Deterministic browser e2e (agent-browser)             | —    |
 | `server/src/vendor/shared` | `@devdigest/shared` | Zod contracts shared across every package             | —    |
@@ -27,7 +27,7 @@ project context into reviews) lives inside the server at
 ```mermaid
 flowchart LR
   subgraph Studio["Local studio (your machine)"]
-    WEB["client/<br/>Next.js · :3000"]
+    WEB["client/<br/>Next.js · :3005"]
     API["server/<br/>Fastify · :3001"]
     PG[("Postgres<br/>pgvector")]
     WEB -->|"REST /repos /pulls /agents /runs …"| API
@@ -103,9 +103,9 @@ This script:
 2. creates `server/.env` and `client/.env` from `.env.example` if missing,
 3. installs deps in `server/` and `client/` (only when `node_modules` is absent),
 4. applies DB migrations and seeds demo data,
-5. launches the API (`:3001`) and the web app (`:3000`).
+5. launches the API (`:3001`) and the web app (`:3005`).
 
-Open **http://localhost:3000**. Press **Ctrl-C** to stop the dev servers —
+Open **http://localhost:3005**. Press **Ctrl-C** to stop the dev servers —
 Postgres keeps running (`docker compose down` to stop it).
 
 Flags: `--no-seed` · `--no-client` · `--db-only` · `--help`.
@@ -123,7 +123,7 @@ pnpm db:migrate          # apply migrations (NOT run automatically on boot)
 pnpm db:seed             # idempotent demo data (optional)
 pnpm dev                 # API on :3001
 
-cd ../client && pnpm install && pnpm dev               # web on :3000
+cd ../client && pnpm install && pnpm dev               # web on :3005
 ```
 
 ## Useful scripts
@@ -153,7 +153,7 @@ Postgres); everything else is hermetic. The browser e2e flows live in
 
 - **`relation ... does not exist` / API errors on first run** — migrations weren't
   applied. The server does **not** migrate on boot: run `cd server && pnpm db:migrate`.
-- **Port 5432 already in use** — another Postgres is running. Stop it, or change the
+- **Port 5555 already in use** — another Postgres is running. Stop it, or change the
   host port in `docker-compose.yml`.
 - **`vector` type errors** — the pgvector extension is enabled by migration `0000`;
   make sure migrations ran against the Dockerized DB, not a different one.
