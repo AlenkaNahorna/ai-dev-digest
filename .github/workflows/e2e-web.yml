@@ -102,7 +102,9 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm build
-          nohup pnpm start > "$RUNNER_TEMP/web.log" 2>&1 &
+          # Local development uses client/package.json's port 3005. CI is
+          # isolated, so start the built app explicitly on the E2E port.
+          nohup pnpm exec next start -p 3000 > "$RUNNER_TEMP/web.log" 2>&1 &
           echo "waiting for web :3000…"
           for i in $(seq 1 30); do
             curl -fsS http://localhost:3000 >/dev/null 2>&1 && { echo "web up"; break; }
