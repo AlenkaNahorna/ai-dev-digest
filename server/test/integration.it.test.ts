@@ -120,7 +120,13 @@ d('Testcontainers: DB-backed routes via app.inject', () => {
       overrides: { git: new MockGitClient(), github: new MockGitHubClient() },
     });
     const repos = await app.inject({ method: 'GET', url: '/repos' });
-    const repoId = repos.json()[0]!.id;
+    // The idempotent seed includes acme/payments-api with a sample review and
+    // findings. Select the repo created by the preceding test so this assertion
+    // genuinely exercises the never-reviewed contract instead of depending on
+    // database row order.
+    const repo = repos.json().find((r: { full_name: string }) => r.full_name === 'acme/widgets');
+    expect(repo).toBeDefined();
+    const repoId = repo!.id;
 
     const first = await app.inject({ method: 'GET', url: `/repos/${repoId}/pulls` });
     expect(first.statusCode).toBe(200);
