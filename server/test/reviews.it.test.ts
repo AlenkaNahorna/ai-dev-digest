@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
 import { waitForPrRuns } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
-import { MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters/mocks.js';
+import { MockAuthProvider, MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters/mocks.js';
 import * as t from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import type { Review } from '@devdigest/shared';
@@ -300,6 +301,58 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
     // The replay buffer should contain our log lines as SSE `data:` frames.
     expect(sse.payload).toContain('Starting review');
     expect(sse.payload).toContain('Citation grounding');
+    await app.close();
+  });
+
+  it('run events, cancellation, and traces are workspace-scoped', async () => {
+    const app = await appWith(REVIEW_FIXTURE);
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const agent = (
+      await app.inject({
+        method: 'POST',
+        url: '/agents',
+        payload: { name: 'ScopedAgent', provider: 'openai', model: 'gpt-4.1', system_prompt: 's' },
+      })
+    ).json();
+    const body = (
+      await app.inject({ method: 'POST', url: `/pulls/${pr.id}/review`, payload: { agentId: agent.id } })
+    ).json();
+    const runId = body.runs[0].run_id as string;
+    await waitForPrRuns(pg.handle.db, pr.id, { expected: 1 });
+
+    const [otherWorkspace] = await pg.handle.db
+      .insert(t.workspaces)
+      .values({ name: `other-${randomUUID()}` })
+      .returning();
+    const [otherUser] = await pg.handle.db
+      .insert(t.users)
+      .values({ email: `${randomUUID()}@example.test`, name: 'Other' })
+      .returning();
+    await pg.handle.db.insert(t.workspaceMembers).values({
+      workspaceId: otherWorkspace!.id,
+      userId: otherUser!.id,
+      role: 'owner',
+    });
+    const otherApp = await buildApp({
+      config: config(),
+      db: pg.handle.db,
+      overrides: {
+        auth: new MockAuthProvider(
+          { id: otherUser!.id, email: otherUser!.email, name: otherUser!.name },
+          { id: otherWorkspace!.id, name: otherWorkspace!.name },
+        ),
+      },
+    });
+
+    for (const request of [
+      { method: 'GET' as const, url: `/runs/${runId}/trace` },
+      { method: 'POST' as const, url: `/runs/${runId}/cancel` },
+      { method: 'GET' as const, url: `/runs/${runId}/events` },
+    ]) {
+      expect((await otherApp.inject(request)).statusCode).toBe(404);
+    }
+
+    await otherApp.close();
     await app.close();
   });
 

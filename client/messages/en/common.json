@@ -17,5 +17,26 @@
     "title": "No repo selected",
     "body": "This repository isn't in your workspace — it may have been removed, or the link is stale. Add a repo or pick another from the switcher to get started.",
     "cta": "Add repository"
+  },
+  "home": {
+    "title": "Welcome to DevDigest",
+    "subtitle": "Local-first AI PR review",
+    "emptyTitle": "No repositories yet",
+    "emptyBody": "Add a repository to start reviewing pull requests. Set your API keys once in Settings → API Keys.",
+    "emptyCta": "Add repository",
+    "takingYou": "Taking you to your repository…",
+    "open": "Open {repo}"
+  },
+  "pullDetail": {
+    "pullRequests": "Pull Requests",
+    "loadErrorTitle": "Couldn't load this pull request",
+    "loadErrorBody": "PR #{number} could not be loaded.",
+    "deleteRunConfirm": "Delete this run from history? (its logs are removed too)"
+  },
+  "findingsPopover": {
+    "loading": "LOADING FINDINGS",
+    "count": "{count} FINDINGS IN THIS RUN",
+    "empty": "No findings in the latest review.",
+    "aria": "{count} findings in this run"
   }
 }

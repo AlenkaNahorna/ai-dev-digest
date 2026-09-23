@@ -122,4 +122,4 @@ const form = useForm({
 - Rate-limited APIs where you want to fail fast on first error
 - Large batch processing where full validation is expensive
 
-Reference: [Zod Error Handling](https://zod.dev/error-handling)
+Reference: [Zod Error Customization](https://zod.dev/error-customization)

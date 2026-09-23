@@ -1,0 +1,4 @@
+interface:
+  display_name: Onion Architecture
+  short_description: Enforce Onion Architecture in server modules
+  default_prompt: Use $onion-architecture to design, migrate, or review a backend module under server/.

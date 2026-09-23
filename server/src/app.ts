@@ -159,7 +159,10 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     app.log.error(err);
     const e = err as { statusCode?: number; message?: string };
     reply.status(e.statusCode ?? 500).send({
-      error: { code: 'internal_error', message: e.message ?? 'Internal error' },
+      error: {
+        code: 'internal_error',
+        message: config.nodeEnv === 'development' ? e.message ?? 'Internal error' : 'Internal error',
+      },
     });
   });
 

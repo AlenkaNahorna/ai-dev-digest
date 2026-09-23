@@ -1,5 +1,8 @@
 import type { FastifyRequest } from 'fastify';
+import { and, eq } from 'drizzle-orm';
 import type { Container } from '../../platform/container.js';
+import { ForbiddenError } from '../../platform/errors.js';
+import * as t from '../../db/schema.js';
 
 export interface RequestContext {
   workspaceId: string;
@@ -19,5 +22,10 @@ export async function getContext(
     container.auth.currentUser(req),
     container.auth.currentWorkspace(req),
   ]);
+  const [membership] = await container.db
+    .select({ userId: t.workspaceMembers.userId })
+    .from(t.workspaceMembers)
+    .where(and(eq(t.workspaceMembers.workspaceId, workspace.id), eq(t.workspaceMembers.userId, user.id)));
+  if (!membership) throw new ForbiddenError('User is not a member of this workspace');
   return { workspaceId: workspace.id, userId: user.id };
 }

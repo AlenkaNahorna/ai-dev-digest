@@ -8,5 +8,5 @@
 export * from './types.js';
 export * from './constants.js';
 export * from './service.js';
-export * from './repository.js';
-export { default as repoIntelRoutes } from './routes.js';
+export * from './adapters/outbound/persistence/repository.js';
+export { default as repoIntelRoutes } from './adapters/inbound/http/routes.js';

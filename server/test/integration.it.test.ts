@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
@@ -6,7 +7,7 @@ import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
 import * as t from '../src/db/schema.js';
-import { MockGitClient, MockGitHubClient } from '../src/adapters/mocks.js';
+import { MockAuthProvider, MockGitClient, MockGitHubClient } from '../src/adapters/mocks.js';
 
 const hasDocker = await dockerAvailable();
 const d = hasDocker ? describe : describe.skip;
@@ -109,6 +110,64 @@ d('Testcontainers: DB-backed routes via app.inject', () => {
     expect(list.json().some((r: { full_name: string }) => r.full_name === 'acme/widgets')).toBe(
       true,
     );
+    await app.close();
+  });
+
+  it('rejects a request when the authenticated user is not a workspace member', async () => {
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: {
+        auth: new MockAuthProvider(
+          { id: randomUUID(), email: 'outsider@example.test', name: 'Outsider' },
+          { id: randomUUID(), name: 'private' },
+        ),
+      },
+    });
+    const response = await app.inject({ method: 'GET', url: '/repos' });
+    expect(response.statusCode).toBe(403);
+    expect(response.json().error.code).toBe('forbidden');
+    await app.close();
+  });
+
+  it('does not expose another workspace repository through repo-intel routes', async () => {
+    const config = loadConfig({ ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv);
+    const [otherWorkspace] = await pg.handle.db
+      .insert(t.workspaces)
+      .values({ name: `repo-intel-other-${randomUUID()}` })
+      .returning();
+    const [otherUser] = await pg.handle.db
+      .insert(t.users)
+      .values({ email: `${randomUUID()}@example.test`, name: 'Repo Intel Other' })
+      .returning();
+    await pg.handle.db.insert(t.workspaceMembers).values({
+      workspaceId: otherWorkspace!.id,
+      userId: otherUser!.id,
+      role: 'owner',
+    });
+    const [repo] = await pg.handle.db
+      .insert(t.repos)
+      .values({
+        workspaceId: (await pg.handle.db.select({ id: t.workspaces.id }).from(t.workspaces).where(eq(t.workspaces.name, 'default')))[0]!.id,
+        owner: 'acme',
+        name: `private-${randomUUID()}`,
+        fullName: `acme/private-${randomUUID()}`,
+      })
+      .returning();
+    const app = await buildApp({
+      config,
+      db: pg.handle.db,
+      overrides: {
+        auth: new MockAuthProvider(
+          { id: otherUser!.id, email: otherUser!.email, name: otherUser!.name },
+          { id: otherWorkspace!.id, name: otherWorkspace!.name },
+        ),
+      },
+    });
+
+    expect((await app.inject({ method: 'GET', url: `/repos/${repo!.id}/index-state` })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'POST', url: `/repos/${repo!.id}/resync` })).statusCode).toBe(404);
     await app.close();
   });
 

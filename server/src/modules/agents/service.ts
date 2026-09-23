@@ -8,7 +8,7 @@ import type {
   Provider,
   ReviewStrategy,
 } from '@devdigest/shared';
-import { AgentsRepository } from './repository.js';
+import { AgentsRepository } from './adapters/outbound/persistence/repository.js';
 import { toAgentDto, toAgentVersionDto } from './helpers.js';
 
 /**

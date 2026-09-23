@@ -127,4 +127,4 @@ formatted.items?.[0]?.quantity?._errors  // ['Quantity must be positive']
 - Flat objects where field name is obvious
 - When using form libraries that handle path mapping
 
-Reference: [Zod Error Handling](https://zod.dev/error-handling)
+Reference: [Zod Error Customization](https://zod.dev/error-customization)

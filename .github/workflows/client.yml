@@ -9,10 +9,12 @@ on:
     branches: [main]
     paths:
       - 'client/**'
+      - 'server/src/vendor/shared/**'
       - '.github/workflows/client.yml'
   pull_request:
     paths:
       - 'client/**'
+      - 'server/src/vendor/shared/**'
       - '.github/workflows/client.yml'
 
 permissions:
@@ -43,6 +45,11 @@ jobs:
           cache-dependency-path: client/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Verify canonical shared contracts
+        run: |
+          test -L src/vendor/shared
+          test "$(readlink src/vendor/shared)" = "../../../server/src/vendor/shared"
 
       - run: pnpm typecheck
 

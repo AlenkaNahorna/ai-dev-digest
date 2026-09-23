@@ -80,7 +80,7 @@ Comprehensive schema validation guide for Zod in TypeScript applications, design
 3. [https://github.com/colinhacks/zod](https://github.com/colinhacks/zod)
 4. [https://zod.dev/packages/mini](https://zod.dev/packages/mini)
 5. [https://www.totaltypescript.com/tutorials/zod](https://www.totaltypescript.com/tutorials/zod)
-6. [https://zod.dev/error-handling](https://zod.dev/error-handling)
+6. [https://zod.dev/error-customization](https://zod.dev/error-customization)
 7. [https://zod.dev/api](https://zod.dev/api)
 
 ---

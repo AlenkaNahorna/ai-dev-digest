@@ -7,7 +7,7 @@ import { seed } from '../src/db/seed.js';
 import * as t from '../src/db/schema.js';
 import { MockGitClient, MockGitHubClient } from '../src/adapters/mocks.js';
 import { AgentsService } from '../src/modules/agents/service.js';
-import { AgentsRepository } from '../src/modules/agents/repository.js';
+import { AgentsRepository } from '../src/modules/agents/adapters/outbound/persistence/repository.js';
 import type { Container } from '../src/platform/container.js';
 
 const hasDocker = await dockerAvailable();

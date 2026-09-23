@@ -23,8 +23,8 @@ import { OpenRouterProvider } from '@devdigest/reviewer-core';
 import { estimateCost } from '../adapters/llm/pricing.js';
 import { PriceBook } from './price-book.js';
 import { ConfigError } from './errors.js';
-import { AgentsRepository } from '../modules/agents/repository.js';
-import { ReviewRepository } from '../modules/reviews/repository.js';
+import { AgentsRepository } from '../modules/agents/adapters/outbound/persistence/repository.js';
+import { ReviewRepository } from '../modules/reviews/adapters/outbound/persistence/repository.js';
 import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
@@ -81,6 +81,9 @@ export class Container {
     this.config = config;
     this.db = db;
     this.secrets = overrides.secrets ?? new LocalSecretsProvider(config.secretsPath);
+    if (config.nodeEnv === 'production' && !overrides.auth) {
+      throw new ConfigError('A production AuthProvider is required; LocalNoAuthProvider is local-only.');
+    }
     this.auth = overrides.auth ?? new LocalNoAuthProvider(db);
     this.runBus = runBus;
     this.jobs = new JobRunner(db);

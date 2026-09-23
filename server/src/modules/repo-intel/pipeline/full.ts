@@ -40,7 +40,7 @@ import type {
   IndexerReferenceRow,
   IndexerSymbolRow,
   RepoIntelRepository,
-} from '../repository.js';
+} from '../adapters/outbound/persistence/repository.js';
 import type { IndexResult, IndexStatus } from '../types.js';
 import { walkClone } from './walk.js';
 import { computeFileRank } from './rank.js';
