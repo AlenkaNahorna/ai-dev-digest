@@ -6,11 +6,28 @@ import { usePrReviews } from "@/lib/hooks/reviews";
 import { visibleFindings } from "@/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/helpers";
 import { lineLabel } from "@/app/repos/[repoId]/pulls/[number]/_components/FindingCard/helpers";
 import type { PrMeta } from "@/lib/types";
-import type { FindingRecord } from "@devdigest/shared";
+import type { FindingRecord, ReviewRecord } from "@devdigest/shared";
+
+/** Keep the popup consistent with the PR-list rollup: newest review per agent. */
+function latestReviewsPerAgent(reviews: ReviewRecord[]): ReviewRecord[] {
+  const latest = new Map<string, ReviewRecord>();
+  for (const review of reviews) {
+    const agentKey = review.agent_id ?? `review:${review.id}`;
+    const previous = latest.get(agentKey);
+    if (!previous || Date.parse(review.created_at) > Date.parse(previous.created_at)) {
+      latest.set(agentKey, review);
+    }
+  }
+  return [...latest.values()];
+}
 
 export function FindingsPopover({ pr, findings: providedFindings }: { pr?: PrMeta; findings?: FindingRecord[] }) {
   const { data: reviews, isLoading } = usePrReviews(pr?.id);
-  const findings = visibleFindings(providedFindings ?? reviews?.flatMap((review) => review.findings) ?? [], false);
+  const latestReviews = reviews ? latestReviewsPerAgent(reviews) : [];
+  const findings = visibleFindings(
+    providedFindings ?? latestReviews.flatMap((review) => review.findings),
+    false,
+  );
   const loading = providedFindings == null && isLoading;
 
   return (

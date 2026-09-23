@@ -111,8 +111,9 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // Latest-review SCORE + id per PR (id feeds the findings-by-severity
-    // lookup below) for the list's score ring, and total spend reviewing each
+    // Latest-review SCORE + id per PR for the list's score ring. Findings use
+    // the newest review for each agent (see the per-agent selection below), and
+    // total spend reviewing each
     // PR (sum of cost_usd across every successful agent run — unlike score, cumulative,
     // not latest-only). Independent queries against different tables, run
     // concurrently rather than one after the other. (A PR with no runs, or
@@ -122,18 +123,35 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       (async () => {
         const map = new Map<string, { score: number | null; reviewId: string }>();
         const allReviewIds = new Map<string, string[]>();
+        const seenAgentsByPr = new Map<string, Set<string>>();
         if (prIds.length === 0) return { latestReviewByPr: map, reviewIdsByPr: allReviewIds };
         const reviewRows = await container.db
-          .select({ id: t.reviews.id, prId: t.reviews.prId, score: t.reviews.score })
+          .select({
+            id: t.reviews.id,
+            prId: t.reviews.prId,
+            agentId: t.reviews.agentId,
+            score: t.reviews.score,
+          })
           .from(t.reviews)
           .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')))
           .orderBy(desc(t.reviews.createdAt));
         // Rows are newest-first → first seen per PR is the latest review.
         for (const rv of reviewRows) {
-          const ids = allReviewIds.get(rv.prId) ?? [];
-          ids.push(rv.id);
-          allReviewIds.set(rv.prId, ids);
           if (!map.has(rv.prId)) map.set(rv.prId, { score: rv.score, reviewId: rv.id });
+
+          // Rows are newest-first, so the first review for an agent is the
+          // only one whose findings belong in the PR-list rollup. A missing
+          // agent id is treated as a distinct legacy review rather than
+          // silently merging unrelated reviews.
+          const agentKey = rv.agentId ?? `review:${rv.id}`;
+          const seenAgents = seenAgentsByPr.get(rv.prId) ?? new Set<string>();
+          if (!seenAgents.has(agentKey)) {
+            seenAgents.add(agentKey);
+            seenAgentsByPr.set(rv.prId, seenAgents);
+            const ids = allReviewIds.get(rv.prId) ?? [];
+            ids.push(rv.id);
+            allReviewIds.set(rv.prId, ids);
+          }
         }
         return { latestReviewByPr: map, reviewIdsByPr: allReviewIds };
       })(),
@@ -158,9 +176,9 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       })(),
     ]);
 
-    // Findings-by-severity counts across all persisted review runs for each PR.
-    // The detail page shows every run, so the list must not hide findings merely
-    // because the newest run was clean and produced the score ring.
+    // Findings-by-severity counts across the newest review for each agent.
+    // The detail page shows every run, but the list represents the current
+    // state of each agent and must not double-count an agent's older runs.
     const allReviewIds = [...reviewIdsByPr.values()].flat();
     const reviewToPr = new Map<string, string>();
     for (const [prId, reviewIds] of reviewIdsByPr) {

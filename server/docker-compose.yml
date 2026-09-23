@@ -10,7 +10,9 @@ services:
       POSTGRES_PASSWORD: devdigest
       POSTGRES_DB: devdigest
     ports:
-      - "${DEV_PG_PORT:-5432}:5432"
+      # Local development uses 5555 so it can coexist with the other project.
+      # CI overrides DEV_PG_PORT to 5432 in .github/workflows/e2e-web.yml.
+      - "${DEV_PG_PORT:-5555}:5432"
     volumes:
       - devdigest_pgdata:/var/lib/postgresql/data
     healthcheck:

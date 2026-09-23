@@ -40,6 +40,14 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 - **Testing**: `*.it.test.ts` = integration (Postgres); others = unit (hermetic)
 - **Database**: Postgres runs in Docker; migrations via `drizzle-kit`; never auto-migrate on boot
 
+## Naming Conventions
+
+- TypeScript variables and functions use `camelCase`; types, interfaces, React components, and Zod schemas use `PascalCase`.
+- Database columns and API JSON fields use `snake_case`; Drizzle properties remain `camelCase` and map explicitly at the boundary.
+- React components are named after the rendered concept (`FindingsModal`, `ReviewRunAccordion`); hooks start with `use` and route segments stay lowercase.
+- Files use lowercase kebab-case for modules and tests (`review-flow.md`, `pulls-status.test.ts`); component files may use the component's PascalCase name when colocated with UI.
+- Shared policy constants use `UPPER_SNAKE_CASE`; IDs and timestamps use `*_id` and `*_at` in database/API contracts.
+
 ## Do Not Touch
 
 - `.github/workflows/` — CI gated by GitHub Actions

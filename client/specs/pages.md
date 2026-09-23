@@ -3,11 +3,12 @@
 ## Pull request list
 
 `/repos/:repoId/pulls` loads enriched `PrMeta` rows. The FINDINGS column renders
-latest-review severity counts. Hovering a reviewed row's severity area mounts a
-read-only popover; it fetches the newest review lazily and shows title,
-category, file/line, confidence, and a short rationale. It must not expose
-Accept/Dismiss actions. The badges aggregate all persisted review runs for the
-PR, so a clean newest run does not hide findings from an older run. The pulls
+severity counts from the newest review of each agent, so repeated runs by one
+agent are not double-counted while different agents remain visible. Hovering a
+reviewed row's severity area mounts a read-only popover; it fetches the newest
+review lazily and shows title, category, file/line, confidence, and a short
+rationale. It must not expose Accept/Dismiss actions. A never-reviewed PR has
+no findings badges, while a clean reviewed PR renders zero counts. The pulls
 query is invalidated after a review completes.
 
 ## Pull request detail
