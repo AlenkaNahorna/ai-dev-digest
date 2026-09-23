@@ -147,6 +147,9 @@ export const Repo = z.object({
   clone_path: z.string().nullable(),
   last_polled_at: z.string().nullable(),
   created_by: z.string().nullable(),
+  // Latest failed `clone` job's error, when clone_path is still null. Null
+  // once cloned, or if the clone hasn't run/failed yet.
+  clone_error: z.string().nullable(),
 });
 export type Repo = z.infer<typeof Repo>;
 
@@ -170,6 +173,18 @@ export const PrMeta = z.object({
   updated_at: z.string().nullish(),
   // Latest-review score (list endpoint only; null/absent until reviewed).
   score: z.number().int().nullish(),
+  // Sum of cost_usd across every agent run for this PR (list endpoint only;
+  // absent on the raw GitHub-sourced PrMeta, same as `score`).
+  cost_usd: z.number().nullish(),
+  // Latest-review findings-by-severity counts (list endpoint only; null/absent
+  // until reviewed, same as `score`).
+  findings: z
+    .object({
+      critical: z.number().int(),
+      warning: z.number().int(),
+      suggestion: z.number().int(),
+    })
+    .nullish(),
 });
 export type PrMeta = z.infer<typeof PrMeta>;
 

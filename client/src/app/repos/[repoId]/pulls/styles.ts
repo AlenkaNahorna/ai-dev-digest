@@ -10,6 +10,8 @@ export const s = {
     gap: 14,
     padding: "12px 20px",
     borderBottom: "1px solid var(--border)",
+    position: "relative",
+    zIndex: hover ? 10 : 0,
     cursor: "pointer",
     background: hover ? "var(--bg-surface)" : "transparent",
     transition: "background .1s",
@@ -40,6 +42,20 @@ export const s = {
   } satisfies CSSProperties,
   sizeBadgeBorder: (color: string): CSSProperties => ({ border: `1px solid ${color}` }),
   scoreCell: { display: "flex", alignItems: "center" } satisfies CSSProperties,
+  findingsCell: {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    minWidth: 0,
+    position: "relative",
+    zIndex: 1,
+    cursor: "pointer",
+  } satisfies CSSProperties,
+  costCell: {
+    fontSize: 12,
+    color: "var(--text-muted)",
+    textAlign: "right",
+  } satisfies CSSProperties,
   updatedCell: {
     fontSize: 12,
     color: "var(--text-muted)",
@@ -87,7 +103,7 @@ export const s = {
     margin: "14px 32px 44px",
     border: "1px solid var(--border)",
     borderRadius: 10,
-    overflow: "hidden",
+    overflow: "visible",
     background: "var(--bg-elevated)",
   } satisfies CSSProperties,
   headRow: {

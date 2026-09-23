@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, sum } from 'drizzle-orm';
 import type { PrMeta, PrDetail, GitHubClient, PrReviewComment } from '@devdigest/shared';
 import { PrCommentInput } from '@devdigest/shared';
 import * as t from '../../db/schema.js';
@@ -111,21 +111,98 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
       }
     }
 
-    // Latest-review SCORE per PR for the list's score ring. Computed on read
-    // from reviews (no FK denorm); the list is small, so one IN-query + JS
-    // grouping is cheap. (The per-severity FINDINGS breakdown is intentionally
-    // not surfaced on the list — findings live on the PR detail page.)
+    // Latest-review SCORE + id per PR for the list's score ring. Findings use
+    // the newest review for each agent (see the per-agent selection below), and
+    // total spend reviewing each
+    // PR (sum of cost_usd across every successful agent run — unlike score, cumulative,
+    // not latest-only). Independent queries against different tables, run
+    // concurrently rather than one after the other. (A PR with no runs, or
+    // whose runs have no cost data, is absent from costByPr → null, never $0.00.)
     const prIds = rows.map((r) => r.id);
-    const latestReviewByPr = new Map<string, { score: number | null }>();
-    if (prIds.length > 0) {
-      const reviewRows = await container.db
-        .select({ prId: t.reviews.prId, score: t.reviews.score })
-        .from(t.reviews)
-        .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')))
-        .orderBy(desc(t.reviews.createdAt));
-      // Rows are newest-first → first seen per PR is the latest review.
-      for (const rv of reviewRows) {
-        if (!latestReviewByPr.has(rv.prId)) latestReviewByPr.set(rv.prId, { score: rv.score });
+    const [{ latestReviewByPr, reviewIdsByPr }, costByPr] = await Promise.all([
+      (async () => {
+        const map = new Map<string, { score: number | null; reviewId: string }>();
+        const allReviewIds = new Map<string, string[]>();
+        const seenAgentsByPr = new Map<string, Set<string>>();
+        if (prIds.length === 0) return { latestReviewByPr: map, reviewIdsByPr: allReviewIds };
+        const reviewRows = await container.db
+          .select({
+            id: t.reviews.id,
+            prId: t.reviews.prId,
+            agentId: t.reviews.agentId,
+            score: t.reviews.score,
+          })
+          .from(t.reviews)
+          .where(and(inArray(t.reviews.prId, prIds), eq(t.reviews.kind, 'review')))
+          .orderBy(desc(t.reviews.createdAt));
+        // Rows are newest-first → first seen per PR is the latest review.
+        for (const rv of reviewRows) {
+          if (!map.has(rv.prId)) map.set(rv.prId, { score: rv.score, reviewId: rv.id });
+
+          // Rows are newest-first, so the first review for an agent is the
+          // only one whose findings belong in the PR-list rollup. A missing
+          // agent id is treated as a distinct legacy review rather than
+          // silently merging unrelated reviews.
+          const agentKey = rv.agentId ?? `review:${rv.id}`;
+          const seenAgents = seenAgentsByPr.get(rv.prId) ?? new Set<string>();
+          if (!seenAgents.has(agentKey)) {
+            seenAgents.add(agentKey);
+            seenAgentsByPr.set(rv.prId, seenAgents);
+            const ids = allReviewIds.get(rv.prId) ?? [];
+            ids.push(rv.id);
+            allReviewIds.set(rv.prId, ids);
+          }
+        }
+        return { latestReviewByPr: map, reviewIdsByPr: allReviewIds };
+      })(),
+      (async () => {
+        const map = new Map<string, number | null>();
+        if (prIds.length === 0) return map;
+        const costRows = await container.db
+          .select({ prId: t.agentRuns.prId, totalCost: sum(t.agentRuns.costUsd) })
+          .from(t.agentRuns)
+          .where(
+            and(
+              inArray(t.agentRuns.prId, prIds),
+              eq(t.agentRuns.workspaceId, workspaceId),
+              eq(t.agentRuns.status, 'done'),
+            ),
+          )
+          .groupBy(t.agentRuns.prId);
+        for (const row of costRows) {
+          if (row.prId) map.set(row.prId, row.totalCost == null ? null : Number(row.totalCost));
+        }
+        return map;
+      })(),
+    ]);
+
+    // Findings-by-severity counts across the newest review for each agent.
+    // The detail page shows every run, but the list represents the current
+    // state of each agent and must not double-count an agent's older runs.
+    const allReviewIds = [...reviewIdsByPr.values()].flat();
+    const reviewToPr = new Map<string, string>();
+    for (const [prId, reviewIds] of reviewIdsByPr) {
+      for (const reviewId of reviewIds) reviewToPr.set(reviewId, prId);
+    }
+    const findingsByPr = new Map<
+      string,
+      { critical: number; warning: number; suggestion: number }
+    >();
+    if (allReviewIds.length > 0) {
+      const severityRows = await container.db
+        .select({ reviewId: t.findings.reviewId, severity: t.findings.severity, n: count() })
+        .from(t.findings)
+        .where(inArray(t.findings.reviewId, allReviewIds))
+        .groupBy(t.findings.reviewId, t.findings.severity);
+      for (const row of severityRows) {
+        const prId = reviewToPr.get(row.reviewId);
+        if (!prId) continue;
+        const entry =
+          findingsByPr.get(prId) ?? { critical: 0, warning: 0, suggestion: 0 };
+        if (row.severity === 'CRITICAL') entry.critical = Number(row.n);
+        else if (row.severity === 'WARNING') entry.warning = Number(row.n);
+        else if (row.severity === 'SUGGESTION') entry.suggestion = Number(row.n);
+        findingsByPr.set(prId, entry);
       }
     }
 
@@ -153,6 +230,12 @@ export default async function pullsRoutes(appBase: FastifyInstance) {
         opened_at: r.openedAt?.toISOString() ?? null,
         updated_at: r.updatedAt?.toISOString() ?? null,
         score: review ? review.score : null,
+        cost_usd: costByPr.get(r.id) ?? null,
+        // A reviewed PR with zero findings is {0,0,0}, not null — null means
+        // "never reviewed" (same convention as `score`), not "clean review".
+        findings: review
+          ? findingsByPr.get(r.id) ?? { critical: 0, warning: 0, suggestion: 0 }
+          : null,
       };
     });
   });

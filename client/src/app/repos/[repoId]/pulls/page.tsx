@@ -16,7 +16,7 @@ import { RepoNotFound } from "@/components/repo-not-found";
 import { usePulls, useRefreshRepo } from "@/lib/hooks";
 import { useActiveRepo, useRepoNotFound } from "@/lib/repo-context";
 import { ApiError } from "@/lib/api";
-import { COLUMN_KEYS, SKELETON_ROWS } from "./constants";
+import { COLUMN_KEYS, RIGHT_ALIGNED_COLUMNS, SKELETON_ROWS } from "./constants";
 import { s } from "./styles";
 import { PRRow } from "./_components/PRRow";
 import { FilterBar } from "./_components/FilterBar";
@@ -56,6 +56,9 @@ export default function PullsPage() {
       const tb = Date.parse(b.updated_at ?? "") || 0;
       return sort === "oldest" ? ta - tb : tb - ta;
     });
+  // A repo that never got a clone_path AND has a recorded clone error failed
+  // to import — show why instead of a permanently-empty PR list.
+  const cloneFailed = Boolean(activeRepo && activeRepo.clone_path == null && activeRepo.clone_error);
   const repoName = activeRepo?.full_name ?? repoId;
   const openCount = (pulls ?? []).filter((p) => OPEN_STATUSES.has(p.status)).length;
   const needsReviewCount = (pulls ?? []).filter((p) => p.status === "needs_review").length;
@@ -97,8 +100,8 @@ export default function PullsPage() {
           refreshing={refresh.isPending}
         />
         <div style={s.headRow}>
-          {COLUMN_KEYS.map((key, i) => (
-            <div key={key} style={s.headCell(i === COLUMN_KEYS.length - 1)}>
+          {COLUMN_KEYS.map((key) => (
+            <div key={key} style={s.headCell(RIGHT_ALIGNED_COLUMNS.has(key))}>
               {t(`list.columns.${key}`)}
             </div>
           ))}
@@ -117,17 +120,27 @@ export default function PullsPage() {
             onRetry={() => refetch()}
           />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            icon="GitPullRequest"
-            title={t("list.emptyTitle")}
-            body={
-              status === "all"
-                ? t("list.emptyAllBody")
-                : t("list.emptyStatusBody", { status })
-            }
-          />
+          cloneFailed ? (
+            <ErrorState
+              title={t("list.cloneErrorTitle")}
+              body={activeRepo!.clone_error}
+              onRetry={() => refresh.mutate(repoId)}
+            />
+          ) : (
+            <EmptyState
+              icon="GitPullRequest"
+              title={t("list.emptyTitle")}
+              body={
+                status === "all"
+                  ? t("list.emptyAllBody")
+                  : t("list.emptyStatusBody", { status })
+              }
+            />
+          )
         ) : (
-          filtered.map((pr) => <PRRow key={pr.number} pr={pr} repoId={repoId} />)
+          filtered.map((pr) => (
+            <PRRow key={pr.number} pr={pr} repoId={repoId} />
+          ))
         )}
       </div>
     </AppShell>

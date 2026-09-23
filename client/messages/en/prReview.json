@@ -91,12 +91,15 @@
       "author": "Author",
       "size": "Size",
       "score": "Score",
+      "findings": "Findings",
       "status": "Status",
+      "cost": "Cost",
       "updated": "Updated"
     },
     "filesCount": "{count} files",
     "errorTitle": "Couldn’t load pull requests",
     "errorBody": "The engine returned an error.",
+    "cloneErrorTitle": "Couldn’t clone this repository",
     "emptyTitle": "No pull requests",
     "emptyAllBody": "No open PRs found for this repo yet. Refresh to sync from GitHub.",
     "emptyStatusBody": "No PRs with status “{status}”."

@@ -97,6 +97,13 @@ export class JobRunner {
       }
     }) as Promise<void>;
 
+    // enqueue() is routinely fire-and-forget (clone/index/refresh/resync all
+    // enqueue without awaiting `done`) — an unhandled rejection here would
+    // crash the whole process on the failure this same block just recorded
+    // to the DB. Callers that DO want the outcome can still await/catch the
+    // returned `done` themselves; this only stops it from going unhandled.
+    done.catch(() => {});
+
     return { id: jobId, done };
   }
 

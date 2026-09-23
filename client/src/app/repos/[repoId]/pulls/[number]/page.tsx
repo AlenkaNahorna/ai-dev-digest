@@ -22,6 +22,7 @@ import { useActiveRepo, useRepoNotFound } from "../../../../../lib/repo-context"
 import { ApiError } from "../../../../../lib/api";
 import { githubPrUrl } from "../../../../../lib/github-urls";
 import type { FindingRecord } from "@devdigest/shared";
+import type { Severity } from "@devdigest/ui";
 
 export default function PRDetailPage() {
   const params = useParams<{ repoId: string; number: string }>();
@@ -59,6 +60,7 @@ export default function PRDetailPage() {
 
   const tab = search.get("tab") ?? "overview";
   const traceRunId = search.get("trace");
+  const severityFilter = search.get("severity");
   const setParam = (key: string, val: string | null) => {
     const sp = new URLSearchParams(search.toString());
     if (val == null) sp.delete(key);
@@ -66,6 +68,10 @@ export default function PRDetailPage() {
     router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`);
   };
   const setTab = (t: string) => setParam("tab", t);
+  const handleSelectSeverity = (severity: Severity) => {
+    setParam("severity", severityFilter === severity ? null : severity);
+    setTab("findings");
+  };
 
   // Reviews come newest-first; each is its own run (grouped into accordions).
   const runs = reviews ?? [];
@@ -75,6 +81,16 @@ export default function PRDetailPage() {
   );
   const lethalTrifecta = allFindings.filter((f) => f.kind === "lethal_trifecta");
   const findingsCount = allFindings.length;
+  // Non-zero severities only — mirrors the `count={findingsCount || undefined}`
+  // convention already used to hide zero counts on the Tabs badge below.
+  const severityCounts: Partial<Record<Severity, number>> = React.useMemo(() => {
+    const counts: Partial<Record<Severity, number>> = {};
+    for (const f of allFindings) {
+      const sev = f.severity as Severity;
+      counts[sev] = (counts[sev] ?? 0) + 1;
+    }
+    return counts;
+  }, [allFindings]);
 
   const repoName = activeRepo?.full_name ?? repoId;
   // The real "owner/repo" (null until the repo is loaded) — used to build
@@ -127,6 +143,9 @@ export default function PRDetailPage() {
         prId={prId}
         tab={tab}
         findingsCount={findingsCount}
+        severityCounts={severityCounts}
+        severityFilter={severityFilter}
+        onSelectSeverity={handleSelectSeverity}
         githubUrl={repoFullName ? githubPrUrl(repoFullName, pr.number) : null}
         onSetTab={setTab}
         onRunStart={() => setTab("findings")}
@@ -148,6 +167,7 @@ export default function PRDetailPage() {
             repoFullName={repoFullName}
             headSha={pr.head_sha}
             cancelMutation={cancel}
+            severityFilter={severityFilter}
             onOpenTrace={(id) => setParam("trace", id)}
             onDelete={(id) => {
               if (window.confirm("Delete this run from history? (its logs are removed too)"))

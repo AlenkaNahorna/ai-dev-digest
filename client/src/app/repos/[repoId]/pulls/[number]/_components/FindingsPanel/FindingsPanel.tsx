@@ -17,18 +17,24 @@ export function FindingsPanel({
   prId,
   repoFullName,
   headSha,
+  severityFilter,
 }: {
   findings: FindingRecord[];
   prId: string;
   repoFullName?: string | null;
   headSha?: string | null;
+  /** When set, only findings of this severity are shown (page-level severity counter). */
+  severityFilter?: string | null;
 }) {
   const t = useTranslations("prReview");
   const action = useFindingAction();
   const [hideLow, setHideLow] = React.useState(false);
   const [focusIdx, setFocusIdx] = React.useState(0);
 
-  const shown = React.useMemo(() => visibleFindings(findings, hideLow), [findings, hideLow]);
+  const shown = React.useMemo(
+    () => visibleFindings(findings, hideLow, severityFilter),
+    [findings, hideLow, severityFilter],
+  );
 
   // j/k navigation + a/d shortcuts on the focused finding (keyboard).
   React.useEffect(() => {

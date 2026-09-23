@@ -59,6 +59,7 @@ export async function listRunsForPull(
     duration_ms: run.durationMs,
     tokens_in: run.tokensIn,
     tokens_out: run.tokensOut,
+    cost_usd: run.costUsd,
     findings_count: run.findingsCount,
     grounding: run.grounding,
     ran_at: run.ranAt ? run.ranAt.toISOString() : null,
@@ -148,6 +149,8 @@ export async function completeAgentRun(
     tokensOut: number;
     findingsCount: number;
     grounding: string;
+    /** Actual/estimated LLM cost; null when unknown (e.g. failed before an LLM call). */
+    costUsd?: number | null;
     /** Review score (0-100); null on failed/cancelled runs. */
     score?: number | null;
     /** Findings that tripped the agent's gate; 0 on failed/cancelled runs. */
@@ -165,6 +168,7 @@ export async function completeAgentRun(
       tokensOut: values.tokensOut,
       findingsCount: values.findingsCount,
       grounding: values.grounding,
+      costUsd: values.costUsd ?? null,
       score: values.score ?? null,
       blockers: values.blockers ?? null,
       error: values.error ?? null,
