@@ -7,6 +7,7 @@ import workspace from './workspace/adapters/inbound/http/routes.js';
 import agents from './agents/adapters/inbound/http/routes.js';
 import reviews from './reviews/adapters/inbound/http/routes.js';
 import repoIntel from './repo-intel/adapters/inbound/http/routes.js';
+import skills from './skills/adapters/inbound/http/routes.js';
 
 /**
  * Module registry. Each feature module is a Fastify plugin in
@@ -30,4 +31,5 @@ export const modules: Record<string, FastifyPluginAsync> = {
   agents,
   reviews,
   repoIntel,
+  skills,
 };

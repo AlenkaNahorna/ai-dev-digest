@@ -220,6 +220,35 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
     if (!existing) await db.insert(t.agents).values(a);
   }
 
+  // ---- Test Quality Reviewer + four reusable skills ----------------------
+  const [testQuality] = await db.select().from(t.agents).where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, 'Test Quality Reviewer')));
+  const [qualityAgent] = testQuality ? [testQuality] : await db.insert(t.agents).values({
+    workspaceId,
+    name: 'Test Quality Reviewer',
+    description: 'Finds missing branches, weak edge-case coverage, over-mocking, and flaky tests.',
+    provider: DEFAULT_PROVIDER,
+    model: DEFAULT_MODEL,
+    systemPrompt: 'Review tests for meaningful coverage, correctness, and determinism. Report only actionable findings with exact citations.',
+    enabled: true,
+    version: 1,
+    createdBy: userId,
+  }).returning();
+  const skillSeeds = [
+    { name: 'pr-quality-rubric', type: 'rubric' as const, description: 'Evaluate overall pull-request quality and test signal.', body: '# PR Quality Rubric\nEvaluate correctness, security, tests, and scope. Report only actionable findings.' },
+    { name: 'test-coverage-gate', type: 'rubric' as const, description: 'Find untested branches and failure paths.', body: '# Test Coverage Gate\nCheck every new branch and failure path. Flag happy-path-only tests when a meaningful branch is uncovered.' },
+    { name: 'edge-case-checklist', type: 'convention' as const, description: 'Check boundary, empty, null, and error cases.', body: '# Edge Case Checklist\nCheck empty input, null/undefined, boundaries, concurrency, retries, and malformed input.' },
+    { name: 'mocking-and-flake-audit', type: 'custom' as const, description: 'Detect over-mocking, weak assertions, and flaky tests.', body: '# Mocking and Flake Audit\nFlag tests that assert only mocks, over-mock behavior, use timing or randomness, or lack deterministic assertions.' },
+  ];
+  for (let i = 0; i < skillSeeds.length; i++) {
+    const seedSkill = skillSeeds[i]!;
+    let [skill] = await db.select().from(t.skills).where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, seedSkill.name)));
+    if (!skill) {
+      [skill] = await db.insert(t.skills).values({ workspaceId, ...seedSkill, source: i === 0 ? 'extracted' : 'manual', enabled: true, version: 1 }).returning();
+      await db.insert(t.skillVersions).values({ skillId: skill!.id, version: 1, body: seedSkill.body });
+    }
+    await db.insert(t.agentSkills).values({ agentId: qualityAgent!.id, skillId: skill!.id, order: i, enabled: true }).onConflictDoNothing();
+  }
+
   return { workspaceId, userId };
 }
 
