@@ -65,6 +65,7 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 - [Client UI Map](client/README.md) — Page routes, component structure
 - [Review Engine](reviewer-core/README.md) — Review pipeline, LLM integration, grounding gate
 - [E2E Tests](e2e/README.md) — Deterministic test flows
+- [PR Self Review](.claude/skills/pr-self-review/SKILL.md) — mandatory workflow for reviewing the current Git diff before opening or updating a pull request
 
 Each module also has package-specific architecture/spec documents. Read the relevant
 `docs/*.md` and `specs/*.md` before changing that package's behavior.
@@ -149,7 +150,30 @@ You now have:
 
 **Cadence**: Capture after sessions >30 min with problem/solution/discovery; skip trivial fixes.
 
+**File locations**: `ENGINEERING-INSIGHTS.md` at the repository root is the central file for cross-cutting findings; each module's `INSIGHTS.md` keeps module-specific findings. If the central file does not exist, create it. If the `/engineering-insights` skill or command is unavailable, append the entry manually with the same format—do not skip the end-of-session capture.
+
 **CRITICAL**: Do not skip this step. If insights aren't written, they're lost to future sessions.
+
+### Repository-local skills
+
+Before implementation, review, or PR work, enumerate repository-local skills:
+
+- `.claude/skills/*/SKILL.md`
+- `.agents/skills/*/SKILL.md`
+- any skills explicitly referenced by the task
+
+Repository-local skills are part of the project contract and must not be ignored
+because they are absent from the globally available skill catalog.
+
+For code review or before opening/updating a PR, always use
+`.claude/skills/pr-self-review/SKILL.md`.
+
+The final review report must list:
+
+- skills used;
+- skills skipped;
+- unavailable skills;
+- uncovered file groups.
 
 ### When to Write ✅
 
@@ -175,5 +199,6 @@ You now have:
 
 **During work**:
 - **LAZY**: Use skills like `/fastify-best-practices`, `/react-best-practices`, `/drizzle-orm-patterns` on-demand
+- **REPOSITORY-LOCAL**: Discover and load skills from `.claude/skills/` and `.agents/skills/` before relying on the global skills catalog
 
 **No silent loading**: Summaries force active reading, not passive context loading.
