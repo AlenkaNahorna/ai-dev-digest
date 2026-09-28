@@ -333,7 +333,7 @@ function CandidateCard({
             size="sm"
             icon="X"
             onClick={onReject}
-            disabled={pending || !candidate.accepted}
+            disabled={pending}
           >
             Reject
           </Button>
