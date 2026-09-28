@@ -90,3 +90,52 @@ export function lineSignFor(kind: Line["kind"]): CSSProperties {
     flexShrink: 0,
   };
 }
+
+/** Smart Diff layout styles (colours only via CSS variables / SEV tokens). */
+export const fs = {
+  groups: { display: "flex", flexDirection: "column", gap: 14 } satisfies CSSProperties,
+  groupHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    width: "100%",
+    padding: "6px 4px",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    color: "var(--text-primary)",
+    textAlign: "left",
+    font: "inherit",
+  } satisfies CSSProperties,
+  groupLabel: { fontWeight: 700, fontSize: 14 } satisfies CSSProperties,
+  groupHint: { fontSize: 12.5, color: "var(--text-muted)", flex: 1, minWidth: 0 } satisfies CSSProperties,
+  groupCount: { fontSize: 12, color: "var(--text-muted)" } satisfies CSSProperties,
+  groupBody: { display: "flex", flexDirection: "column", gap: 10, marginTop: 6 } satisfies CSSProperties,
+  findingCounter: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    fontSize: 12,
+    fontWeight: 600,
+    color: "var(--crit)",
+  } satisfies CSSProperties,
+  dot: { width: 6, height: 6, borderRadius: "50%", background: "var(--crit)", display: "inline-block" } satisfies CSSProperties,
+  swatch: (color: string): CSSProperties => ({ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }),
+  sevLabel: (color: string): CSSProperties => ({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "center",
+    marginLeft: "auto",
+    padding: "0 12px",
+    fontSize: 12,
+    fontWeight: 600,
+    color,
+    flexShrink: 0,
+  }),
+} as const;
+
+/** Left severity stripe on a code row (one longhand; never mixed with border shorthand). */
+export function stripeFor(color: string): CSSProperties {
+  return { boxShadow: `inset 3px 0 0 ${color}` };
+}

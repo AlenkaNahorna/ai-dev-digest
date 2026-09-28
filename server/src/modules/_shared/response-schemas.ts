@@ -1,4 +1,4 @@
-import { PrDetail, PrIntentRecord, PrMeta, PrReviewComment, Repo, ReviewRecord, ReviewRunResponse } from '@devdigest/shared';
+import { PrDetail, PrIntentRecord, PrMeta, PrReviewComment, Repo, ReviewRecord, ReviewRunResponse, SmartDiffResponse } from '@devdigest/shared';
 
 /** Response contracts used by the highest-value public endpoints. */
 export const responseSchemas = {
@@ -10,4 +10,5 @@ export const responseSchemas = {
   reviews: ReviewRecord.array(),
   intent: PrIntentRecord.nullable(),
   intentRecord: PrIntentRecord,
+  smartDiff: SmartDiffResponse,
 };

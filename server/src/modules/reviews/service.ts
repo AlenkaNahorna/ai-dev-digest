@@ -1,5 +1,5 @@
 import type { Container } from '../../platform/container.js';
-import type { FindingActionKind, RunEventKind, RunTrace } from '@devdigest/shared';
+import type { FindingActionKind, RunEventKind, RunTrace, SmartDiffResponse } from '@devdigest/shared';
 import { AppError, NotFoundError } from '../../platform/errors.js';
 import type { AgentRow } from '../../db/rows.js';
 import { ReviewRepository } from './adapters/outbound/persistence/repository.js';
@@ -10,6 +10,7 @@ import { IntentService } from './intent/service.js';
 import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
+import { buildSmartDiff, latestReviewFindings } from './smart-diff/build-smart-diff.js';
 
 // Re-export DTO types + converters for backward-compatible imports from
 // './service.js' (these previously lived here; logic now in ./helpers.ts).
@@ -196,6 +197,25 @@ export class ReviewService {
     return rows.map(({ review, findings }) =>
       reviewToDto(review, findings, review.agentId ? names.get(review.agentId) : null),
     );
+  }
+
+  /**
+   * Smart Diff: PR files grouped by role + finding lines from the newest review
+   * per agent. Pure DB read; never calls the LLM.
+   */
+  async smartDiffForPull(workspaceId: string, prId: string): Promise<SmartDiffResponse> {
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new NotFoundError('Pull request not found');
+    const [files, rows] = await Promise.all([this.repo.getPrFiles(prId), this.repo.reviewsForPull(prId)]);
+    const findings = latestReviewFindings(
+      rows.map(({ review, findings: fs }) => ({
+        id: review.id,
+        agent_id: review.agentId,
+        created_at: review.createdAt,
+        findings: fs.map((f) => ({ file: f.file, start_line: f.startLine })),
+      })),
+    );
+    return buildSmartDiff(files, findings);
   }
 
   async getRunTrace(workspaceId: string, runId: string): Promise<RunTrace | undefined> {

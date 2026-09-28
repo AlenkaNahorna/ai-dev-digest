@@ -53,7 +53,7 @@ Each module is a self-contained plugin. HTTP entrypoints live under
 |--------|--------|------|
 | `repos/` | `GET /repos`, `POST /repos`, `GET /repos/:id/index-state` | Repo CRUD, repo-intel status |
 | `pulls/` | `GET /pulls/:id`, `GET /pulls/:id/comments` | PR data from GitHub |
-| `reviews/` | `POST /pulls/:id/review`, `GET /findings/:id/(accept\|dismiss)` | Run review, persist findings |
+| `reviews/` | `POST /pulls/:id/review`, `GET /pulls/:id/smart-diff`, `GET /findings/:id/(accept\|dismiss)` | Run review, persist findings |
 | `agents/` | `GET /agents`, `POST /agents`, `GET /agents/:id` | Agent CRUD (system prompt + model) |
 | `runs/` | `GET /runs/:id/trace`, `GET /runs/:id/events` | Stream review run traces (SSE) |
 | `polling/` | `GET /repos/:id/poll` | Long-poll repo indexing status |

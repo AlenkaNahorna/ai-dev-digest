@@ -3,12 +3,14 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "@/lib/api";
 import { notify } from "@/lib/toast";
-import type { FindingActionKind, PrIntentRecord, PrReviewComment, ReviewRecord, ReviewRunResponse, RunEvent, RunSummary } from "@devdigest/shared";
+import type { FindingActionKind, PrIntentRecord, PrReviewComment, ReviewRecord, ReviewRunResponse, RunEvent, RunSummary, SmartDiffResponse } from "@devdigest/shared";
 import { intentKeys, pullKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
 export interface ActiveRun { run_id: string; agent_id: string | null; agent_name: string | null; ran_at: string | null; }
 export function usePrActiveRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.active(prId), queryFn: () => api.get<ActiveRun[]>(`/pulls/${prId}/runs/active`), enabled: !!prId, refetchInterval: (q) => (q.state.data?.length ?? 0) > 0 ? 4000 : false }); }
 export function usePrRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.history(prId), queryFn: () => api.get<RunSummary[]>(`/pulls/${prId}/runs`), enabled: !!prId, refetchInterval: (q) => (q.state.data ?? []).some((r) => r.status === "running") ? 4000 : false }); }
 export function usePrReviews(prId: string | null | undefined) { return useQuery({ queryKey: reviewKeys.byPull(prId), queryFn: () => api.get<ReviewRecord[]>(`/pulls/${prId}/reviews`), enabled: !!prId }); }
+/** Files grouped by role + finding lines (no LLM). Nested under reviewKeys.byPull, so review invalidations refresh it. */
+export function useSmartDiff(prId: string | null | undefined) { return useQuery({ queryKey: reviewKeys.smartDiff(prId), queryFn: () => api.get<SmartDiffResponse>(`/pulls/${prId}/smart-diff`), enabled: !!prId }); }
 export function useDeleteRun(prId: string | null | undefined) { const qc = useQueryClient(); return useMutation({ mutationFn: (runId: string) => api.del<{ ok: boolean }>(`/runs/${runId}`), onSuccess: () => { qc.invalidateQueries({ queryKey: runKeys.history(prId) }); qc.invalidateQueries({ queryKey: reviewKeys.byPull(prId) }); } }); }
 export function useCancelRun() { return useMutation({ mutationFn: (runId: string) => api.post<{ ok: boolean }>(`/runs/${runId}/cancel`) }); }
 export function useDeleteReview(prId: string | null | undefined) { const qc = useQueryClient(); return useMutation({ mutationFn: (reviewId: string) => api.del<{ ok: boolean }>(`/reviews/${reviewId}`), onSuccess: () => qc.invalidateQueries({ queryKey: reviewKeys.byPull(prId) }) }); }

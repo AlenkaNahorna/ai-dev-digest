@@ -16,6 +16,7 @@ const RunRequestBody = RunRequest.default({});
  *   GET    /runs/:id/events                            → SSE stream of RunEvent (replay-first)
  *   GET    /runs/:id/trace                             → the single-document RunTrace
  *   GET    /pulls/:id/reviews                          → persisted reviews + findings for a PR
+ *   GET    /pulls/:id/smart-diff                       → files grouped by role + finding lines (no LLM)
  *   GET    /pulls/:id/intent                           → persisted PR intent (+stale flag) or null
  *   POST   /pulls/:id/intent                           → (re)derive the intent with the cheap classifier model
  *   POST   /findings/:id/(accept|dismiss)              → finding actions
@@ -135,6 +136,12 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
   app.get('/pulls/:id/reviews', { schema: { params: IdParams, response: { 200: responseSchemas.reviews } } }, async (req) => {
     const { workspaceId } = await getContext(container, req);
     return service.reviewsForPull(workspaceId, req.params.id);
+  });
+
+  // ---- Smart Diff (pure DB read, no LLM) ----------------------------------
+  app.get('/pulls/:id/smart-diff', { schema: { params: IdParams, response: { 200: responseSchemas.smartDiff } } }, async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    return service.smartDiffForPull(workspaceId, req.params.id);
   });
 
   // ---- Intent layer -------------------------------------------------------

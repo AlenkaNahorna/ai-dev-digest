@@ -60,14 +60,34 @@
     "blockers": " · {count} blockers"
   },
   "smartDiff": {
-    "coreLabel": "Core",
+    "coreLabel": "Core logic",
     "wiringLabel": "Wiring",
     "boilerplateLabel": "Boilerplate",
     "largeTitle": "This PR is large ({lines} changed lines)",
     "largeBody": "Consider splitting it into smaller, focused PRs for easier review:",
     "filesCount": "{count} files",
     "findingLines": "{count} finding-lines",
-    "groupedByRole": "Smart Diff · grouped by role"
+    "groupedByRole": "Smart Diff · grouped by role",
+    "testsLabel": "Tests",
+    "docsLabel": "Docs",
+    "coreHint": "The substance of the change — review closely",
+    "testsHint": "Tests covering the change",
+    "wiringHint": "Hooks the core into the app",
+    "docsHint": "Documentation — skim",
+    "boilerplateHint": "Generated / mechanical — skim",
+    "reviewerOrderedDiff": "Reviewer-ordered diff",
+    "orderSmart": "Smart order",
+    "orderOriginal": "Original order",
+    "hasFindings": "Has findings",
+    "severityLabel": {
+      "blocker": "blocker",
+      "warning": "warning",
+      "suggestion": "suggestion"
+    },
+    "unanchoredTitle": "{count} finding(s) outside the diff lines",
+    "hideComments": "Hide comments",
+    "showComments": "Show comments",
+    "actionFailed": "Couldn't update the finding."
   },
   "list": {
     "breadcrumb": "Pull Requests",
