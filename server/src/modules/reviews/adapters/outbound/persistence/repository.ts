@@ -35,6 +35,10 @@ export class ReviewRepository {
     return pullRepo.getRepo(this.db, repoId);
   }
 
+  getPrCommits(prId: string): Promise<(typeof t.prCommits.$inferSelect)[]> {
+    return pullRepo.getPrCommits(this.db, prId);
+  }
+
   getPrFiles(prId: string): Promise<(typeof t.prFiles.$inferSelect)[]> {
     return pullRepo.getPrFiles(this.db, prId);
   }
@@ -131,12 +135,12 @@ export class ReviewRepository {
 
   // ---- intent -------------------------------------------------------------
 
-  upsertIntent(prId: string, intent: Intent): Promise<void> {
-    return pullRepo.upsertIntent(this.db, prId, intent);
+  upsertIntent(prId: string, intent: Intent, meta: pullRepo.IntentMeta): Promise<void> {
+    return pullRepo.upsertIntent(this.db, prId, intent, meta);
   }
 
-  getIntent(prId: string): Promise<Intent | undefined> {
-    return pullRepo.getIntent(this.db, prId);
+  getIntentRow(prId: string): Promise<pullRepo.IntentRow | undefined> {
+    return pullRepo.getIntentRow(this.db, prId);
   }
 
   // ---- observability: agent_runs + run_traces ----------------------------

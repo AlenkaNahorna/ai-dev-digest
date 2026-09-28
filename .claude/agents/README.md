@@ -127,3 +127,23 @@ subagent's frontmatter (unverified — check `/agents` docs before relying on it
 `researcher.md` has no separate sources table — it follows the same repository conventions
 (read-only Bash, no `Edit`/`Write`, no subagent spawning) established for the other agents,
 documented inline in its own "Hard constraints" section.
+
+## Codex portability
+
+The same roster runs in OpenAI Codex. `.claude/agents/*.md` stays the source of truth; Codex-native files are **generated** by `node scripts/sync-codex-agents.mjs` (use `--check` to detect drift). See also the root [`AGENTS.md`](../../AGENTS.md#claude-code--codex-setup-portability).
+
+| Claude Code | Codex |
+|---|---|
+| `.claude/agents/<name>.md` (frontmatter + prompt) | `.codex/agents/<name_snake>.toml` — `name`, `description`, `sandbox_mode`, `developer_instructions` |
+| `tools:` allowlist (no `Write`/`Edit` = read-only) | `sandbox_mode = "read-only"` (no `Write`/`Edit` in source) or `"workspace-write"` |
+| `model: sonnet` | omitted — inherits the Codex session model |
+| `skills:` preloaded into context | listed in the agent's instructions; Codex loads them on demand from `.agents/skills/<name>/SKILL.md` |
+| `.claude/skills/<name>/` | `.agents/skills/<name>` symlink to it |
+
+Differences to know about:
+
+- **Enforcement is different.** In Claude Code read-only comes from the missing tools; in Codex it comes from the sandbox, so shell writes (`>`, `tee`, `sed -i`) are blocked too, which is stricter than the prompt-only Bash convention above. Conversely, `workspace-write` cannot be limited to paths, so `planner` (`docs/plans/`), `test-writer` (tests) and `doc-writer` (docs) rely on their prompts, exactly as in Claude Code.
+- **`plan-verifier` and tests.** In a read-only sandbox, re-running tests that write temp files may fail; the agent then reports `NOT-VERIFIED` instead of guessing.
+- **`researcher` and the web.** External research needs web search enabled in the Codex session; otherwise it records the gap under "Could not find".
+- **Tool names** in prompts (`Read`, `Grep`, `Edit`, …) are Claude Code's; every generated file starts with a short "Codex runtime notes" block mapping them to shell commands and `apply_patch`.
+- **Invocation.** Ask explicitly, e.g. "Spawn the `researcher` agent to find where X is implemented".

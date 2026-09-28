@@ -1,6 +1,7 @@
 import type { Container } from '../../platform/container.js';
-import type { Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
+import type { Intent, IntentCallTrace, Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
 import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
+import { logPrompt, newCorrelationId, reviewPromptInputs } from '../../platform/prompt-log.js';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
 import type { AgentRow } from '../../db/rows.js';
@@ -9,6 +10,7 @@ import { REVIEW_STRATEGY } from './constants.js';
 import { taskLine } from './helpers.js';
 import { loadDiff } from './diff-loader.js';
 import { SkillsService } from '../skills/service.js';
+import { IntentService } from './intent/service.js';
 
 /** Thrown by a run when the user cancels it mid-flight (between map files). */
 export class RunCancelledError extends Error {
@@ -43,6 +45,7 @@ export type RunOutcome = {
  */
 export class ReviewRunExecutor {
   private readonly skills: SkillsService;
+  private readonly intents: IntentService;
 
   constructor(
     private container: Container,
@@ -50,6 +53,7 @@ export class ReviewRunExecutor {
     private agents: Container['agentsRepo'],
   ) {
     this.skills = new SkillsService(container);
+    this.intents = new IntentService(container, repo);
   }
 
   /**
@@ -71,7 +75,7 @@ export class ReviewRunExecutor {
       this.container.runBus,
       jobs.map((j) => j.runId),
       logger,
-      { prId: pull.id },
+      { prId: pull.id, correlationId: newCorrelationId() },
     );
 
     // Pre-work failure (e.g. diff load) fails EVERY queued run. The error was
@@ -109,6 +113,19 @@ export class ReviewRunExecutor {
     }
     runLog.info(`Diff ready — ${diff.files.length} changed file(s); starting ${jobs.length} agent run(s)`);
 
+    // ---- Intent layer: ONE cheap-model classifier call, shared by every agent ----
+    // Logged separately from the (main) review call. Non-fatal: without an intent
+    // the review runs exactly as before.
+    let intent: Intent | undefined;
+    let intentCall: IntentCallTrace | undefined;
+    try {
+      const r = await this.intents.ensure({ workspaceId, pull, repoRow: repo, diff, log: runLog });
+      intent = r.intent;
+      intentCall = r.call;
+    } catch (err) {
+      runLog.info(`[intent] unavailable — reviewing without intent: ${(err as Error).message}`);
+    }
+
     for (const { agent, runId } of jobs) {
       const agentStart = Date.now();
       logger?.info(
@@ -116,7 +133,7 @@ export class ReviewRunExecutor {
         `review: agent "${agent.name}" started (${agent.provider}/${agent.model})`,
       );
       try {
-        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog);
+        const outcome = await this.runOneAgent(workspaceId, pull, repo, diff, agent, runId, runLog, intent, intentCall);
         logger?.info(
           {
             runId,
@@ -148,6 +165,8 @@ export class ReviewRunExecutor {
     agent: AgentRow,
     runId: string,
     parentLog: RunLogger,
+    intent?: Intent,
+    intentCall?: IntentCallTrace,
   ): Promise<RunOutcome> {
     const start = Date.now();
     // Narrow the fanned-out pre-work logger to THIS run; the shared diff/intent
@@ -156,7 +175,7 @@ export class ReviewRunExecutor {
     const runLog = parentLog.forRun(runId, { agent: agent.name });
     let promptSkills: string[] = [];
 
-    runLog.info(`Starting review with agent "${agent.name}" (${agent.provider}/${agent.model})`);
+    runLog.info(`[review] Starting review with agent "${agent.name}" (${agent.provider}/${agent.model})`);
 
     try {
       // Resolve the agent's LLM provider. (container.llm throws if the provider
@@ -213,6 +232,26 @@ export class ReviewRunExecutor {
         // PR author's description/body — untrusted; assemblePrompt wraps +
         // truncates it. Omitted when the PR has no body.
         ...(pull.body ? { prDescription: pull.body } : {}),
+        // Safe structured log of prompt composition (sizes/sources/model/corr-id only).
+        onPrompt: ({ assembly, chunk, diffText }) =>
+          logPrompt(
+            runLog,
+            {
+              correlationId: runLog.correlationId,
+              call: 'review',
+              provider: agent.provider,
+              model: agent.model,
+              runId,
+              prId: pull.id,
+              agent: agent.name,
+              chunk,
+            },
+            reviewPromptInputs(assembly, diffText, task, agent.name),
+            this.container.tokenizer,
+            this.container.config.promptLogVerbose,
+          ),
+        // Structured PR intent from the separate classifier call (omitted when unavailable).
+        ...(intent ? { intent } : {}),
         task,
         sessionId: `${repo.owner}/${repo.name}#${pull.number}:${agent.name}`,
         onEvent: (e) => runLog.event(e.kind, e.msg, e.data),
@@ -271,6 +310,7 @@ export class ReviewRunExecutor {
           model: agent.model,
           pr: pull.number,
           source: 'local',
+          correlation_id: runLog.correlationId,
         },
         stats: {
           duration_ms: durationMs,
@@ -290,6 +330,7 @@ export class ReviewRunExecutor {
         raw_output: outcome.raw,
         memory_pulled: [],
         specs_read: [],
+        intent_call: intentCall ?? null,
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),

@@ -6,10 +6,49 @@ import { z } from 'zod';
  */
 
 // ---- Intent ----
-export const Intent = z.object({
-  intent: z.string(),
+export const IntentConfidence = z.enum(['high', 'medium', 'low']);
+export type IntentConfidence = z.infer<typeof IntentConfidence>;
+
+/** Where a piece of the intent came from (identifiers only — never bodies). */
+export const IntentSourceKind = z.enum([
+  'title',
+  'description',
+  'issue',
+  'plan',
+  'spec',
+  'files',
+  'commits',
+]);
+export type IntentSourceKind = z.infer<typeof IntentSourceKind>;
+
+export const IntentSource = z.object({
+  kind: IntentSourceKind,
+  /** Stable identifier, e.g. "issue#12", "docs/plans/x.md@abc1234", "notion.so". */
+  ref: z.string(),
+  /** false → the material was referenced but could not be fetched. */
+  resolved: z.boolean(),
+});
+export type IntentSource = z.infer<typeof IntentSource>;
+
+/** What the cheap classifier model returns (LLM structured output). */
+export const IntentClassification = z.object({
+  summary: z.string(),
   in_scope: z.array(z.string()),
   out_of_scope: z.array(z.string()),
+  confidence: IntentConfidence,
+  /** Context the classifier wanted but did not have (unavailable links, empty body…). */
+  missing_context: z.array(z.string()),
+});
+export type IntentClassification = z.infer<typeof IntentClassification>;
+
+/** The persisted / injected intent: classification + provenance. */
+export const Intent = z.object({
+  summary: z.string(),
+  in_scope: z.array(z.string()),
+  out_of_scope: z.array(z.string()),
+  confidence: IntentConfidence.default('medium'),
+  sources: z.array(IntentSource).default([]),
+  missing_context: z.array(z.string()).default([]),
 });
 export type Intent = z.infer<typeof Intent>;
 

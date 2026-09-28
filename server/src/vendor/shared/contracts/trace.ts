@@ -48,9 +48,32 @@ export const PromptAssembly = z.object({
   repo_map: z.string().nullish(),
   /** PR author's description/body (truncated); null when absent. */
   pr_description: z.string().nullish(),
+  /** Structured PR intent block injected into the review prompt; null when absent. */
+  intent: z.string().nullish(),
   user: z.string(),
 });
 export type PromptAssembly = z.infer<typeof PromptAssembly>;
+
+/**
+ * The intent-classifier call, recorded SEPARATELY from the main review call.
+ * Sizes and identifiers only — never prompt text, diff bodies or secrets.
+ */
+export const IntentCallTrace = z.object({
+  provider: z.string(),
+  model: z.string(),
+  /** Reused persisted intent (same head_sha) — no LLM call was made. */
+  cached: z.boolean(),
+  /** Characters per prompt component (title, description, issue, plan_docs, files, hunk_headers, commits). */
+  components: z.record(z.string(), z.number()),
+  tokens_est: z.number().int(),
+  tokens_in: z.number().int(),
+  tokens_out: z.number().int(),
+  cost_usd: z.number().nullable(),
+  duration_ms: z.number().int(),
+  confidence: z.string().nullish(),
+  sources: z.array(z.object({ kind: z.string(), ref: z.string(), resolved: z.boolean() })),
+});
+export type IntentCallTrace = z.infer<typeof IntentCallTrace>;
 
 export const MemoryPulled = z.object({
   pr: z.number().int().nullish(),
@@ -78,6 +101,8 @@ export const RunTrace = z.object({
     model: z.string(),
     pr: z.number().int().nullish(),
     source: z.enum(['local', 'ci']).default('local'),
+    /** Ties this run to its log lines (intent call + review calls share one id per batch). */
+    correlation_id: z.string().nullish(),
   }),
   stats: RunStats,
   prompt_assembly: PromptAssembly,
@@ -85,6 +110,8 @@ export const RunTrace = z.object({
   raw_output: z.string(),
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
+  /** Separate intent-classifier call (cheap model); absent on runs without one. */
+  intent_call: IntentCallTrace.nullish(),
   log: z.array(RunLogLine),
 });
 export type RunTrace = z.infer<typeof RunTrace>;

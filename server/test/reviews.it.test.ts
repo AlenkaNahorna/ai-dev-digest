@@ -5,7 +5,7 @@ import { waitForPrRuns } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
-import { MockAuthProvider, MockLLMProvider, MockEmbedder, MockGitClient } from '../src/adapters/mocks.js';
+import { MockAuthProvider, MockLLMProvider, MockEmbedder, MockGitClient, MockGitHubClient } from '../src/adapters/mocks.js';
 import * as t from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 import type { Review } from '@devdigest/shared';
@@ -59,6 +59,14 @@ const REVIEW_FIXTURE: Review = {
       kind: 'finding',
     },
   ],
+};
+
+const MOCK_INTENT = {
+  summary: 'Add rate limiting',
+  in_scope: ['limiter'],
+  out_of_scope: [],
+  confidence: 'medium',
+  missing_context: [],
 };
 
 let repoSeq = 0;
@@ -118,8 +126,12 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
       overrides: {
         embedder: new MockEmbedder(),
         git: new MockGitClient({ diff: DIFF }),
+        // Every review now runs the intent classifier first (`review_intent` →
+        // OpenRouter by default). Keep it hermetic: never hit real OpenRouter/GitHub.
+        github: new MockGitHubClient(),
         llm: {
           [provider]: new MockLLMProvider(provider, { structured }),
+          openrouter: new MockLLMProvider('openai', { structuredBySchema: { IntentClassification: MOCK_INTENT } }),
         },
       },
     });

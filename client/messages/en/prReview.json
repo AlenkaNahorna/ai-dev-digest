@@ -117,5 +117,37 @@
     "goToReview": "Jump to this run’s findings below",
     "openTrace": "Open run trace & logs",
     "deleteRun": "Delete run"
+  },
+  "intent": {
+    "title": "INTENT",
+    "summaryLabel": "What this PR is for",
+    "inScope": "IN SCOPE",
+    "outOfScope": "OUT OF SCOPE",
+    "none": "Nothing stated",
+    "sources": "SOURCES",
+    "missing": "MISSING CONTEXT",
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    },
+    "stale": "PR updated since this was derived",
+    "model": "Derived by {model}",
+    "rederive": "Re-derive intent",
+    "derive": "Derive intent",
+    "deriving": "Deriving…",
+    "empty": "Intent hasn't been derived for this PR yet. It is derived automatically when a review runs.",
+    "error": "Couldn't derive the intent: {message}",
+    "loading": "Loading intent…",
+    "unresolvedTag": "unavailable",
+    "sourceKind": {
+      "title": "Title",
+      "description": "Description",
+      "issue": "Issue",
+      "plan": "Plan",
+      "spec": "Spec",
+      "files": "Files",
+      "commits": "Commits"
+    }
   }
 }

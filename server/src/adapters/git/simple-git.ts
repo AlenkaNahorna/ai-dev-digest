@@ -1,6 +1,6 @@
 import { simpleGit, type SimpleGit } from 'simple-git';
-import { join } from 'node:path';
-import { mkdir, readFile, access, rm } from 'node:fs/promises';
+import { join, resolve, sep } from 'node:path';
+import { mkdir, readFile, access, rm, realpath } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import type {
   GitClient,
@@ -127,7 +127,16 @@ export class SimpleGitClient implements GitClient {
   }
 
   async readFile(repo: RepoRef, path: string): Promise<string> {
-    return readFile(join(this.clonePathFor(repo), path), 'utf8');
+    // `path` can originate from untrusted text (PR description): keep the read
+    // inside this repo's clone, also across symlinks.
+    const root = resolve(this.clonePathFor(repo));
+    const target = resolve(root, path);
+    if (path.includes('\0') || !target.startsWith(root + sep)) {
+      throw new Error('Path escapes the repository clone');
+    }
+    const [realRoot, realTarget] = await Promise.all([realpath(root), realpath(target)]);
+    if (!realTarget.startsWith(realRoot + sep)) throw new Error('Path escapes the repository clone');
+    return readFile(realTarget, 'utf8');
   }
 }
 

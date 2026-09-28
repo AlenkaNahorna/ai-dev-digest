@@ -99,6 +99,7 @@ flowchart TB
 | `REPO_INTEL_ENABLED` | `true` | repo skeleton + callers in the prompt; `false` → ripgrep-only |
 | `DEVDIGEST_CLONE_DIR` | `./clones` | imported-repo checkouts (git-ignored) |
 | `LOG_LEVEL` | `info` (`silent` in test) | pino level |
+| `DEVDIGEST_PROMPT_LOG_VERBOSE` | `true` adds per-section hashes/line counts and short redacted previews (title/task/files only) to **stdout**. Local dev only (`NODE_ENV=development`); ignored elsewhere. Never logs diff, PR description, issue/plan/spec content or secrets. |
 | `NODE_ENV` | `development` | `test` → silent logs + global rate-limit disabled |
 
 Secrets (API keys, `GITHUB_TOKEN`) are **not** part of `AppConfig` — they go

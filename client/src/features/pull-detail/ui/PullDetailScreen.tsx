@@ -7,12 +7,13 @@ import { Skeleton, ErrorState } from "@devdigest/ui";
 import { AppShell } from "@/components/app-shell";
 import { RepoNotFound } from "@/components/repo-not-found";
 import { PrDetailHeader } from "@/app/repos/[repoId]/pulls/[number]/_components/PrDetailHeader";
+import { IntentCard } from "@/app/repos/[repoId]/pulls/[number]/_components/IntentCard";
 import { OverviewTab } from "@/app/repos/[repoId]/pulls/[number]/_components/OverviewTab";
 import { FindingsTab } from "@/app/repos/[repoId]/pulls/[number]/_components/FindingsTab";
 import { DiffTab } from "@/app/repos/[repoId]/pulls/[number]/_components/DiffTab";
 import RunTraceDrawer from "@/app/repos/[repoId]/pulls/[number]/_components/RunTraceDrawer";
 import { usePullDetail, usePulls } from "@/features/pulls/api/hooks";
-import { usePrReviews, useCancelRun, usePrActiveRuns, usePrRuns, useDeleteRun } from "@/features/reviews/api/hooks";
+import { usePrIntent, useRederiveIntent, usePrReviews, useCancelRun, usePrActiveRuns, usePrRuns, useDeleteRun } from "@/features/reviews/api/hooks";
 import { useActiveRepo, useRepoNotFound } from "@/lib/repo-context";
 import { ApiError } from "@/lib/api";
 import { githubPrUrl } from "@/lib/github-urls";
@@ -28,6 +29,7 @@ export function PullDetailScreen({ repoId, number }: { repoId: string; number: s
   const prId = pulls?.find((p) => p.number === Number(number))?.id ?? null;
   const { data: pr, isLoading: detailLoading, isError, error, refetch } = usePullDetail(prId);
   const { data: reviews, refetch: refetchReviews } = usePrReviews(prId);
+  const { data: intent, isLoading: intentLoading, refetch: refetchIntent } = usePrIntent(prId); const rederive = useRederiveIntent(prId);
   const qc = useQueryClient(); const { data: activeRuns } = usePrActiveRuns(prId); const { data: prRuns } = usePrRuns(prId);
   const deleteRun = useDeleteRun(prId); const cancel = useCancelRun();
   const liveRunIds = (activeRuns ?? []).map((r) => r.run_id); const reviewRunning = liveRunIds.length > 0;
@@ -48,8 +50,9 @@ export function PullDetailScreen({ repoId, number }: { repoId: string; number: s
   return <AppShell crumb={crumb}>
     <PrDetailHeader repoId={repoId} pr={pr} prId={prId} tab={tab} findingsCount={findingsCount} severityCounts={severityCounts} severityFilter={severityFilter} onSelectSeverity={(severity) => { setParam("severity", severityFilter === severity ? null : severity); setTab("findings"); }} githubUrl={repoFullName ? githubPrUrl(repoFullName, pr.number) : null} onSetTab={setTab} onRunStart={() => setTab("findings")} onRunsStarted={invalidateActiveRuns} />
     <div style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
+      {(tab === "overview" || tab === "findings") && <IntentCard intent={intent} loading={intentLoading} onRederive={() => rederive.mutate()} rederiving={rederive.isPending} errorMessage={rederive.isError ? (rederive.error instanceof Error ? rederive.error.message : String(rederive.error)) : null} />}
       {tab === "overview" && <OverviewTab prBody={pr.body} />}
-      {tab === "findings" && <FindingsTab prId={prId} liveRunIds={liveRunIds} reviewRunning={reviewRunning} lethalTrifecta={lethalTrifecta} runs={runs} prRuns={prRuns} prCommits={pr.commits} repoFullName={repoFullName} headSha={pr.head_sha} cancelMutation={cancel} severityFilter={severityFilter} onOpenTrace={(id) => setParam("trace", id)} onDelete={(id) => { if (window.confirm(t("pullDetail.deleteRunConfirm"))) deleteRun.mutate(id); }} onRunDone={() => { invalidateActiveRuns(); invalidateRunHistory(); refetchReviews(); }} />}
+      {tab === "findings" && <FindingsTab prId={prId} liveRunIds={liveRunIds} reviewRunning={reviewRunning} lethalTrifecta={lethalTrifecta} runs={runs} prRuns={prRuns} prCommits={pr.commits} repoFullName={repoFullName} headSha={pr.head_sha} cancelMutation={cancel} severityFilter={severityFilter} onOpenTrace={(id) => setParam("trace", id)} onDelete={(id) => { if (window.confirm(t("pullDetail.deleteRunConfirm"))) deleteRun.mutate(id); }} onRunDone={() => { invalidateActiveRuns(); invalidateRunHistory(); refetchReviews(); refetchIntent(); }} />}
       {tab === "diff" && <DiffTab prId={prId} filesCount={pr.files_count} files={pr.files} canComment={pr.status === "open"} />}
     </div>
     {prId && traceRunId && <RunTraceDrawer runId={traceRunId} prNumber={pr.number} findings={runs.find((r) => r.run_id === traceRunId)?.findings ?? []} agentName={runs.find((r) => r.run_id === traceRunId)?.agent_name ?? null} onClose={() => setParam("trace", null)} />}

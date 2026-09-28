@@ -4,6 +4,9 @@ import { AppError, NotFoundError } from '../../platform/errors.js';
 import type { AgentRow } from '../../db/rows.js';
 import { ReviewRepository } from './adapters/outbound/persistence/repository.js';
 import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
+import { RunLogger } from '../../platform/run-logger.js';
+import { newCorrelationId } from '../../platform/prompt-log.js';
+import { IntentService } from './intent/service.js';
 import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
@@ -29,11 +32,13 @@ export class ReviewService {
   private repo: ReviewRepository;
   private agents: Container['agentsRepo'];
   private executor: ReviewRunExecutor;
+  private intents: IntentService;
 
   constructor(private container: Container) {
     this.repo = new ReviewRepository(container.db);
     this.agents = container.agentsRepo;
     this.executor = new ReviewRunExecutor(container, this.repo, this.agents);
+    this.intents = new IntentService(container, this.repo);
   }
 
   // ===========================================================================
@@ -158,6 +163,19 @@ export class ReviewService {
     action: FindingActionKind,
   ): Promise<{ finding: ReviewDtoFinding }> {
     return actOnFindingImpl(this.repo, workspaceId, findingId, action);
+  }
+
+  // ===========================================================================
+  // Intent (separate cheap-model classifier)
+  // ===========================================================================
+
+  getIntent(workspaceId: string, prId: string) {
+    return this.intents.get(workspaceId, prId);
+  }
+
+  /** Re-derive the intent after the PR changed (user-triggered). */
+  rederiveIntent(workspaceId: string, prId: string, logger?: Logger) {
+    return this.intents.rederive(workspaceId, prId, new RunLogger(this.container.runBus, [], logger, { prId, correlationId: newCorrelationId() }));
   }
 
   // ===========================================================================

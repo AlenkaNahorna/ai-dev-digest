@@ -52,6 +52,24 @@ export const prIntent = pgTable('pr_intent', {
   intent: text('intent').notNull(),
   inScope: jsonb('in_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
   outOfScope: jsonb('out_of_scope').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** 'high' | 'medium' | 'low' — lower when derived from indirect data only. */
+  confidence: text('confidence').notNull().default('medium'),
+  /** Provenance: [{kind, ref, resolved}] — identifiers only, never bodies. */
+  sources: jsonb('sources')
+    .$type<{ kind: string; ref: string; resolved: boolean }[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  missingContext: jsonb('missing_context').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  provider: text('provider'),
+  model: text('model'),
+  /** PR head the intent was derived for; differs from pull.head_sha → stale. */
+  headSha: text('head_sha'),
+  /** Hash of the PR title+body the intent was derived from (cache key with head_sha). */
+  inputHash: text('input_hash'),
+  tokensIn: integer('tokens_in'),
+  tokensOut: integer('tokens_out'),
+  costUsd: doublePrecision('cost_usd'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 export const prBrief = pgTable('pr_brief', {
