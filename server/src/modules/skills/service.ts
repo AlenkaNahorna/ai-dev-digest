@@ -8,10 +8,13 @@ export class SkillsService {
   private repo: SkillsRepository;
   constructor(private container: Container) { this.repo = new SkillsRepository(container.db); }
 
-  private dto(row: any): Skill {
-    return { id: row.id, name: row.name, description: row.description, type: row.type, source: row.source, body: row.body, enabled: row.enabled, version: row.version, evidence_files: row.evidenceFiles ?? null };
+  private dto(row: any, agentCount = 0): Skill {
+    return { id: row.id, name: row.name, description: row.description, type: row.type, source: row.source, body: row.body, enabled: row.enabled, version: row.version, evidence_files: row.evidenceFiles ?? null, agent_count: agentCount };
   }
-  async list(workspaceId: string) { return (await this.repo.list(workspaceId)).map((r) => this.dto(r)); }
+  async list(workspaceId: string) {
+    const [rows, counts] = await Promise.all([this.repo.list(workspaceId), this.repo.agentCounts(workspaceId)]);
+    return rows.map((r) => this.dto(r, counts.get(r.id) ?? 0));
+  }
   async get(workspaceId: string, id: string) { const r = await this.repo.get(workspaceId, id); return r ? this.dto(r) : undefined; }
   async create(workspaceId: string, input: SkillInput) { return this.dto(await this.repo.insert({ workspaceId, name: input.name, description: input.description, type: input.type, source: input.source ?? 'manual', body: input.body, enabled: input.enabled ?? true, version: 1 })); }
   async update(workspaceId: string, id: string, input: Partial<SkillInput>) { const r = await this.repo.update(workspaceId, id, input); return r ? this.dto(r) : undefined; }

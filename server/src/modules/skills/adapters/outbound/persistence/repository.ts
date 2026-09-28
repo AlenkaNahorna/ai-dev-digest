@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq } from 'drizzle-orm';
 import type { Db } from '../../../../../db/client.js';
 import * as t from '../../../../../db/schema.js';
 
@@ -7,6 +7,17 @@ export class SkillsRepository {
 
   async list(workspaceId: string) {
     return this.db.select().from(t.skills).where(eq(t.skills.workspaceId, workspaceId)).orderBy(asc(t.skills.name));
+  }
+
+  /** Distinct agents linked per skill, for the whole workspace (one query, not N+1). */
+  async agentCounts(workspaceId: string): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select({ skillId: t.agentSkills.skillId, n: count(t.agentSkills.agentId) })
+      .from(t.agentSkills)
+      .innerJoin(t.skills, eq(t.agentSkills.skillId, t.skills.id))
+      .where(eq(t.skills.workspaceId, workspaceId))
+      .groupBy(t.agentSkills.skillId);
+    return new Map(rows.map((r) => [r.skillId, Number(r.n)]));
   }
 
   async get(workspaceId: string, id: string) {

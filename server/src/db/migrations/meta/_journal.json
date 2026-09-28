@@ -85,6 +85,20 @@
       "when": 1790532965196,
       "tag": "0011_useful_reavers",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790545929016,
+      "tag": "0012_mature_alex_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790603337003,
+      "tag": "0013_stiff_sleepwalker",
+      "breakpoints": true
     }
   ]
 }

@@ -73,8 +73,12 @@ export const FEATURE_MODELS: FeatureModelDef[] = [
     id: 'conventions',
     label: 'Conventions',
     description: 'Extracts coding conventions from the repo.',
-    defaultProvider: 'openai',
-    defaultModel: 'gpt-5.4',
+    // Runs against OpenRouter's OpenAI-compatible endpoint (not OPENAI_API_KEY
+    // directly) — strict JSON-schema structured output, no OpenAI key needed.
+    // Free OpenRouter models share a tight org-wide rate limit (20/min, 200/day)
+    // and hit 429s under normal use, so the default is a cheap paid model.
+    defaultProvider: 'openrouter',
+    defaultModel: 'openai/gpt-4.1-mini',
   },
 ];
 
