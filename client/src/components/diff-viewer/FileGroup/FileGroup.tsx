@@ -13,7 +13,7 @@ export function FileGroup({
   hint,
   color,
   fileCount,
-  findingFileCount,
+  findingCount,
   defaultOpen,
   children,
 }: {
@@ -22,7 +22,7 @@ export function FileGroup({
   hint: string;
   color: string;
   fileCount: number;
-  findingFileCount: number;
+  findingCount: number;
   defaultOpen: boolean;
   children: React.ReactNode;
 }) {
@@ -35,10 +35,10 @@ export function FileGroup({
         <span aria-hidden style={fs.swatch(color)} />
         <span style={fs.groupLabel}>{label}</span>
         <span style={fs.groupHint}>{hint}</span>
-        {findingFileCount > 0 && (
+        {findingCount > 0 && (
           <span style={fs.findingCounter} data-testid={`group-findings-${role}`}>
             <span aria-hidden style={fs.dot} />
-            {findingFileCount}
+            {findingCount}
           </span>
         )}
         <span style={fs.groupCount}>{t("smartDiff.filesCount", { count: fileCount })}</span>

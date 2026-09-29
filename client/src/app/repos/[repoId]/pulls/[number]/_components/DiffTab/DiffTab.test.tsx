@@ -40,9 +40,9 @@ const finding: FindingRecord = {
   end_line: 11, rationale: "Explain it", suggestion: null, confidence: 0.6, kind: "finding",
   trifecta_components: null, evidence: null, review_id: "r1", accepted_at: null, dismissed_at: null,
 };
-const review = (): ReviewRecord => ({
+const review = (findings: FindingRecord[] = [finding]): ReviewRecord => ({
   id: "r1", pr_id: "pr", agent_id: "a1", run_id: null, kind: "review", verdict: null, summary: null,
-  score: null, model: null, created_at: "2026-01-01T00:00:00Z", findings: [finding],
+  score: null, model: null, created_at: "2026-01-01T00:00:00Z", findings,
 }) as ReviewRecord;
 
 const renderTab = () =>
@@ -67,6 +67,14 @@ describe("DiffTab (Smart Diff)", () => {
     expect(screen.getByText("pnpm-lock.yaml")).toBeInTheDocument();
   });
 
+  it("shows every category with a zero-file count when the API omits empty groups", () => {
+    state.reviews = [];
+    state.smart = { ...smart([]), groups: [{ role: "core", files: [sf("src/x.ts")] }] };
+    renderTab();
+    expect(document.querySelectorAll("[data-role]")).toHaveLength(5);
+    expect(screen.getAllByText("0 files")).toHaveLength(4);
+  });
+
   it("after a review shows ● 1 on the group, a dot on the file, the finding under the line and wires Accept", () => {
     state.reviews = [review()]; state.smart = smart([11]);
     renderTab();
@@ -76,6 +84,13 @@ describe("DiffTab (Smart Diff)", () => {
     expect(screen.getByText("Explain it")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Accept/ }));
     expect(mutate).toHaveBeenCalledWith({ findingId: "f1", action: "accept", prId: "pr" }, expect.anything());
+  });
+
+  it("counts multiple findings in one file in the group badge", () => {
+    state.reviews = [review([finding, { ...finding, id: "f2", title: "Another issue" }])];
+    state.smart = smart([11]);
+    renderTab();
+    expect(screen.getByTestId("group-findings-core")).toHaveTextContent("2");
   });
 
   it("Original order removes group headers and keeps pr.files order", () => {

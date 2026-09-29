@@ -78,7 +78,7 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
   };
 
   // Grouping is best-effort: while loading / on error we silently show Original order.
-  const grouped = React.useMemo(() => (smart ? buildDiffGroups(files, smart) : null), [files, smart]);
+  const grouped = React.useMemo(() => (smart ? buildDiffGroups(files, smart, findings) : null), [files, smart, findings]);
   const smartActive = order === "smart" && !!grouped;
   const groups: DiffGroupView[] | undefined = smartActive
     ? grouped.groups.map((g) => ({

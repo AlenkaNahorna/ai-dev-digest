@@ -9,7 +9,7 @@ afterEach(cleanup);
 function ui(props: Partial<React.ComponentProps<typeof FileGroup>> = {}) {
   return (
     <NextIntlClientProvider locale="en" messages={{ prReview }}>
-      <FileGroup role="docs" label="Docs" hint="skim" color="red" fileCount={3} findingFileCount={0} defaultOpen={false} {...props}>
+      <FileGroup role="docs" label="Docs" hint="skim" color="red" fileCount={3} findingCount={0} defaultOpen={false} {...props}>
         <div>child</div>
       </FileGroup>
     </NextIntlClientProvider>
@@ -26,11 +26,11 @@ describe("FileGroup", () => {
     expect(screen.getByText("child")).toBeInTheDocument();
   });
 
-  it("shows the findings-file counter only when > 0", () => {
+  it("shows the findings counter only when > 0", () => {
     const { unmount } = render(ui());
     expect(screen.queryByTestId("group-findings-docs")).not.toBeInTheDocument();
     unmount();
-    render(ui({ findingFileCount: 2 }));
+    render(ui({ findingCount: 2 }));
     expect(screen.getByTestId("group-findings-docs")).toHaveTextContent("2");
   });
 });

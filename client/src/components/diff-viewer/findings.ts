@@ -20,8 +20,8 @@ export interface DiffGroupView {
   label: string;
   hint: string;
   files: PrFile[];
-  /** Number of FILES with findings (not findings). */
-  findingFileCount: number;
+  /** Number of findings in this group. */
+  findingCount: number;
   findingPaths: Set<string>;
   defaultOpen: boolean;
 }

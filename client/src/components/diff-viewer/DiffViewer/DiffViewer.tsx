@@ -45,7 +45,7 @@ export function DiffViewer({
             hint={g.hint}
             color={GROUP_COLOR[g.role] ?? "var(--text-muted)"}
             fileCount={g.files.length}
-            findingFileCount={g.findingFileCount}
+            findingCount={g.findingCount}
             defaultOpen={g.defaultOpen}
           >
             {g.files.map((f) => (

@@ -47,6 +47,7 @@ function setup(existing?: unknown) {
     upsertIntent: async (...a: unknown[]) => void upserts.push(a),
   };
   const container = {
+    config: { promptLogVerbose: false },
     tokenizer: { count: (t: string) => Math.ceil(t.length / 4) },
     llm: async () => llm,
     github: async () => ({ getIssue: async () => { throw new Error('none'); } }),
@@ -54,6 +55,7 @@ function setup(existing?: unknown) {
   };
   const logs: { msg: string; data?: unknown }[] = [];
   const log = {
+    correlationId: 'intent-test-correlation-id',
     info: (msg: string, data?: unknown) => void logs.push({ msg, data }),
     result: (msg: string, data?: unknown) => void logs.push({ msg, data }),
     error: (msg: string, data?: unknown) => void logs.push({ msg, data }),
