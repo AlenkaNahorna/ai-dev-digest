@@ -181,6 +181,21 @@ export const ConventionCandidate = ConventionCandidateDraft.extend({
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
 
+/**
+ * PATCH /conventions/:id body — Accept/Reject toggle and/or an in-place edit of
+ * the rule text and category. At least one field must be present.
+ */
+export const ConventionPatch = z
+  .object({
+    accepted: z.boolean().optional(),
+    rule: z.string().trim().min(1).max(500).optional(),
+    category: ConventionCategory.optional(),
+  })
+  .refine((v) => v.accepted !== undefined || v.rule !== undefined || v.category !== undefined, {
+    message: 'Provide at least one of accepted, rule, category',
+  });
+export type ConventionPatch = z.infer<typeof ConventionPatch>;
+
 /** POST /repos/:id/conventions/extract response. */
 export const ConventionExtractResult = z.object({
   run_id: z.string(),

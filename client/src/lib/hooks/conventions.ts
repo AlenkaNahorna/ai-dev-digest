@@ -60,12 +60,31 @@ export function useExtractConventions(repoId: string | null | undefined) {
   });
 }
 
-/** PATCH /conventions/:id — Accept/Reject toggle; patches the cached scan in place. */
-export function useSetConventionAccepted(repoId: string | null | undefined) {
+export const CONVENTION_CATEGORIES: ConventionCategory[] = [
+  "naming",
+  "structure",
+  "testing",
+  "error-handling",
+  "api-contract",
+  "other",
+];
+
+/** Max rule length — mirrors `ConventionPatch` in the shared contract. */
+export const CONVENTION_RULE_MAX = 500;
+
+/** PATCH /conventions/:id body — Accept/Reject toggle and/or an edit of rule/category. */
+export type ConventionPatch = {
+  accepted?: boolean;
+  rule?: string;
+  category?: ConventionCategory;
+};
+
+/** PATCH /conventions/:id — Accept/Reject and Edit; patches the cached scan in place. */
+export function useUpdateConvention(repoId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, accepted }: { id: string; accepted: boolean }) =>
-      api.patch<ConventionCandidate>(`/conventions/${id}`, { accepted }),
+    mutationFn: ({ id, ...patch }: { id: string } & ConventionPatch) =>
+      api.patch<ConventionCandidate>(`/conventions/${id}`, patch),
     onSuccess: (row) => {
       qc.setQueryData<ConventionExtractResult | undefined>(["conventions", repoId], (prev) =>
         prev ? { ...prev, candidates: prev.candidates.map((c) => (c.id === row.id ? row : c)) } : prev,

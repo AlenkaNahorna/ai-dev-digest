@@ -165,7 +165,7 @@ You now have:
 
 **Cadence**: Capture after sessions >30 min with problem/solution/discovery; skip trivial fixes.
 
-**File locations**: `ENGINEERING-INSIGHTS.md` at the repository root is the central file for cross-cutting findings; each module's `INSIGHTS.md` keeps module-specific findings. If the central file does not exist, create it. If the `engineering-insights` skill or command is unavailable, append the entry manually with the same format—do not skip the end-of-session capture.
+**File locations**: `ENGINEERING-INSIGHTS.md` at the repository root is the central file for cross-cutting findings; each module's `INSIGHTS.md` keeps module-specific findings. If the skill or command is unavailable, append the entry manually with the same format—do not skip the end-of-session capture.
 
 **CRITICAL**: Do not skip this step. If insights aren't written, they're lost to future sessions.
 

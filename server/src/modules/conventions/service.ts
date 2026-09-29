@@ -3,6 +3,7 @@ import type { Container } from '../../platform/container.js';
 import {
   ConventionExtractionOutput,
   type ConventionCandidate,
+  type ConventionPatch,
   type ConventionExtractResult,
   type ConventionSkillDraft,
 } from '@devdigest/shared';
@@ -158,9 +159,9 @@ export class ConventionsService {
     };
   }
 
-  /** PATCH /conventions/:id — Accept/Reject toggle. */
-  async setAccepted(workspaceId: string, id: string, accepted: boolean): Promise<ConventionCandidate> {
-    const row = await this.conventions.updateAccepted(workspaceId, id, accepted);
+  /** PATCH /conventions/:id — Accept/Reject toggle and/or edit the rule text / category. */
+  async update(workspaceId: string, id: string, patch: ConventionPatch): Promise<ConventionCandidate> {
+    const row = await this.conventions.update(workspaceId, id, patch);
     if (!row) throw new NotFoundError('Convention candidate not found');
     return this.dto(row);
   }
