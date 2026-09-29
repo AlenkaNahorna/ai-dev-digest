@@ -57,14 +57,15 @@ export class ConventionsRepository {
     return { runId: latest.runId, rows };
   }
 
-  async updateAccepted(
+  /** Apply a partial edit (accept toggle and/or rule/category) to one candidate. */
+  async update(
     workspaceId: string,
     id: string,
-    accepted: boolean,
+    patch: { accepted?: boolean; rule?: string; category?: ConventionCategory },
   ): Promise<ConventionRow | undefined> {
     const [row] = await this.db
       .update(t.conventions)
-      .set({ accepted })
+      .set(patch)
       .where(and(eq(t.conventions.workspaceId, workspaceId), eq(t.conventions.id, id)))
       .returning();
     return row;

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { ConventionPatch } from '@devdigest/shared';
 import { getContext } from '../../../../_shared/context.js';
 import { IdParams } from '../../../../_shared/schemas.js';
 import { ConventionsService } from '../../../service.js';
@@ -10,10 +11,9 @@ import { ConventionsService } from '../../../service.js';
  *
  *   POST  /repos/:id/conventions/extract      → run the pipeline, persist a new scan
  *   GET   /repos/:id/conventions              → latest scan's candidates
- *   PATCH /conventions/:id                    → { accepted } toggle (Accept/Reject)
+ *   PATCH /conventions/:id                    → { accepted?, rule?, category? } (Accept/Reject + Edit)
  *   POST  /repos/:id/conventions/build-skill  → merge accepted candidates into a skill draft
  */
-const AcceptedBody = z.object({ accepted: z.boolean() });
 const BuildSkillBody = z.object({ candidate_ids: z.array(z.string().uuid()).min(1) });
 
 export default async function conventionsRoutes(base: FastifyInstance) {
@@ -42,10 +42,10 @@ export default async function conventionsRoutes(base: FastifyInstance) {
 
   app.patch(
     '/conventions/:id',
-    { schema: { params: IdParams, body: AcceptedBody } },
+    { schema: { params: IdParams, body: ConventionPatch } },
     async (req) => {
       const { workspaceId } = await getContext(app.container, req);
-      return service.setAccepted(workspaceId, req.params.id, req.body.accepted);
+      return service.update(workspaceId, req.params.id, req.body);
     },
   );
 

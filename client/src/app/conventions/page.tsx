@@ -21,8 +21,11 @@ import {
   useBuildConventionSkill,
   useConventions,
   useExtractConventions,
-  useSetConventionAccepted,
+  useUpdateConvention,
+  CONVENTION_CATEGORIES,
+  CONVENTION_RULE_MAX,
   type ConventionCandidate,
+  type ConventionPatch,
   type ConventionSkillDraft,
 } from "../../lib/hooks/conventions";
 import { useCreateSkill, type Skill } from "../../lib/hooks/skills";
@@ -51,7 +54,7 @@ export default function ConventionsPage() {
 
   const { data, isLoading } = useConventions(repoId);
   const extract = useExtractConventions(repoId);
-  const setAccepted = useSetConventionAccepted(repoId);
+  const updateConvention = useUpdateConvention(repoId);
   const buildSkill = useBuildConventionSkill(repoId);
   const createSkill = useCreateSkill();
   const toast = useToast();
@@ -69,7 +72,7 @@ export default function ConventionsPage() {
   const toggleAll = () => {
     const next = !allAccepted;
     for (const c of candidates) {
-      if (c.accepted !== next) setAccepted.mutate({ id: c.id, accepted: next });
+      if (c.accepted !== next) updateConvention.mutate({ id: c.id, accepted: next });
     }
   };
 
@@ -209,9 +212,19 @@ export default function ConventionsPage() {
                 candidate={c}
                 repoFullName={activeRepo?.full_name ?? ""}
                 sha={activeRepo?.default_branch ?? "HEAD"}
-                pending={setAccepted.isPending}
-                onAccept={() => setAccepted.mutate({ id: c.id, accepted: true })}
-                onReject={() => setAccepted.mutate({ id: c.id, accepted: false })}
+                pending={updateConvention.isPending}
+                onAccept={() => updateConvention.mutate({ id: c.id, accepted: true })}
+                onReject={() => updateConvention.mutate({ id: c.id, accepted: false })}
+                onSaveEdit={(patch, done) =>
+                  updateConvention.mutate({ id: c.id, ...patch }, { onSuccess: done })
+                }
+                editError={
+                  updateConvention.isError && updateConvention.variables?.id === c.id
+                    ? updateConvention.error instanceof Error
+                      ? updateConvention.error.message
+                      : "Could not save the change."
+                    : null
+                }
               />
             ))}
           </div>
@@ -238,6 +251,8 @@ function CandidateCard({
   sha,
   onAccept,
   onReject,
+  onSaveEdit,
+  editError,
   pending,
 }: {
   candidate: ConventionCandidate;
@@ -245,8 +260,26 @@ function CandidateCard({
   sha: string;
   onAccept: () => void;
   onReject: () => void;
+  /** Save an edited rule/category; call `done` once the save succeeded to leave edit mode. */
+  onSaveEdit: (patch: Pick<ConventionPatch, "rule" | "category">, done: () => void) => void;
+  editError: string | null;
   pending: boolean;
 }) {
+  const [editing, setEditing] = React.useState(false);
+  const [ruleDraft, setRuleDraft] = React.useState(candidate.rule);
+  const [categoryDraft, setCategoryDraft] = React.useState<ConventionCandidate["category"]>(candidate.category);
+  const trimmedRule = ruleDraft.trim();
+  const unchanged = trimmedRule === candidate.rule && categoryDraft === candidate.category;
+  const canSave = trimmedRule.length > 0 && ruleDraft.length <= CONVENTION_RULE_MAX && !unchanged && !pending;
+
+  const startEdit = () => {
+    setRuleDraft(candidate.rule);
+    setCategoryDraft(candidate.category);
+    setEditing(true);
+  };
+  const saveEdit = () =>
+    onSaveEdit({ rule: trimmedRule, category: categoryDraft }, () => setEditing(false));
+
   const rangeLabel =
     candidate.evidence_line_end > candidate.evidence_line_start
       ? `${candidate.evidence_path}:${candidate.evidence_line_start}-${candidate.evidence_line_end}`
@@ -267,10 +300,37 @@ function CandidateCard({
     <Card style={{ borderLeft: `3px solid ${candidate.accepted ? "var(--ok)" : "var(--border)"}` }}>
       <div style={{ display: "flex", gap: 16 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{candidate.rule}</div>
-            <Badge mono>{candidate.category}</Badge>
-          </div>
+          {editing ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <FormField
+                label="Rule"
+                hint={`${ruleDraft.length}/${CONVENTION_RULE_MAX}`}
+              >
+                <Textarea value={ruleDraft} onChange={setRuleDraft} rows={3} />
+              </FormField>
+              <FormField label="Category">
+                <SelectInput
+                  value={categoryDraft}
+                  options={CONVENTION_CATEGORIES}
+                  onChange={(v) => setCategoryDraft(v as ConventionCandidate["category"])}
+                />
+              </FormField>
+              {editError && <p style={{ color: "var(--danger)", fontSize: 13 }}>{editError}</p>}
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button kind="primary" size="sm" icon="Check" onClick={saveEdit} disabled={!canSave}>
+                  Save
+                </Button>
+                <Button kind="secondary" size="sm" onClick={() => setEditing(false)} disabled={pending}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>{candidate.rule}</div>
+              <Badge mono>{candidate.category}</Badge>
+            </div>
+          )}
 
           {evidenceUrl ? (
             <a
@@ -324,16 +384,19 @@ function CandidateCard({
             size="sm"
             icon="Check"
             onClick={onAccept}
-            disabled={pending || candidate.accepted}
+            disabled={pending || editing || candidate.accepted}
           >
             {candidate.accepted ? "Accepted" : "Accept"}
+          </Button>
+          <Button kind="secondary" size="sm" icon="Edit" onClick={startEdit} disabled={pending || editing}>
+            Edit
           </Button>
           <Button
             kind="secondary"
             size="sm"
             icon="X"
             onClick={onReject}
-            disabled={pending}
+            disabled={pending || editing}
           >
             Reject
           </Button>

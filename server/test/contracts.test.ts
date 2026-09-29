@@ -15,6 +15,7 @@ import {
   Settings,
   Repo,
   PrDetail,
+  ConventionPatch,
 } from '@devdigest/shared';
 
 /**
@@ -207,5 +208,23 @@ describe('platform DTOs', () => {
         commits: [],
       }),
     ).not.toThrow();
+  });
+});
+
+describe('ConventionPatch (PATCH /conventions/:id body)', () => {
+  it('accepts an accept toggle, an edit, or both', () => {
+    expect(ConventionPatch.parse({ accepted: true })).toEqual({ accepted: true });
+    expect(ConventionPatch.parse({ rule: '  Use camelCase for functions  ', category: 'naming' })).toEqual({
+      rule: 'Use camelCase for functions',
+      category: 'naming',
+    });
+    expect(ConventionPatch.parse({ accepted: false, rule: 'x' })).toEqual({ accepted: false, rule: 'x' });
+  });
+
+  it('rejects an empty body, a blank or oversized rule, and an unknown category', () => {
+    expect(() => ConventionPatch.parse({})).toThrow();
+    expect(() => ConventionPatch.parse({ rule: '   ' })).toThrow();
+    expect(() => ConventionPatch.parse({ rule: 'x'.repeat(501) })).toThrow();
+    expect(() => ConventionPatch.parse({ category: 'style' })).toThrow();
   });
 });
