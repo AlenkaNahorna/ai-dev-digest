@@ -1,0 +1,17 @@
+{
+  "name": "zod",
+  "version": "1.0.0",
+  "description": "Zod schema validation best practices for TypeScript applications.",
+  "categories": [
+    "schema-definition",
+    "parsing-validation",
+    "type-inference",
+    "error-handling",
+    "schema-composition"
+  ],
+  "references": [
+    "https://zod.dev/",
+    "https://zod.dev/v4",
+    "https://github.com/colinhacks/zod"
+  ]
+}

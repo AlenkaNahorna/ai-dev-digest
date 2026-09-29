@@ -22,6 +22,12 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class ForbiddenError extends AppError {
+  constructor(message = 'Forbidden', details?: unknown) {
+    super('forbidden', message, 403, details);
+  }
+}
+
 export class ValidationError extends AppError {
   constructor(message = 'Validation failed', details?: unknown) {
     super('validation_error', message, 422, details);

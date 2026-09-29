@@ -15,7 +15,7 @@
  */
 import Graph from 'graphology';
 import { centrality } from 'graphology-metrics';
-import type { IndexerEdgeRow, IndexerFileRankRow } from '../repository.js';
+import type { IndexerEdgeRow, IndexerFileRankRow } from '../adapters/outbound/persistence/repository.js';
 
 /**
  * Compute `file_rank` rows for `files` over the import graph `edges`.

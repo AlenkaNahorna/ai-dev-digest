@@ -1,27 +1,17 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { CategoryTag, ConfidenceNum, Markdown, MonoLink, SeverityBadge, type Category, type Severity } from "@devdigest/ui";
 import { usePrReviews } from "@/lib/hooks/reviews";
 import { visibleFindings } from "@/app/repos/[repoId]/pulls/[number]/_components/FindingsPanel/helpers";
 import { lineLabel } from "@/app/repos/[repoId]/pulls/[number]/_components/FindingCard/helpers";
 import type { PrMeta } from "@/lib/types";
 import type { FindingRecord, ReviewRecord } from "@devdigest/shared";
-
-/** Keep the popup consistent with the PR-list rollup: newest review per agent. */
-function latestReviewsPerAgent(reviews: ReviewRecord[]): ReviewRecord[] {
-  const latest = new Map<string, ReviewRecord>();
-  for (const review of reviews) {
-    const agentKey = review.agent_id ?? `review:${review.id}`;
-    const previous = latest.get(agentKey);
-    if (!previous || Date.parse(review.created_at) > Date.parse(previous.created_at)) {
-      latest.set(agentKey, review);
-    }
-  }
-  return [...latest.values()];
-}
+import { latestReviewsPerAgent } from "@/features/reviews/model/rollups";
 
 export function FindingsPopover({ pr, findings: providedFindings }: { pr?: PrMeta; findings?: FindingRecord[] }) {
+  const t = useTranslations("common");
   const { data: reviews, isLoading } = usePrReviews(pr?.id);
   const latestReviews = reviews ? latestReviewsPerAgent(reviews) : [];
   const findings = visibleFindings(
@@ -33,15 +23,15 @@ export function FindingsPopover({ pr, findings: providedFindings }: { pr?: PrMet
   return (
     <div
       role="dialog"
-      aria-label={`${findings.length} findings in this run`}
+      aria-label={t("findingsPopover.aria", { count: findings.length })}
       style={{ position: "absolute", zIndex: 20, top: "calc(100% + 8px)", left: -8, width: 360, maxHeight: 360, overflow: "auto", padding: "12px 14px", border: "1px solid var(--border-strong)", borderRadius: 9, background: "var(--bg-elevated)", boxShadow: "var(--shadow-modal)", cursor: "default" }}
       onClick={(e) => e.stopPropagation()}
     >
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 10 }}>
-        {loading ? "LOADING FINDINGS" : `${findings.length} FINDINGS IN THIS RUN`}
+        {loading ? t("findingsPopover.loading") : t("findingsPopover.count", { count: findings.length })}
       </div>
       {!loading && findings.length === 0 ? (
-        <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>No findings in the latest review.</div>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t("findingsPopover.empty")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {findings.map((f) => (

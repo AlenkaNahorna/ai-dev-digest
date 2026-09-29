@@ -1,0 +1,49 @@
+# Backend architecture guard — dependency direction for module-local Onion Architecture.
+name: server architecture
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/src/**'
+      - 'server/.dependency-cruiser.js'
+      - 'server/package.json'
+      - 'server/pnpm-lock.yaml'
+      - '.github/workflows/server-architecture.yml'
+  pull_request:
+    paths:
+      - 'server/src/**'
+      - 'server/.dependency-cruiser.js'
+      - 'server/package.json'
+      - 'server/pnpm-lock.yaml'
+      - '.github/workflows/server-architecture.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-architecture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: dependency direction
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: server/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm architecture:check

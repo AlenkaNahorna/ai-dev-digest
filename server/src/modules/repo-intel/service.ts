@@ -19,6 +19,7 @@
  */
 import type { CodeSymbol, RepoRef } from '@devdigest/shared';
 import type { Container } from '../../platform/container.js';
+import { NotFoundError } from '../../platform/errors.js';
 import { extractEndpoints } from '../../adapters/codeindex/extract.js';
 import {
   parseImports,
@@ -28,7 +29,7 @@ import {
 } from '../../adapters/astgrep/index.js';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
-import { RepoIntelRepository, type FullSymbolRow } from './repository.js';
+import { RepoIntelRepository, type FullSymbolRow } from './adapters/outbound/persistence/repository.js';
 import type {
   BlastCallerRow,
   BlastChangedSymbol,
@@ -54,55 +55,17 @@ import {
 } from './constants.js';
 import { runFullIndex, type IndexPayload } from './pipeline/full.js';
 import { runIncremental } from './pipeline/incremental.js';
-
-/**
- * GLOBALS allowlist — common JS/TS builtins + runtime that appear as bare
- * invocations and are NOT phantoms. Tune for PRECISION (false-positive cost
- * > false-negative cost). Anything we miss here can be added
- * later; everything we include here is widely-used baseline.
- *
- * Kept module-scoped (not re-built per call) so the `.has(name)` lookup stays
- * O(1) on the hot path. The list intentionally errs on the inclusive side for
- * standard globals — better to under-flag than to spam reviewers with noise.
- */
-const PHANTOM_GLOBALS_ALLOWLIST: ReadonlySet<string> = new Set([
-  // Console / process / runtime
-  'console', 'process', 'globalThis', 'require', 'module', 'exports',
-  '__dirname', '__filename',
-  // Math/JSON
-  'Math', 'JSON',
-  // Core ctors
-  'Object', 'Array', 'String', 'Number', 'Boolean', 'Symbol', 'Promise',
-  'Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError',
-  'Map', 'Set', 'WeakMap', 'WeakSet', 'Date', 'RegExp', 'Proxy', 'Reflect',
-  'BigInt',
-  // Timers / microtask
-  'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval',
-  'setImmediate', 'clearImmediate', 'queueMicrotask', 'structuredClone',
-  // Web/Fetch standard
-  'fetch', 'URL', 'URLSearchParams', 'TextEncoder', 'TextDecoder',
-  'AbortController', 'AbortSignal', 'Headers', 'Request', 'Response',
-  'FormData', 'Blob', 'File', 'FileReader',
-  // Node
-  'Buffer',
-  // Browser globals
-  'window', 'document', 'navigator', 'localStorage', 'sessionStorage',
-  'performance', 'crypto', 'location', 'history',
-  // Numeric coercion / URI
-  'parseInt', 'parseFloat', 'isNaN', 'isFinite',
-  'encodeURIComponent', 'decodeURIComponent', 'encodeURI', 'decodeURI',
-  // Misc keywords-that-parse-as-identifiers
-  'super', 'this', 'arguments', 'undefined', 'NaN', 'Infinity',
-  // Test/runtime affordances (vitest/jest globals; harmless to allow)
-  'describe', 'it', 'test', 'expect', 'beforeAll', 'beforeEach',
-  'afterAll', 'afterEach', 'vi', 'jest',
-]);
+import { PHANTOM_GLOBALS_ALLOWLIST } from './domain/phantom-gate/rules.js';
+import { isJunkPath } from './domain/ranking/path-rules.js';
+import { GetIndexState } from './application/use-cases/get-index-state.js';
 
 export class RepoIntelService implements RepoIntel {
   private readonly repo: RepoIntelRepository;
+  private readonly getIndexStateUseCase: GetIndexState;
 
   constructor(private container: Container) {
     this.repo = new RepoIntelRepository(container.db);
+    this.getIndexStateUseCase = new GetIndexState(this.repo);
   }
 
   // -------------------------------------------------------------------------
@@ -161,6 +124,12 @@ export class RepoIntelService implements RepoIntel {
     return runIncremental(this.container, this.repo, { repoId });
   }
 
+  async ensureRepoAccess(workspaceId: string, repoId: string): Promise<void> {
+    if (!(await this.repo.repoExistsInWorkspace(workspaceId, repoId))) {
+      throw new NotFoundError('Repo not found');
+    }
+  }
+
   /**
    * Register the INDEX_JOB_KIND + REFRESH_JOB_KIND handlers on the JobRunner.
    * Mirrors `RepoService.registerCloneJobHandler` so the registration is an
@@ -187,21 +156,7 @@ export class RepoIntelService implements RepoIntel {
    * without ever hitting a thrown error.
    */
   async getIndexState(repoId: string): Promise<IndexState> {
-    const persisted = await this.repo.tryGetIndexState(repoId);
-    if (persisted) return persisted;
-    return {
-      repoId,
-      status: 'degraded',
-      filesIndexed: 0,
-      filesSkipped: 0,
-      durationMs: 0,
-      reason: 'no_data',
-      lastIndexedSha: '',
-      indexerVersion: INDEXER_VERSION,
-      updatedAt: new Date(0),
-      degraded: true,
-      degradedReason: 'no_data',
-    };
+    return this.getIndexStateUseCase.execute(repoId);
   }
 
   // -------------------------------------------------------------------------
@@ -704,33 +659,6 @@ export class RepoIntelService implements RepoIntel {
 
 /** How many top-ranked files seed `getCriticalPaths` dependency chains. */
 const CRITICAL_PATH_ROOTS = 5;
-
-/**
- * Path kinds excluded from rank-driven file samples (conventions/onboarding):
- * tests, configs, declaration files, migrations, generated dirs. Substring
- * match on the repo-relative path (kept deliberately simple + deterministic).
- */
-const JUNK_PATH_PATTERNS = [
-  '.test.',
-  '.spec.',
-  '.d.ts',
-  '__tests__/',
-  '__mocks__/',
-  '/test/',
-  '/tests/',
-  '/migrations/',
-  '/__fixtures__/',
-  '.config.',
-  'vitest.',
-  'jest.',
-  'eslint',
-  'prettier',
-] as const;
-
-function isJunkPath(path: string): boolean {
-  const lower = path.toLowerCase();
-  return JUNK_PATH_PATTERNS.some((p) => lower.includes(p));
-}
 
 /** Enclosing top-level (bare-name) symbol for a line, from persistent rows. */
 function enclosingFromRows(rows: FullSymbolRow[], line: number): string | null {

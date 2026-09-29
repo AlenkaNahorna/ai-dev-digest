@@ -157,9 +157,27 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
       return;
     }
     app.log.error(err);
-    const e = err as { statusCode?: number; message?: string };
-    reply.status(e.statusCode ?? 500).send({
-      error: { code: 'internal_error', message: e.message ?? 'Internal error' },
+    // Upstream LLM/HTTP client errors (OpenAI SDK, fetch-based clients) carry
+    // the real status on `.status`, not `.statusCode` (that's Fastify/Node's
+    // own convention) — check both so a provider 429 doesn't get flattened
+    // into an opaque 500. 429 gets its own code/message so the frontend can
+    // tell "rate limited, retry" apart from a genuine server error.
+    const e = err as { statusCode?: number; status?: number; message?: string };
+    const upstreamStatus = e.statusCode ?? e.status;
+    if (upstreamStatus === 429) {
+      reply.status(429).send({
+        error: {
+          code: 'rate_limited',
+          message: 'The model provider rate-limited this request. Wait a bit and try again, or switch models in Settings → Models.',
+        },
+      });
+      return;
+    }
+    reply.status(500).send({
+      error: {
+        code: 'internal_error',
+        message: config.nodeEnv === 'development' ? e.message ?? 'Internal error' : 'Internal error',
+      },
     });
   });
 

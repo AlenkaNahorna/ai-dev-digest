@@ -1,6 +1,6 @@
 import type { FindingActionKind } from '@devdigest/shared';
 import { AppError, NotFoundError } from '../../platform/errors.js';
-import type { ReviewRepository } from './repository.js';
+import type { ReviewRepository } from './adapters/outbound/persistence/repository.js';
 import { findingRowToDto, type ReviewDtoFinding } from './helpers.js';
 
 /**

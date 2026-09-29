@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Self Review"
+  short_description: "Review the current diff with the repository's relevant skills"
+  default_prompt: "Review the current Git diff before opening or merging a pull request. Route changed files to the relevant local skills, report evidence-backed findings, and block only for confirmed critical issues."

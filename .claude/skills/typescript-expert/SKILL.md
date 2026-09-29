@@ -71,7 +71,7 @@ type OrderId = Brand<string, 'OrderId'>;
 function processOrder(orderId: OrderId, userId: UserId) { }
 ```
 - Use for: Critical domain primitives, API boundaries, currency/units
-- Resource: https://egghead.io/blog/using-branded-types-in-typescript
+- Resource: https://www.typescriptlang.org/play/typescript/language-extensions/nominal-typing.ts.html
 
 **Advanced Conditional Types**
 ```typescript

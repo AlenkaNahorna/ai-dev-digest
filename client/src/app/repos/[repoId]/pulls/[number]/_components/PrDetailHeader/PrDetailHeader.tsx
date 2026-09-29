@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Icon, Avatar, Badge, Button, Tabs, SeverityBadge, type Severity } from "@devdigest/ui";
 import { RunReviewDropdown } from "../RunReviewDropdown";
 import { s } from "./styles";
@@ -10,6 +11,7 @@ import type { PrDetail } from "@/lib/types";
 const SEVERITY_ORDER: Severity[] = ["CRITICAL", "WARNING", "SUGGESTION"];
 
 interface PrDetailHeaderProps {
+  repoId: string;
   pr: PrDetail;
   prId: string | null;
   tab: string;
@@ -26,6 +28,7 @@ interface PrDetailHeaderProps {
 }
 
 export function PrDetailHeader({
+  repoId,
   pr,
   prId,
   tab,
@@ -38,6 +41,7 @@ export function PrDetailHeader({
   onRunStart,
   onRunsStarted,
 }: PrDetailHeaderProps) {
+  const t = useTranslations("prReview");
   const handleRunStart = useCallback(() => {
     onRunStart();
   }, [onRunStart]);
@@ -96,12 +100,11 @@ export function PrDetailHeader({
             onClick={() =>
               githubUrl && window.open(githubUrl, "_blank", "noopener,noreferrer")
             }
-          >
-            View on GitHub
-          </Button>
+          >{t("detail.viewOnGithub")}</Button>
           {prId && (
             <RunReviewDropdown
               prId={prId}
+              repoId={repoId}
               warnMerged={pr.status === "merged" || pr.status === "closed"}
               onRunStart={handleRunStart}
               onRunsStarted={handleRunsStarted}
@@ -113,8 +116,7 @@ export function PrDetailHeader({
         <div style={s.staleBanner}>
           <Icon.AlertTriangle size={13} style={{ color: "var(--warn)", flexShrink: 0 }} />
           <span>
-            This PR is already {pr.status} — running a review is informational and won't affect the
-            merged code.
+            {t("detail.closedWarning", { status: pr.status })}
           </span>
         </div>
       )}
@@ -138,9 +140,9 @@ export function PrDetailHeader({
         onChange={onSetTab}
         pad="0"
         tabs={[
-          { key: "overview", label: "Overview", icon: "FileText" },
-          { key: "findings", label: "Agent runs", icon: "AlertOctagon", count: findingsCount || undefined },
-          { key: "diff", label: "Files changed", icon: "Code", count: pr.files_count },
+          { key: "overview", label: t("detail.tabs.overview"), icon: "FileText" },
+          { key: "findings", label: t("detail.tabs.findings"), icon: "AlertOctagon", count: findingsCount || undefined },
+          { key: "diff", label: t("detail.tabs.diff"), icon: "Code", count: pr.files_count },
         ]}
       />
     </div>

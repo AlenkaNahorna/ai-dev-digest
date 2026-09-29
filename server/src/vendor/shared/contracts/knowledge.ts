@@ -128,6 +128,8 @@ export const Skill = z.object({
   enabled: z.boolean(),
   version: z.number().int(),
   evidence_files: z.array(z.string()).nullish(),
+  /** Distinct agents this skill is linked to. Populated by GET /skills; absent elsewhere. */
+  agent_count: z.number().int().nonnegative().optional(),
 });
 export type Skill = z.infer<typeof Skill>;
 
@@ -141,15 +143,77 @@ export const CommunitySkill = z.object({
 export type CommunitySkill = z.infer<typeof CommunitySkill>;
 
 // ---- Conventions ----
-export const ConventionCandidate = z.object({
-  id: z.string(),
+export const ConventionCategory = z.enum([
+  'naming',
+  'structure',
+  'testing',
+  'error-handling',
+  'api-contract',
+  'other',
+]);
+export type ConventionCategory = z.infer<typeof ConventionCategory>;
+
+/** What the model returns for one candidate — no id/run_id/accepted yet (assigned on persist). */
+export const ConventionCandidateDraft = z.object({
+  category: ConventionCategory,
   rule: z.string(),
   evidence_path: z.string(),
+  evidence_line_start: z.number().int().min(1),
+  evidence_line_end: z.number().int().min(1),
   evidence_snippet: z.string(),
   confidence: z.number().min(0).max(1),
+});
+export type ConventionCandidateDraft = z.infer<typeof ConventionCandidateDraft>;
+
+/** completeStructured({ schema: ConventionExtractionOutput }) — one call, N candidates. */
+export const ConventionExtractionOutput = z.object({
+  candidates: z.array(ConventionCandidateDraft),
+});
+export type ConventionExtractionOutput = z.infer<typeof ConventionExtractionOutput>;
+
+/** A persisted candidate row, as the API returns it. */
+export const ConventionCandidate = ConventionCandidateDraft.extend({
+  id: z.string(),
+  repo_id: z.string(),
+  run_id: z.string(),
   accepted: z.boolean(),
+  created_at: z.string(),
 });
 export type ConventionCandidate = z.infer<typeof ConventionCandidate>;
+
+/**
+ * PATCH /conventions/:id body — Accept/Reject toggle and/or an in-place edit of
+ * the rule text and category. At least one field must be present.
+ */
+export const ConventionPatch = z
+  .object({
+    accepted: z.boolean().optional(),
+    rule: z.string().trim().min(1).max(500).optional(),
+    category: ConventionCategory.optional(),
+  })
+  .refine((v) => v.accepted !== undefined || v.rule !== undefined || v.category !== undefined, {
+    message: 'Provide at least one of accepted, rule, category',
+  });
+export type ConventionPatch = z.infer<typeof ConventionPatch>;
+
+/** POST /repos/:id/conventions/extract response. */
+export const ConventionExtractResult = z.object({
+  run_id: z.string(),
+  candidates: z.array(ConventionCandidate),
+  sample_files_count: z.number().int(),
+  scanned_at: z.string(),
+});
+export type ConventionExtractResult = z.infer<typeof ConventionExtractResult>;
+
+/** POST /repos/:id/conventions/build-skill response — a skill DRAFT, not yet saved. */
+export const ConventionSkillDraft = z.object({
+  name: z.string(),
+  description: z.string(),
+  type: SkillType,
+  body: z.string(),
+  evidence_files: z.array(z.string()),
+});
+export type ConventionSkillDraft = z.infer<typeof ConventionSkillDraft>;
 
 // ---- Agents ----
 // 'openrouter' routes through the OpenAI-compatible API (OpenAIProvider with a
@@ -188,6 +252,8 @@ export const Agent = z.object({
   // Inject repo-intel context (repo skeleton + callers + rank note) into this
   // agent's review prompt. Default on; gated again by the global flag.
   repo_intel: z.boolean().default(true),
+  /** Skills linked to this agent. Populated by GET /agents; absent elsewhere. */
+  skill_count: z.number().int().nonnegative().optional(),
 });
 export type Agent = z.infer<typeof Agent>;
 
@@ -195,6 +261,7 @@ export const AgentSkillLink = z.object({
   agent_id: z.string(),
   skill_id: z.string(),
   order: z.number().int(),
+  enabled: z.boolean().default(true),
 });
 export type AgentSkillLink = z.infer<typeof AgentSkillLink>;
 

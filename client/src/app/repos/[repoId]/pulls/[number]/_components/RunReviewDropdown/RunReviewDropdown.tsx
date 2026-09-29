@@ -13,6 +13,7 @@ import { DROPDOWN_WIDTH } from "./constants";
 
 export function RunReviewDropdown({
   prId,
+  repoId,
   size = "sm",
   kind = "primary",
   warnMerged = false,
@@ -21,6 +22,7 @@ export function RunReviewDropdown({
   onRunSettled,
 }: {
   prId: string;
+  repoId?: string;
   size?: "sm" | "md" | "lg";
   kind?: "primary" | "secondary";
   /** PR is already merged/closed — dim the trigger and warn, but still allow. */
@@ -41,7 +43,7 @@ export function RunReviewDropdown({
   const kick = async (opts: { all?: boolean; agentId?: string }) => {
     onRunStart?.();
     try {
-      const res = await run.mutateAsync({ prId, ...opts });
+      const res = await run.mutateAsync({ prId, ...(repoId ? { repoId } : {}), ...opts });
       onRunsStarted?.(res.runs.map((r) => r.run_id));
     } finally {
       onRunSettled?.();

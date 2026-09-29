@@ -6,6 +6,7 @@ import {
   GENERAL_REVIEWER_PROMPT,
   SECURITY_REVIEWER_PROMPT,
   PERFORMANCE_REVIEWER_PROMPT,
+  API_CONTRACT_REVIEWER_PROMPT,
 } from './seed-prompts.js';
 
 /** Default provider/model for the built-in reviewer agents. */
@@ -18,8 +19,9 @@ const DEFAULT_MODEL = 'deepseek/deepseek-v4-flash';
  *
  * Seeds: default workspace + system user + membership, default settings,
  * demo repo (acme/payments-api), PR #482 with files/commits, a sample review
- * with a few findings, and the three built-in agents (General + Security +
- * Performance), all on the default openrouter/deepseek-v4-flash provider+model.
+ * with a few findings, and the built-in agents (General + Security +
+ * Performance, plus the skill-backed Test Quality + API Contract reviewers), all
+ * on the default openrouter/deepseek-v4-flash provider+model.
  *
  * Course lessons populate the other tables (skills, conventions, memory, eval,
  * …) once their features are built — they start empty here.
@@ -219,6 +221,86 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, a.name)));
     if (!existing) await db.insert(t.agents).values(a);
   }
+
+  // ---- Skill-backed agents: Test Quality Reviewer + API Contract Reviewer ----
+  // Each agent is created once (by name) and bound to its own reusable skills
+  // through agent_skills, in the given order. Skills are de-duplicated by name.
+  type SeedSkill = {
+    name: string;
+    type: 'rubric' | 'convention' | 'security' | 'custom';
+    description: string;
+    body: string;
+  };
+  const seedAgentWithSkills = async (
+    agent: Omit<typeof t.agents.$inferInsert, 'workspaceId' | 'provider' | 'model' | 'enabled' | 'version' | 'createdBy'>,
+    skillSeeds: SeedSkill[],
+  ) => {
+    const [existingAgent] = await db
+      .select()
+      .from(t.agents)
+      .where(and(eq(t.agents.workspaceId, workspaceId), eq(t.agents.name, agent.name)));
+    const [seededAgent] = existingAgent
+      ? [existingAgent]
+      : await db
+          .insert(t.agents)
+          .values({
+            workspaceId,
+            provider: DEFAULT_PROVIDER,
+            model: DEFAULT_MODEL,
+            enabled: true,
+            version: 1,
+            createdBy: userId,
+            ...agent,
+          })
+          .returning();
+    for (let i = 0; i < skillSeeds.length; i++) {
+      const seedSkill = skillSeeds[i]!;
+      let [skill] = await db
+        .select()
+        .from(t.skills)
+        .where(and(eq(t.skills.workspaceId, workspaceId), eq(t.skills.name, seedSkill.name)));
+      if (!skill) {
+        [skill] = await db
+          .insert(t.skills)
+          .values({ workspaceId, ...seedSkill, source: i === 0 ? 'extracted' : 'manual', enabled: true, version: 1 })
+          .returning();
+        await db.insert(t.skillVersions).values({ skillId: skill!.id, version: 1, body: seedSkill.body });
+      }
+      await db
+        .insert(t.agentSkills)
+        .values({ agentId: seededAgent!.id, skillId: skill!.id, order: i, enabled: true })
+        .onConflictDoNothing();
+    }
+  };
+
+  await seedAgentWithSkills(
+    {
+      name: 'Test Quality Reviewer',
+      description: 'Finds missing branches, weak edge-case coverage, over-mocking, and flaky tests.',
+      systemPrompt:
+        'Review tests for meaningful coverage, correctness, and determinism. Report only actionable findings with exact citations.',
+    },
+    [
+      { name: 'pr-quality-rubric', type: 'rubric', description: 'Evaluate overall pull-request quality and test signal.', body: '# PR Quality Rubric\nEvaluate correctness, security, tests, and scope. Report only actionable findings.' },
+      { name: 'test-coverage-gate', type: 'rubric', description: 'Find untested branches and failure paths.', body: '# Test Coverage Gate\nCheck every new branch and failure path. Flag happy-path-only tests when a meaningful branch is uncovered.' },
+      { name: 'edge-case-checklist', type: 'convention', description: 'Check boundary, empty, null, and error cases.', body: '# Edge Case Checklist\nCheck empty input, null/undefined, boundaries, concurrency, retries, and malformed input.' },
+      { name: 'mocking-and-flake-audit', type: 'custom', description: 'Detect over-mocking, weak assertions, and flaky tests.', body: '# Mocking and Flake Audit\nFlag tests that assert only mocks, over-mock behavior, use timing or randomness, or lack deterministic assertions.' },
+    ],
+  );
+
+  await seedAgentWithSkills(
+    {
+      name: 'API Contract Reviewer',
+      description: 'Catches breaking changes, schema drift, and inconsistent status codes in the public HTTP contract.',
+      systemPrompt: API_CONTRACT_REVIEWER_PROMPT,
+    },
+    [
+      { name: 'api-breaking-change-rubric', type: 'rubric', description: 'Detect removed, renamed, or retyped fields, routes, and params that break existing clients.', body: '# API Breaking-Change Rubric\nFlag: removed or renamed response fields, routes, methods, or query params; narrowed types; removed enum values; new required request fields; stricter validation on existing inputs; changed success status codes. Adding an optional field or a new route is not breaking. Name the client-visible effect for every finding.' },
+      { name: 'http-status-and-error-shape', type: 'convention', description: 'Check status codes and the error body shape stay consistent across routes.', body: '# HTTP Status and Error Shape\nUse 400/422 for invalid input, 401/403 for auth, 404 for a missing or out-of-workspace resource, 409 for conflicts. Never return 200 with an error body. Errors must follow the existing error body shape used by neighbouring routes.' },
+      { name: 'schema-first-contract-consistency', type: 'convention', description: 'Keep Zod route schemas, shared contracts, and tests in sync; snake_case wire format.', body: '# Schema-first Contract Consistency\nEvery route validates params, query, body, and response with Zod. Canonical contracts live in server/src/vendor/shared and must change together with the route and its contract test. JSON fields are snake_case; ids end in _id and timestamps in _at; list endpoints reuse the existing pagination shape.' },
+      { name: 'api-versioning-and-deprecation', type: 'custom', description: 'Require a version bump or deprecation path for unavoidable breaking changes.', body: '# API Versioning and Deprecation\nA breaking change needs a new version or a deprecation window with a migration path (Deprecation / Sunset headers, changelog entry). Prefer additive changes: keep the old field alongside the new one until clients have moved.' },
+    ],
+  );
 
   return { workspaceId, userId };
 }

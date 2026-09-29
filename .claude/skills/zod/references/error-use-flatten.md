@@ -128,4 +128,4 @@ if (!result.success) {
 - When you need access to full issue metadata (code, path as array)
 - When using a form library that expects different error format
 
-Reference: [Zod Error Handling](https://zod.dev/error-handling)
+Reference: [Zod Error Customization](https://zod.dev/error-customization)

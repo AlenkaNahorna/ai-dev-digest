@@ -34,8 +34,8 @@ swapped for mocks in tests.
 flowchart LR
   REQ["HTTP request"] --> MW["plugins (registered before modules)<br/>helmet · cors · rate-limit · SSE"]
   MW --> VAL["route zod schema<br/>params/body validation"]
-  VAL --> MOD["feature module plugin<br/>modules/&lt;name&gt;/routes.ts"]
-  MOD --> SVC["service<br/>(e.g. ReviewService)"]
+  VAL --> MOD["inbound adapter<br/>modules/&lt;name&gt;/adapters/inbound/http"]
+  MOD --> SVC["application use case<br/>(e.g. ReviewService)"]
   SVC --> DI{"DI container<br/>platform/container.ts"}
   DI --> ADP["adapters (ports)<br/>llm · github · git · astgrep · tokenizer · secrets"]
   ADP -->|"prod"| EXT["LLM (OpenAI/Anthropic) · GitHub · git · pgvector"]
@@ -59,7 +59,8 @@ flowchart LR
 
 ## API map (starter)
 
-Each module owns its routes (`modules/<name>/routes.ts`). Grouped by domain:
+Each module owns its inbound adapters (`modules/<name>/adapters/inbound/http`),
+application orchestration, and outbound persistence adapters. Grouped by domain:
 
 ```mermaid
 flowchart TB

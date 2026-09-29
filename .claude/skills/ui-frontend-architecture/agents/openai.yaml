@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI Frontend Architecture"
+  short_description: "React and Next.js code architecture"
+  default_prompt: "Use $ui-frontend-architecture to design or review React/Next.js code organization."

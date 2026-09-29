@@ -1,0 +1,1 @@
+ALTER TABLE "conventions" ALTER COLUMN "accepted" SET DEFAULT false;

@@ -31,7 +31,7 @@ All sources used to build this security skill, organized by category.
 | A10 | Mishandling of Exceptional Conditions | 24 | New |
 
 ### ASVS 5.0 (Application Security Verification Standard)
-- **Official project**: https://owasp.org/www-project-application-security-verification-standard/
+- **Official project**: https://owasp.org/projects/asvs
 - Three verification levels: L1 (all apps), L2 (sensitive data), L3 (critical systems)
 
 ### OWASP Agentic AI Security (2026)
@@ -215,7 +215,7 @@ All sources used to build this security skill, organized by category.
 - **XSS Prevention**: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
 - **SQL Injection Prevention**: https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
 - **CSRF Prevention**: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
-- **JWT Security**: https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html
+- **JWT Security**: https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html
 - **File Upload**: https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
 - **Logging**: https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
 - **Error Handling**: https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { RepoIntelService } from '../src/modules/repo-intel/service.js';
-import type { RepoBasics } from '../src/modules/repo-intel/repository.js';
+import type { RepoBasics } from '../src/modules/repo-intel/adapters/outbound/persistence/repository.js';
 import type { IndexState } from '../src/modules/repo-intel/types.js';
 
 /**
