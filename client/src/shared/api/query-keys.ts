@@ -10,8 +10,13 @@ export const reviewKeys = {
   all: ["reviews"] as const,
   byPull: (prId: string | null | undefined) => ["reviews", prId] as const,
   comments: (prId: string | null | undefined) => ["pr-comments", prId] as const,
+  /** Nested under byPull so every byPull invalidation also refreshes smart-diff. */
+  smartDiff: (prId: string | null | undefined) => ["reviews", prId, "smart-diff"] as const,
 };
 export const runKeys = {
   active: (prId: string | null | undefined) => ["pr-active-runs", prId] as const,
   history: (prId: string | null | undefined) => ["pr-runs", prId] as const,
+};
+export const intentKeys = {
+  byPull: (prId: string | null | undefined) => ["pr-intent", prId] as const,
 };

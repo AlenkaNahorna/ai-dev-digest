@@ -20,6 +20,7 @@ export const FindingKind = z.enum([
   'lethal_trifecta',
   'phantom',
   'hook',
+  'out_of_scope',
 ]);
 export type FindingKind = z.infer<typeof FindingKind>;
 
@@ -44,6 +45,10 @@ export type TrifectaEvidence = z.infer<typeof TrifectaEvidence>;
  * Finding — the atomic review unit. `start_line`/`end_line` are used by the
  * citation-grounding gate (must intersect a real diff hunk for diff-findings).
  */
+/** Whether a finding concerns what the PR is meant to change (per the PR intent). */
+export const FindingScope = z.enum(['in_scope', 'out_of_scope']);
+export type FindingScope = z.infer<typeof FindingScope>;
+
 export const Finding = z.object({
   id: z.string(),
   severity: Severity,
@@ -56,6 +61,8 @@ export const Finding = z.object({
   suggestion: z.string().nullish(), // markdown
   confidence: z.number().min(0).max(1),
   kind: FindingKind.nullish(),
+  /** Reviewer's judgement vs the PR intent; absent → treated as in_scope. */
+  scope: FindingScope.nullish(),
   // Lethal-trifecta variant fields (present only when kind === 'lethal_trifecta')
   trifecta_components: z.array(TrifectaComponent).nullish(),
   evidence: z.array(TrifectaEvidence).nullish(),

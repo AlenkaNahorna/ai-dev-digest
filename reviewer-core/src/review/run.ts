@@ -1,5 +1,6 @@
 import type {
   Finding,
+  Intent,
   LLMProvider,
   PromptAssembly,
   Review,
@@ -8,6 +9,7 @@ import type {
 } from '@devdigest/shared';
 import { Review as ReviewSchema } from '@devdigest/shared';
 import { assemblePrompt } from '../prompt.js';
+import { applyIntentScope } from '../intent/scope.js';
 import { groundFindings, groundingSummary } from '../grounding.js';
 import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
 
@@ -71,6 +73,11 @@ export interface ReviewInput {
   /** PR author's description/body (untrusted; truncated + delimiter-wrapped in
       the prompt). Empty/undefined → section omitted. */
   prDescription?: string;
+  /**
+   * Structured PR intent from the intent classifier. Injected into the prompt and
+   * used for the deterministic out-of-scope filter. Absent → no scope handling.
+   */
+  intent?: Intent;
   /** Task framing line, e.g. "Review PR #482 …". */
   task?: string;
   /** Override the structured-output retry budget. */
@@ -82,6 +89,12 @@ export interface ReviewInput {
    * review group into one session in the OpenRouter dashboard.
    */
   sessionId?: string;
+  /**
+   * Called right BEFORE each LLM call with the assembled prompt (one call per
+   * chunk). Lets the caller measure/log the prompt's composition. The event
+   * carries the prompt text, so consumers MUST log sizes/identifiers only.
+   */
+  onPrompt?: (e: { assembly: PromptAssembly; chunk: string; diffText: string }) => void;
   /** Progress sink. */
   onEvent?: (e: ReviewEvent) => void;
   /**
@@ -99,6 +112,8 @@ export interface ReviewOutcome {
   grounding: string;
   /** Findings dropped by grounding, with reasons (for logs / "never go silent"). */
   dropped: { finding: Finding; reason: string }[];
+  /** Findings removed / folded by the intent scope filter (empty without intent). */
+  scopeDropped: { finding: Finding; reason: string }[];
   /** Which path ran. */
   mode: ReviewMode;
   /** Prompt assembly (for the run trace). Single-pass: the one call; map-reduce: the whole-diff assembly. */
@@ -135,6 +150,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
     callers: input.callers,
     repoMap: input.repoMap,
     prDescription: input.prDescription,
+    ...(input.intent ? { intent: input.intent } : {}),
     task: input.task,
   };
 
@@ -170,6 +186,7 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
       { file: chunk.label },
     );
     const a = assemblePrompt({ ...promptParts, diff: chunk.diffText });
+    input.onPrompt?.({ assembly: a.assembly, chunk: chunk.label, diffText: chunk.diffText });
     if (mode === 'single-pass') assembly = a.assembly;
     const res = await input.llm.completeStructured<Review>({
       model: input.model,
@@ -201,11 +218,21 @@ export async function reviewPullRequest(input: ReviewInput): Promise<ReviewOutco
   }
   emit('result', `Citation grounding: ${grounding}`);
 
-  // Score is derived from the findings that SURVIVED grounding (not the model's
-  // self-reported number, and not the pre-grounding set) so the score, the
-  // findings list, and the deterministic event always agree.
+  // Intent scope filter (deterministic, after grounding). Protected findings
+  // (CRITICAL / security) are never removed; other serious out-of-scope
+  // findings collapse into a single signal.
+  const scoped = applyIntentScope(ground.kept, input.intent);
+  if (input.intent) {
+    for (const d of scoped.dropped) emit('info', `scope filter dropped "${d.finding.title}": ${d.reason}`);
+    if (scoped.signal) emit('info', 'scope filter: kept ONE out-of-scope signal');
+  }
+
+  // Score is derived from the findings that SURVIVED grounding + scope filtering
+  // (not the model's self-reported number) so the score, the findings list, and
+  // the deterministic event always agree.
   return {
-    review: { ...merged, findings: ground.kept, score: scoreFromFindings(ground.kept) },
+    review: { ...merged, findings: scoped.kept, score: scoreFromFindings(scoped.kept) },
+    scopeDropped: scoped.dropped,
     grounding,
     dropped: ground.dropped,
     mode,

@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '../../../../../db/client.js';
 import * as t from '../../../../../db/schema.js';
-import type { Intent } from '@devdigest/shared';
+import { IntentConfidence, type Intent } from '@devdigest/shared';
 import type { PullRow } from '../../../../../db/rows.js';
 
 // ---- PR lookup (workspace-scoped) -----------------------------------------
@@ -33,6 +33,13 @@ export async function getPrFiles(
   return db.select().from(t.prFiles).where(eq(t.prFiles.prId, prId));
 }
 
+export async function getPrCommits(
+  db: Db,
+  prId: string,
+): Promise<(typeof t.prCommits.$inferSelect)[]> {
+  return db.select().from(t.prCommits).where(eq(t.prCommits.prId, prId));
+}
+
 /**
  * Record the commit a review just ran against, so the PR list can derive
  * `reviewed` vs `needs_review` (head moved since the last review) vs `stale`.
@@ -46,23 +53,60 @@ export async function markReviewed(db: Db, prId: string, sha: string): Promise<v
 
 // ---- intent ---------------------------------------------------------------
 
-export async function upsertIntent(db: Db, prId: string, intent: Intent): Promise<void> {
-  await db
-    .insert(t.prIntent)
-    .values({
-      prId,
-      intent: intent.intent,
-      inScope: intent.in_scope,
-      outOfScope: intent.out_of_scope,
-    })
-    .onConflictDoUpdate({
-      target: t.prIntent.prId,
-      set: { intent: intent.intent, inScope: intent.in_scope, outOfScope: intent.out_of_scope },
-    });
+export type IntentRow = typeof t.prIntent.$inferSelect;
+
+/** Provenance + cost of the classifier call that produced an intent. */
+export interface IntentMeta {
+  provider: string;
+  model: string;
+  headSha: string;
+  inputHash: string;
+  tokensIn: number;
+  tokensOut: number;
+  costUsd: number | null;
 }
 
-export async function getIntent(db: Db, prId: string): Promise<Intent | undefined> {
+export async function upsertIntent(
+  db: Db,
+  prId: string,
+  intent: Intent,
+  meta: IntentMeta,
+): Promise<void> {
+  // API field `summary` maps to the pre-existing `intent` column.
+  const values = {
+    intent: intent.summary,
+    inScope: intent.in_scope,
+    outOfScope: intent.out_of_scope,
+    confidence: intent.confidence,
+    sources: intent.sources,
+    missingContext: intent.missing_context,
+    provider: meta.provider,
+    model: meta.model,
+    headSha: meta.headSha,
+    inputHash: meta.inputHash,
+    tokensIn: meta.tokensIn,
+    tokensOut: meta.tokensOut,
+    costUsd: meta.costUsd,
+    updatedAt: new Date(),
+  };
+  await db
+    .insert(t.prIntent)
+    .values({ prId, ...values })
+    .onConflictDoUpdate({ target: t.prIntent.prId, set: values });
+}
+
+export async function getIntentRow(db: Db, prId: string): Promise<IntentRow | undefined> {
   const [row] = await db.select().from(t.prIntent).where(eq(t.prIntent.prId, prId));
-  if (!row) return undefined;
-  return { intent: row.intent, in_scope: row.inScope, out_of_scope: row.outOfScope };
+  return row;
+}
+
+export function rowToIntent(row: IntentRow): Intent {
+  return {
+    summary: row.intent,
+    in_scope: row.inScope,
+    out_of_scope: row.outOfScope,
+    confidence: IntentConfidence.catch('medium').parse(row.confidence),
+    sources: row.sources as Intent['sources'],
+    missing_context: row.missingContext,
+  };
 }

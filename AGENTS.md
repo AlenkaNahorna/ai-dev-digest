@@ -57,6 +57,21 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 - Migration journal (`server/src/db/migrations/`) — Only add new migrations, never rewrite history
 - Lock files (`pnpm-lock.yaml`, `package-lock.json`) — Do not edit by hand or regenerate during feature work.
 
+## Claude Code + Codex setup (portability)
+
+The repo works in both tools from one source of truth in `.claude/`:
+
+| What | Claude Code reads | Codex reads | How they are kept in sync |
+|------|-------------------|-------------|---------------------------|
+| Project rules | `CLAUDE.md` (symlink → this file) | `AGENTS.md` (root + nested per-module) | one file |
+| Skills | `.claude/skills/<name>/` | `.agents/skills/<name>/` | relative symlinks → `.claude/skills/<name>` |
+| Subagents (`brainstorm`, `researcher`, `planner`, `implementer`, `test-writer`, `architecture-reviewer`, `security-reviewer`, `plan-verifier`, `doc-writer`) | `.claude/agents/*.md` | `.codex/agents/*.toml` (snake_case names, e.g. `plan_verifier`) | **generated** from the `.md` files |
+
+- After changing `.claude/agents/*.md` or adding/removing a skill, run `node scripts/sync-codex-agents.mjs` and commit the result. `node scripts/sync-codex-agents.mjs --check` exits non-zero when something is out of date. **Never edit `.codex/agents/*.toml` by hand.**
+- Read-only agents (`brainstorm`, `researcher`, `architecture_reviewer`, `security_reviewer`, `plan_verifier`) get `sandbox_mode = "read-only"` in Codex, which Codex enforces; the others get `workspace-write`, where path limits (tests only, docs only, `docs/plans/` only) remain conventions the agent must follow.
+- Codex starts a subagent only when asked, by name: e.g. "Spawn the `planner` agent to plan X, then the `implementer` agent to execute the plan." Codex agents inherit the session's model (the Claude `model: sonnet` alias is not carried over).
+- Details and caveats: [.claude/agents/README.md](.claude/agents/README.md#codex-portability).
+
 ## Links & References
 
 **Architecture & Design**:
@@ -131,7 +146,7 @@ You now have:
 
 ### 🔴 END OF SESSION — Write Only If Substantial
 
-**Use `/engineering-insights` to capture learnings.** Quality gate:
+**Use the `engineering-insights` skill to capture learnings** (Claude Code: `/engineering-insights`; Codex: `$engineering-insights` or just ask for it by name). Quality gate:
 
 **1. Not obvious** — Would every developer reading code know this?
    - ❌ Bad: "Promises are tricky"
@@ -150,7 +165,7 @@ You now have:
 
 **Cadence**: Capture after sessions >30 min with problem/solution/discovery; skip trivial fixes.
 
-**File locations**: `ENGINEERING-INSIGHTS.md` at the repository root is the central file for cross-cutting findings; each module's `INSIGHTS.md` keeps module-specific findings. If the central file does not exist, create it. If the `/engineering-insights` skill or command is unavailable, append the entry manually with the same format—do not skip the end-of-session capture.
+**File locations**: `ENGINEERING-INSIGHTS.md` at the repository root is the central file for cross-cutting findings; each module's `INSIGHTS.md` keeps module-specific findings. If the skill or command is unavailable, append the entry manually with the same format—do not skip the end-of-session capture.
 
 **CRITICAL**: Do not skip this step. If insights aren't written, they're lost to future sessions.
 
@@ -195,10 +210,10 @@ The final review report must list:
 **BEFORE any task**:
 - **CONDITIONAL**: Module AGENTS.md auto-loads when you touch code in that folder
 - **EXPLICIT**: Read relevant `INSIGHTS.md` (before work; summarize top 3)
-- **EXPLICIT**: Use `/engineering-insights` command to capture learnings (end of session)
+- **EXPLICIT**: Use the `engineering-insights` skill to capture learnings (end of session; Codex: `$engineering-insights`)
 
 **During work**:
-- **LAZY**: Use skills like `/fastify-best-practices`, `/react-best-practices`, `/drizzle-orm-patterns` on-demand
+- **LAZY**: Use skills like `fastify-best-practices`, `react-best-practices`, `drizzle-orm-patterns` on-demand (Claude Code: `/name`; Codex: `$name` or ask by name)
 - **REPOSITORY-LOCAL**: Discover and load skills from `.claude/skills/` and `.agents/skills/` before relying on the global skills catalog
 
 **No silent loading**: Summaries force active reading, not passive context loading.

@@ -57,7 +57,15 @@ export const ReviewRunResponse = z.object({
 export type ReviewRunResponse = z.infer<typeof ReviewRunResponse>;
 
 /** Intent persisted for a PR (the Intent plus the pr_id it scopes). */
-export const PrIntentRecord = Intent.extend({ pr_id: z.string() });
+export const PrIntentRecord = Intent.extend({
+  pr_id: z.string(),
+  /** true → the PR head moved since this intent was derived. */
+  stale: z.boolean(),
+  provider: z.string().nullish(),
+  model: z.string().nullish(),
+  head_sha: z.string().nullish(),
+  updated_at: z.string().nullish(),
+});
 export type PrIntentRecord = z.infer<typeof PrIntentRecord>;
 
 /** Smart-diff response for a PR (the SmartDiff). */

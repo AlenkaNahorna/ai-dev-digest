@@ -178,6 +178,8 @@ export interface DiffHunk {
   oldLines: number;
   newStart: number;
   newLines: number;
+  /** Text after the closing `@@` (git's function/section context), trimmed to 80 chars. */
+  section?: string;
   /** Lines present in the *new* file covered by this hunk (for grounding). */
   newLineNumbers: number[];
 }

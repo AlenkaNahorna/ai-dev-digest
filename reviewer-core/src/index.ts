@@ -16,6 +16,7 @@ export {
   assemblePrompt,
   wrapUntrusted,
   type PromptParts,
+  renderIntent,
   type AssembledPrompt,
 } from './prompt.js';
 
@@ -57,3 +58,15 @@ export {
 // The single OpenAI-compatible structured provider (OpenRouter), shared by the
 // CI runner and the server's openrouter path. Owns session grouping + guards.
 export { OpenRouterProvider, type OpenRouterProviderOptions } from './llm/openrouter.js';
+
+// Intent layer: classifier prompt builder + deterministic scope filter.
+export {
+  buildIntentPrompt,
+  finalizeIntent,
+  formatHunkHeader,
+  type IntentPrompt,
+  type IntentPromptInput,
+  type IntentDoc,
+  type PromptSectionPart,
+} from './intent/prompt.js';
+export { applyIntentScope, OUT_OF_SCOPE_SIGNAL_ID, type ScopeResult } from './intent/scope.js';

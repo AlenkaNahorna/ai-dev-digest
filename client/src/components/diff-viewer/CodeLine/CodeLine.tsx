@@ -3,9 +3,13 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
+import { Icon, SEV, type Severity } from "@devdigest/ui";
+import type { FindingRecord } from "@devdigest/shared";
 import { commentTargetFor, type CommentThread, type DiffCommentApi, cs } from "../comments";
 import { type Line } from "../helpers";
-import { s, lineRowFor, lineSignFor } from "../styles";
+import { s, fs, lineRowFor, lineSignFor, stripeFor } from "../styles";
+import { severityLabelKey, topSeverity, type DiffFindingApi } from "../findings";
 import { CommentThreadView } from "../CommentThreadView";
 import { InlineComposer } from "../InlineComposer";
 
@@ -14,12 +18,17 @@ export function CodeLine({
   path,
   threads,
   commenting,
+  findings = [],
+  findingApi,
 }: {
   ln: Line;
   path: string;
   threads: CommentThread[];
   commenting?: DiffCommentApi;
+  findings?: FindingRecord[];
+  findingApi?: DiffFindingApi;
 }) {
+  const t = useTranslations("prReview");
   const [hover, setHover] = React.useState(false);
   const [composing, setComposing] = React.useState(false);
 
@@ -34,6 +43,9 @@ export function CodeLine({
   const sign = ln.kind === "add" ? "+" : ln.kind === "del" ? "−" : "";
   const target = commenting?.canComment ? commentTargetFor(ln) : null;
   const showAdd = hover && !!target && !composing;
+  const sev = findings.length > 0 ? topSeverity(findings) : null;
+  const sevTok = sev ? (SEV[sev as Severity] ?? SEV.INFO) : null;
+  const SevIcon = sevTok ? Icon[sevTok.icon] : null;
 
   return (
     <div
@@ -41,7 +53,7 @@ export function CodeLine({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <div style={lineRowFor(ln.kind)}>
+      <div style={{ ...lineRowFor(ln.kind), ...(sevTok ? stripeFor(sevTok.c) : {}) }}>
         <span className="mono tnum" style={{ ...s.lineNo, position: "relative" }}>
           {showAdd && target && (
             <button
@@ -62,7 +74,21 @@ export function CodeLine({
         <span className="mono" style={s.lineText}>
           {ln.text || " "}
         </span>
+        {sev && sevTok && SevIcon && (
+          <span style={fs.sevLabel(sevTok.c)}>
+            <SevIcon size={12} />
+            {t(`smartDiff.severityLabel.${severityLabelKey(sev)}`)}
+          </span>
+        )}
       </div>
+
+      {findingApi && findingApi.showCards && findings.length > 0 && (
+        <div style={cs.thread}>
+          {findings.map((f) => (
+            <React.Fragment key={f.id}>{findingApi.renderFinding(f)}</React.Fragment>
+          ))}
+        </div>
+      )}
 
       {commenting &&
         commenting.showComments &&

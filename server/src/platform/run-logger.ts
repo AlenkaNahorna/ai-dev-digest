@@ -41,6 +41,12 @@ export class RunLogger {
     private readonly ctx: Record<string, unknown> = {},
   ) {}
 
+  /** Correlation id tying this logger's lines (intent + review calls) together. */
+  get correlationId(): string {
+    const c = this.ctx.correlationId;
+    return typeof c === 'string' ? c : 'none';
+  }
+
   /** Narrow to a single run (drops the fan-out), optionally adding context. */
   forRun(runId: string, ctx: Record<string, unknown> = {}): RunLogger {
     return new RunLogger(this.bus, [runId], this.base, { ...this.ctx, ...ctx });
@@ -50,6 +56,15 @@ export class RunLogger {
   event(kind: RunEventKind, msg: string, data?: unknown): void {
     for (const runId of this.runIds) this.bus.publish(runId, kind, msg, data);
     this.base?.[LEVEL[kind]]({ ...this.ctx, runIds: this.runIds, kind, ...(data !== undefined ? { data } : {}) }, msg);
+  }
+
+  /**
+   * STDOUT-ONLY line (pino) — deliberately NOT published to the run bus, so it
+   * is never streamed to the UI nor persisted in run_traces. For local verbose
+   * diagnostics; callers must still keep secrets/diffs/spec bodies out of it.
+   */
+  local(msg: string, data?: unknown): void {
+    this.base?.info({ ...this.ctx, runIds: this.runIds, local: true, ...(data !== undefined ? { data } : {}) }, msg);
   }
 
   info(msg: string, data?: unknown): void {

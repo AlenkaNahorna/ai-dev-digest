@@ -16,6 +16,9 @@ const RunRequestBody = RunRequest.default({});
  *   GET    /runs/:id/events                            → SSE stream of RunEvent (replay-first)
  *   GET    /runs/:id/trace                             → the single-document RunTrace
  *   GET    /pulls/:id/reviews                          → persisted reviews + findings for a PR
+ *   GET    /pulls/:id/smart-diff                       → files grouped by role + finding lines (no LLM)
+ *   GET    /pulls/:id/intent                           → persisted PR intent (+stale flag) or null
+ *   POST   /pulls/:id/intent                           → (re)derive the intent with the cheap classifier model
  *   POST   /findings/:id/(accept|dismiss)              → finding actions
  */
 const FINDING_ACTIONS = ['accept', 'dismiss'] as const;
@@ -134,6 +137,28 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     const { workspaceId } = await getContext(container, req);
     return service.reviewsForPull(workspaceId, req.params.id);
   });
+
+  // ---- Smart Diff (pure DB read, no LLM) ----------------------------------
+  app.get('/pulls/:id/smart-diff', { schema: { params: IdParams, response: { 200: responseSchemas.smartDiff } } }, async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    return service.smartDiffForPull(workspaceId, req.params.id);
+  });
+
+  // ---- Intent layer -------------------------------------------------------
+  app.get('/pulls/:id/intent', { schema: { params: IdParams, response: { 200: responseSchemas.intent } } }, async (req) => {
+    const { workspaceId } = await getContext(container, req);
+    return service.getIntent(workspaceId, req.params.id);
+  });
+
+  // Re-derive after the PR changed. One (cheap) LLM call → tight rate limit.
+  app.post(
+    '/pulls/:id/intent',
+    { schema: { params: IdParams, response: { 200: responseSchemas.intentRecord } }, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service.rederiveIntent(workspaceId, req.params.id, req.log);
+    },
+  );
 
   // ---- Delete a whole review run (one agent's pass) + its findings --------
   app.delete('/reviews/:id', { schema: { params: IdParams } }, async (req) => {

@@ -17,3 +17,17 @@ query is invalidated after a review completes.
 cards compute severity counts from their own findings and expose three local
 toggle filters. Repeating the active filter clears it. Filtering is client-side
 and never starts an LLM request.
+
+## Pull request detail: Files changed (Smart Diff)
+
+The tab is a reviewer-ordered diff. Files are grouped by role (Core logic, Tests,
+Wiring, Docs, Boilerplate, in that order; empty groups are omitted) from
+`GET /pulls/:id/smart-diff`, which needs no review and makes no LLM call. Docs and
+Boilerplate start collapsed. A "Smart order | Original order" toggle switches to the
+flat GitHub order (also used silently while smart-diff loads or fails). After a
+review, the group header shows `● N` (N = files with findings, not findings), the
+file card shows a dot, and each finding renders under its `start_line` with a
+severity stripe, a right-hand label (blocker/warning/suggestion) and the FindingCard
+(Accept/Dismiss). Findings whose line is not in the patch appear in a block at the
+end of the file. The Hide/Show comments toggle controls GitHub comments and finding
+cards together; it defaults to visible once findings exist.

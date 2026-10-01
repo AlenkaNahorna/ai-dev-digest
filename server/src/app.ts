@@ -59,6 +59,12 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
           },
   });
 
+  if (config.promptLogVerboseIgnored) {
+    app.log.warn(
+      'DEVDIGEST_PROMPT_LOG_VERBOSE is ignored: verbose prompt logging is local-only (NODE_ENV=development).',
+    );
+  }
+
   // Use zod schemas directly for request validation + response serialization.
   // Routes opt in per-module via `app.withTypeProvider<ZodTypeProvider>()`.
   app.setValidatorCompiler(validatorCompiler);

@@ -26,6 +26,11 @@ const EnvSchema = z.object({
   // Note: even when on, sections only populate once the repo is indexed; an
   // unindexed repo degrades gracefully. Per-agent override: agents.repo_intel.
   REPO_INTEL_ENABLED: z.string().optional(),
+  // LOCAL-ONLY diagnostic: `true` adds per-section hashes/line counts and short
+  // redacted previews of a few safe sections to the SERVER'S STDOUT log while
+  // prompts are assembled. Honoured only when NODE_ENV=development; ignored (with
+  // a warning) elsewhere. Never streamed to the UI or persisted.
+  DEVDIGEST_PROMPT_LOG_VERBOSE: z.string().optional(),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -59,10 +64,15 @@ export type AppConfig = {
    * EXACTLY like the ripgrep-only baseline.
    */
   repoIntelEnabled: boolean;
+  /** Verbose prompt-composition logging (dev only, stdout only). See EnvSchema. */
+  promptLogVerbose: boolean;
+  /** Verbose was requested but ignored because this is not a local dev run. */
+  promptLogVerboseIgnored: boolean;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = EnvSchema.parse(env);
+  const promptLogRequested = parsed.DEVDIGEST_PROMPT_LOG_VERBOSE === 'true';
   const cloneDirRaw =
     parsed.DEVDIGEST_CLONE_DIR ?? join(homedir(), '.devdigest', 'workspace');
   const cloneDir = isAbsolute(cloneDirRaw) ? cloneDirRaw : resolve(process.cwd(), cloneDirRaw);
@@ -77,5 +87,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
+    promptLogVerbose: promptLogRequested && parsed.NODE_ENV === 'development',
+    promptLogVerboseIgnored: promptLogRequested && parsed.NODE_ENV !== 'development',
   };
 }
