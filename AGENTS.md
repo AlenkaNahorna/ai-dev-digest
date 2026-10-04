@@ -30,6 +30,7 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 | `client/` | `@devdigest/web` | Next.js studio UI | 3005 |
 | `reviewer-core/` | `@devdigest/reviewer-core` | Review engine (diff → LLM → findings) | — |
 | `e2e/` | `@devdigest/e2e` | Browser e2e tests (deterministic) | — |
+| `mcp/` | `@devdigest/mcp` | Local stdio MCP server over the API (5 tools) | — |
 | `server/src/vendor/shared` | `@devdigest/shared` | Canonical Zod contracts; client consumes it through a symlink | — |
 
 ## Key Rules
@@ -81,6 +82,7 @@ The repo works in both tools from one source of truth in `.claude/`:
 - [Review Engine](reviewer-core/README.md) — Review pipeline, LLM integration, grounding gate
 - [E2E Tests](e2e/README.md) — Deterministic test flows
 - [PR Self Review](.claude/skills/pr-self-review/SKILL.md) — mandatory workflow for reviewing the current Git diff before opening or updating a pull request
+- [GitHub Connection](.claude/skills/github-connection/SKILL.md) — read-only GitHub access via `gh` plus the DevDigest MCP workflow (`list_agents` → `run_agent_on_pr` → `get_findings`)
 
 Each module also has package-specific architecture/spec documents. Read the relevant
 `docs/*.md` and `specs/*.md` before changing that package's behavior.
@@ -90,6 +92,7 @@ Each module also has package-specific architecture/spec documents. Read the rele
 - [Client Module](client/AGENTS.md) — Next.js, React, UI patterns
 - [Reviewer Core Module](reviewer-core/AGENTS.md) — LLM integration, findings
 - [E2E Module](e2e/AGENTS.md) — Test harness, flows
+- [MCP Module](mcp/AGENTS.md) — Stdio MCP server, tool contract
 
 **Testing & Deployment**:
 - [TESTING.md](TESTING.md) — Test strategy, CI workflows, split by package
