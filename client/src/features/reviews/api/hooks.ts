@@ -3,8 +3,8 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "@/lib/api";
 import { notify } from "@/lib/toast";
-import type { FindingActionKind, PrIntentRecord, PrReviewComment, ReviewRecord, ReviewRunResponse, RunEvent, RunSummary, SmartDiffResponse } from "@devdigest/shared";
-import { intentKeys, pullKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
+import type { BlastRadius, FindingActionKind, PrIntentRecord, PrReviewComment, ReviewRecord, ReviewRunResponse, RunEvent, RunSummary, SmartDiffResponse } from "@devdigest/shared";
+import { blastKeys, intentKeys, pullKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
 export interface ActiveRun { run_id: string; agent_id: string | null; agent_name: string | null; ran_at: string | null; }
 export function usePrActiveRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.active(prId), queryFn: () => api.get<ActiveRun[]>(`/pulls/${prId}/runs/active`), enabled: !!prId, refetchInterval: (q) => (q.state.data?.length ?? 0) > 0 ? 4000 : false }); }
 export function usePrRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.history(prId), queryFn: () => api.get<RunSummary[]>(`/pulls/${prId}/runs`), enabled: !!prId, refetchInterval: (q) => (q.state.data ?? []).some((r) => r.status === "running") ? 4000 : false }); }
@@ -25,4 +25,6 @@ export function useRunEvents(runIds: string[]) { const [events, setEvents] = Rea
 export function usePrIntent(prId: string | null | undefined) { return useQuery({ queryKey: intentKeys.byPull(prId), queryFn: () => api.get<PrIntentRecord | null>(`/pulls/${prId}/intent`), enabled: !!prId }); }
 /** Re-derive the intent with the cheap classifier model (after the PR was updated). */
 export function useRederiveIntent(prId: string | null | undefined) { const qc = useQueryClient(); return useMutation({ mutationFn: () => api.post<PrIntentRecord>(`/pulls/${prId}/intent`), onSuccess: (rec) => { qc.setQueryData(intentKeys.byPull(prId), rec); qc.invalidateQueries({ queryKey: intentKeys.byPull(prId) }); } }); }
-export { intentKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
+/** Blast radius of a PR (pure read: DB + repo index, no LLM). */
+export function useBlastRadius(prId: string | null | undefined) { return useQuery({ queryKey: blastKeys.byPull(prId), queryFn: () => api.get<BlastRadius>(`/pulls/${prId}/blast`), enabled: !!prId }); }
+export { blastKeys, intentKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";

@@ -1,8 +1,8 @@
 # MCP Module — @devdigest/mcp
 
-Local **stdio MCP server** over the DevDigest HTTP API: five tools (`list_agents`, `run_agent_on_pr`, `get_findings`, `get_conventions`, `get_blast_radius` stub) so AI clients (Claude Code, Cursor, ...) can review PRs and read results. It is a **thin translation layer**: no business logic, no DB, no LLM call of its own. The DevDigest API (`DEVDIGEST_API_URL`, default `http://127.0.0.1:3001`) must be running; no credentials are sent (local no-auth provider).
+Local **stdio MCP server** over the DevDigest HTTP API: five tools (`list_agents`, `run_agent_on_pr`, `get_findings`, `get_conventions`, `get_blast_radius`) so AI clients (Claude Code, Cursor, ...) can review PRs and read results. It is a **thin translation layer**: no business logic, no DB, no LLM call of its own. The DevDigest API (`DEVDIGEST_API_URL`, default `http://127.0.0.1:3001`) must be running; no credentials are sent (local no-auth provider).
 
-> **Status:** partial · plan `docs/plans/2026-10-04-devdigest-mcp.md` steps 1-6 implemented; tests of steps 4-6 written but first run pending (`npm test`); step 7 (manual verification / evals) and step 9 (real blast radius) NOT done.
+> **Status:** partial · plan `docs/plans/2026-10-04-devdigest-mcp.md` steps 1-6 implemented; tests of steps 4-6 written but first run pending (`npm test`); step 7 (manual verification / evals) NOT done. Step 9 (real blast radius, `GET /pulls/:id/blast`) is done: see the dated amendment in the plan and `docs/plans/2026-10-04-blast-radius.md`.
 
 ## Stack
 
@@ -45,7 +45,7 @@ Dependency rules: `domain/` imports nothing outside itself; `application/` impor
 - **No barrel exports**: import each file directly.
 - **Shared contracts via alias**: `@devdigest/shared` -> `../server/src/vendor/shared` (tsconfig `paths` + vitest alias). Never copy contracts; boundary schemas are `.pick()` of them.
 - **stdout carries only JSON-RPC.** All diagnostics go to stderr (`log` in `index.ts`); `console.log`/`console.info` are redirected there. `test/stdout.test.ts` locks this.
-- **Tool descriptions, parameter descriptions, server `instructions` and the stub text are verbatim from the plan** ("Tool descriptions" section). `test/tools-list.test.ts` compares them to a golden payload.
+- **Tool descriptions, parameter descriptions, server `instructions` are verbatim from the plan** ("Tool descriptions" section). `test/tools-list.test.ts` compares them to a golden payload.
 - **Token budget**: serialized `tools/list` definitions + `instructions` <= 800 tokens (`cl100k_base`), enforced by `test/tools-list.test.ts`. Also: exactly 5 tools, descriptions <= 200 chars, flat scalar params only, no `outputSchema`/`title`, `readOnlyHint: true` on four tools and none on `run_agent_on_pr`.
 - **Bounded output**: every response is capped (items + per-field length); see `specs/tools-contract.md`. Strings from the API are untrusted: flattened (`clipText`) and never interpolated into instructions.
 - **Validate before URLs**: `repo` must match an anchored `owner/name` regex, `pr` a positive safe integer, ids are `encodeURIComponent`-ed.
@@ -74,7 +74,7 @@ Every message says what is wrong and what to do next. Expected, user-fixable pro
 
 ## Do Not Touch
 
-- **Tool descriptions, parameter descriptions, `instructions`, stub text** — do not edit in code without updating the plan's "Tool descriptions" first (plans are immutable records: add a dated amendment per the owner's process) and the golden test in the same change.
+- **Tool descriptions, parameter descriptions, `instructions`** — do not edit in code without updating the plan's "Tool descriptions" first (plans are immutable records: add a dated amendment per the owner's process) and the golden test in the same change.
 - **`server/src/vendor/shared`** — canonical contracts; never copy or edit from here.
 - `.github/workflows/` — a CI workflow for `mcp/` does not exist and needs explicit owner approval (see root `AGENTS.md` Do Not Touch).
 - Lock files — `mcp/package-lock.json` is not to be hand-edited.

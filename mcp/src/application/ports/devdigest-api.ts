@@ -1,5 +1,6 @@
 import type {
   Agent,
+  BlastRadius,
   ConventionCandidate,
   ConventionExtractResult,
   FindingRecord,
@@ -62,6 +63,9 @@ export interface StartedRun {
   agent_name: string;
 }
 
+/** Blast radius of a PR, as returned by the API (optional `degraded` / `degraded_reason`). */
+export type BlastRadiusRow = BlastRadius;
+
 export type ConventionRow = Pick<
   ConventionCandidate,
   'category' | 'rule' | 'accepted' | 'evidence_path' | 'evidence_line_start'
@@ -109,4 +113,6 @@ export interface DevDigestApi {
   waitForRun(runId: string, options: WaitForRunOptions): Promise<WaitOutcome>;
   /** GET /repos/:repoId/conventions */
   listConventions(repoId: string): Promise<ConventionScan>;
+  /** GET /pulls/:pullId/blast — pure read (DB + repo index), no LLM. */
+  getBlastRadius(pullId: string): Promise<BlastRadiusRow>;
 }

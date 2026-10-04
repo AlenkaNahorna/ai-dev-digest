@@ -8,6 +8,7 @@ import { createMcpServer } from './adapters/inbound/mcp/server.js';
 import type { McpTool } from './adapters/inbound/mcp/define-tool.js';
 import { createHttpDevDigestApi } from './adapters/outbound/http/devdigest-api.js';
 import type { Log } from './application/errors.js';
+import { createGetBlastRadius } from './application/use-cases/get-blast-radius.js';
 import { createGetConventions } from './application/use-cases/get-conventions.js';
 import { createListAgents } from './application/use-cases/list-agents.js';
 import { createGetFindings } from './application/use-cases/get-findings.js';
@@ -36,7 +37,7 @@ export interface ComposeOptions {
  * connects them. `index.ts` only adds the stdio transport; tests build the same
  * server over an in-memory transport.
  *
- * Steps 4-6: pass the use case to the tool factory below, e.g.
+ * Each tool factory below receives its use case, e.g.
  *   createListAgentsTool({ log, handler: createListAgents(api) })
  * Tool definitions (name, description, schema, annotations) stay in the tool files.
  */
@@ -46,10 +47,9 @@ export function composeServer(options: ComposeOptions): Server {
     baseUrl: options.apiUrl,
     ...(options.fetch !== undefined ? { fetch: options.fetch } : {}),
   });
-  // Shared by the use cases of steps 4-6 (list_agents/get_conventions use `api`
-  // directly; get_findings/run_agent_on_pr use `resolver`).
+  // list_agents/get_conventions use `api` directly; get_findings, run_agent_on_pr
+  // and get_blast_radius also use `resolver`.
   const resolver = createResolver(api);
-  void resolver;
 
   const tools: McpTool[] = [
     createListAgentsTool({ log, handler: createListAgents(api) }),
@@ -61,7 +61,7 @@ export function composeServer(options: ComposeOptions): Server {
     }),
     createGetFindingsTool({ log, handler: createGetFindings(api, resolver) }),
     createGetConventionsTool({ log, handler: createGetConventions(api, resolver) }),
-    createGetBlastRadiusTool({ log }),
+    createGetBlastRadiusTool({ log, handler: createGetBlastRadius(api, resolver) }),
   ];
 
   return createMcpServer({

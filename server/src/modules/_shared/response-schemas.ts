@@ -1,4 +1,4 @@
-import { PrDetail, PrIntentRecord, PrMeta, PrReviewComment, Repo, ReviewRecord, ReviewRunResponse, SmartDiffResponse } from '@devdigest/shared';
+import { BlastRadius, PrDetail, PrIntentRecord, PrMeta, PrReviewComment, Repo, ReviewRecord, ReviewRunResponse, SmartDiffResponse } from '@devdigest/shared';
 
 /** Response contracts used by the highest-value public endpoints. */
 export const responseSchemas = {
@@ -11,4 +11,5 @@ export const responseSchemas = {
   intent: PrIntentRecord.nullable(),
   intentRecord: PrIntentRecord,
   smartDiff: SmartDiffResponse,
+  blast: BlastRadius,
 };

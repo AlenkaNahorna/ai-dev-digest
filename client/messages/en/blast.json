@@ -7,12 +7,41 @@
   },
   "view": {
     "tree": "tree",
-    "graph": "graph"
+    "graph": "graph",
+    "label": "Blast radius view"
   },
-  "callerCount": "{count} callers",
+  "callerCount": "{count, plural, one {# caller} other {# callers}}",
   "noDownstream": "{count} changed symbol(s), no downstream callers found.",
   "graph": {
     "empty": "No downstream callers to graph.",
-    "ariaLabel": "Blast radius graph"
-  }
+    "ariaLabel": "Blast radius graph",
+    "legend": {
+      "symbol": "changed symbol",
+      "callers": "callers",
+      "endpoints": "endpoints affected",
+      "crons": "cron jobs"
+    }
+  },
+  "title": "Blast radius",
+  "error": {
+    "title": "Couldn't load blast radius",
+    "body": "The request failed. Check that the API is running, then retry."
+  },
+  "degraded": {
+    "generic": "Blast radius is partial: the repository index could not be fully used. Resync the repo from Project context and reload.",
+    "flag_off": "Repository indexing is turned off, so this view is partial. Enable repo intelligence and resync the repo from Project context.",
+    "index_failed": "Indexing this repository failed, so this view is partial. Resync the repo from Project context.",
+    "index_partial": "The repository index is incomplete, so some callers may be missing. Resync the repo from Project context.",
+    "repo_too_large": "This repository is too large to index fully, so some callers may be missing.",
+    "no_data": "No index data for these files yet, so this view may be empty or partial. Open the PR once so its files are saved, or resync the repo from Project context."
+  },
+  "noSymbols": "No changed symbols were found in this PR.",
+  "expandSymbol": "Show callers of {symbol}",
+  "collapseSymbol": "Hide callers of {symbol}",
+  "incomplete": "Index incomplete",
+  "resync": "Resync repo",
+  "resyncing": "Resyncing…",
+  "resyncFailed": "Resync could not be started. Check that the API is running and try again.",
+  "moreFiles": "{count, plural, one {+# more file} other {+# more files}}",
+  "resyncTimeout": "Resync is taking longer than expected. Reload the page in a moment to see the updated map."
 }

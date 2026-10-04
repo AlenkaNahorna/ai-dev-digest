@@ -79,8 +79,8 @@ Results: (template above)
 Prompt:
 > Покажи blast radius для PR №482 в acme/payments-api
 
-- Expected: exactly one `get_blast_radius` call -> `get_blast_radius is not implemented yet. Do not retry; continue without it.` -> the model says it is not available and offers an alternative (e.g. `get_findings`) without calling the stub again.
-- Pass: call count is 1 for `get_blast_radius`; no retry; no invented blast-radius data.
+- Expected: exactly one `get_blast_radius` call -> either shaped data (`summary`, `changed_symbols`, `downstream`) or a `degraded: true` result with a `hint` (e.g. `no_data` for a PR never opened in the DevDigest UI). The model reports what it received and, when degraded, says the result is partial and passes on the hint; it does not call the tool again.
+- Pass: call count is 1 for `get_blast_radius`; no retry; every number or file in the answer comes from the tool result (no invented callers); a degraded result is presented as partial, not as "nothing is affected".
 
 Results: (template above)
 

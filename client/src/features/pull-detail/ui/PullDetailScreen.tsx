@@ -47,11 +47,12 @@ export function PullDetailScreen({ repoId, number }: { repoId: string; number: s
   if (pullsLoading || (prId != null && detailLoading)) return <AppShell crumb={crumb}><div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 16, maxWidth: 1080, margin: "0 auto" }}><Skeleton height={28} width={420} /><Skeleton height={16} width={300} /><Skeleton height={200} /></div></AppShell>;
   if (isError || !pr) return <AppShell crumb={crumb}><ErrorState fullScreen title={t("pullDetail.loadErrorTitle")} body={error instanceof ApiError ? error.message : t("pullDetail.loadErrorBody", { number })} onRetry={() => refetch()} /></AppShell>;
   const runs = reviews ?? [];
+  const intentCard = <IntentCard intent={intent} loading={intentLoading} onRederive={() => rederive.mutate()} rederiving={rederive.isPending} errorMessage={rederive.isError ? (rederive.error instanceof Error ? rederive.error.message : String(rederive.error)) : null} />;
   return <AppShell crumb={crumb}>
     <PrDetailHeader repoId={repoId} pr={pr} prId={prId} tab={tab} findingsCount={findingsCount} severityCounts={severityCounts} severityFilter={severityFilter} onSelectSeverity={(severity) => { setParam("severity", severityFilter === severity ? null : severity); setTab("findings"); }} githubUrl={repoFullName ? githubPrUrl(repoFullName, pr.number) : null} onSetTab={setTab} onRunStart={() => setTab("findings")} onRunsStarted={invalidateActiveRuns} />
-    <div style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 1080, margin: "0 auto" }}>
-      {(tab === "overview" || tab === "findings") && <IntentCard intent={intent} loading={intentLoading} onRederive={() => rederive.mutate()} rederiving={rederive.isPending} errorMessage={rederive.isError ? (rederive.error instanceof Error ? rederive.error.message : String(rederive.error)) : null} />}
-      {tab === "overview" && <OverviewTab prBody={pr.body} />}
+    <div style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: tab === "overview" ? "none" : 1080, margin: "0 auto" }}>
+      {tab === "findings" && intentCard}
+      {tab === "overview" && <OverviewTab prBody={pr.body} prId={prId} repoId={repoId} repoFullName={repoFullName} headSha={pr.head_sha} intent={intentCard} />}
   {tab === "findings" && <FindingsTab prId={prId} liveRunIds={liveRunIds} reviewRunning={reviewRunning} lethalTrifecta={lethalTrifecta} runs={runs} prRuns={prRuns} prCommits={pr.commits} repoFullName={repoFullName} headSha={pr.head_sha} cancelMutation={cancel} severityFilter={severityFilter} onOpenTrace={(id) => setParam("trace", id)} onDelete={(id) => { if (window.confirm(t("pullDetail.deleteRunConfirm"))) deleteRun.mutate(id); }} onRunDone={() => { invalidateActiveRuns(); invalidateRunHistory(); if (prId) qc.invalidateQueries({ queryKey: reviewKeys.byPull(prId) }); refetchReviews(); refetchIntent(); }} />}
       {tab === "diff" && <DiffTab prId={prId} filesCount={pr.files_count} files={pr.files} canComment={pr.status === "open"} />}
     </div>

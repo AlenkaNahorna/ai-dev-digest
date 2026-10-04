@@ -48,7 +48,7 @@ Names, descriptions and annotations are copied from `src/adapters/inbound/mcp/*.
 | `run_agent_on_pr` | Run one review agent on a pull request and wait for the result (up to 2 min). Returns verdict and findings. Starts a paid LLM run. | `repo` (`owner/name`), `pr` (integer), `agent` (name) | **absent** |
 | `get_findings` | Read verdict and findings of reviews already run on a pull request. Does not start a review. | `repo`, `pr`, `agent?`, `severity?` (`CRITICAL`/`WARNING`/`SUGGESTION`, minimum level) | yes |
 | `get_conventions` | Get the house rules extracted from a repository (latest scan). Use before writing or reviewing code there. | `repo`, `category?` | yes |
-| `get_blast_radius` | Show which symbols, callers and endpoints a pull request affects. Not implemented yet. | `repo`, `pr` | yes (stub, always returns an error result) |
+| `get_blast_radius` | Show which symbols, callers and endpoints a pull request affects. Read-only, from the repo index; may be partial. | `repo`, `pr` | yes |
 
 Server `instructions`: `DevDigest PR review. Start with list_agents.`
 
@@ -231,7 +231,7 @@ Tick each item; paste what you see in the "Observed" column. **Nothing here has 
 | 7 | `get_findings ... severity=CRITICAL` | `findings` has only the Stripe key finding; `counts` still describe the whole review (critical 1, warning 1) | |
 | 8 | `get_findings ... agent=Security Reviewer` | hint `No reviews by agent 'Security Reviewer' on PR #482 of acme/payments-api yet. Call run_agent_on_pr to run one.` (seed review is not tied to an agent; assumption) | |
 | 9 | `get_conventions repo=acme/payments-api` | `No conventions scan for acme/payments-api yet. Ask the user to run the Conventions extractor in DevDigest.` (no scan in seed). After running the extractor in the UI: record size with all rules (cap 50, `more`) | |
-| 10 | `get_blast_radius repo=acme/payments-api pr=482` | `isError: true`, text exactly `get_blast_radius is not implemented yet. Do not retry; continue without it.` With `pr=0`: input validation error, not the stub | |
+| 10 | `get_blast_radius repo=acme/payments-api pr=482` | Real data: JSON with `summary`, `changed_symbols`, `downstream` (callers as `file`/`line`). For a PR never opened in the UI or an unindexed repo: `degraded: true`, `degraded_reason: no_data` and a `hint`, not an error. With `pr=0`: input validation error | |
 | 11 | Error: unknown agent: `run_agent_on_pr ... agent=Nope` | `Agent 'Nope' not found. Call list_agents for valid names.` (nothing started: check the API runs list) | |
 | 12 | Error: repo not added: `repo=octo/missing` | `Repo 'octo/missing' is not added to DevDigest. Known repos: acme/payments-api. Ask the user to add it in the DevDigest UI.` | |
 | 13 | Error: invalid repo: `repo=payments-api` | `Repo 'payments-api' is not valid. Use the form owner/name, for example acme/payments-api.` | |

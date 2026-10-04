@@ -187,3 +187,12 @@ Rules: `domain/` imports nothing outside itself; `application/` imports only `do
 - No tool for triggering the conventions extractor, importing repos/PRs, or accepting/dismissing findings.
 - No edits to `.github/workflows/` without approval; no edits to existing lock files.
 - Real Blast Radius (step 9) is planned separately.
+
+## Amendment 2026-10-04: Blast Radius delivered (step 9 done)
+Appended per the owner's process (plans are immutable records; the sections above stay as history). Source plan: `docs/plans/2026-10-04-blast-radius.md`.
+- `get_blast_radius` is no longer a stub. It calls the new read-only API route `GET /pulls/:id/blast` (existing `BlastRadius` contract + optional `degraded` / `degraded_reason`) and returns shaped data. The input schema (`repo`, `pr`) and `readOnlyHint: true` are unchanged.
+- New description (replaces "Not implemented yet."), one line, under 200 characters:
+  `Show which symbols, callers and endpoints a pull request affects. Read-only, from the repo index; may be partial.`
+- The stub response text ("get_blast_radius is not implemented yet. Do not retry; continue without it.") is removed from the code and the golden test. The "Stub response text" section above remains as history only.
+- Output shape: `{ summary, changed_symbols: [{name, file, kind}], downstream: [{symbol, callers: [{name, file, line}], more_callers?, endpoints, crons}], more?, degraded?, degraded_reason?, hint? }`. `degraded` data is returned as a normal result (never `isError`), with a fixed `hint` chosen from `degraded_reason` (our text, never API text). Caps are listed in `mcp/specs/tools-contract.md`.
+- The `tools/list` token budget (<= 800, `cl100k_base`) is re-checked by `test/tools-list.test.ts` in the same change.

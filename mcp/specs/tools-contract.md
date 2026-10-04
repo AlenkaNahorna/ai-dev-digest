@@ -2,7 +2,7 @@
 
 > **Status:** partial · **Verified against:** `c9e51df` (working tree, `mcp/` untracked) on 2026-10-04 · **Sources:** plan `docs/plans/2026-10-04-devdigest-mcp.md`, code `mcp/src/**` (read, not executed: the first `npm test` run of steps 4-6 is pending; manual MCP-client verification (plan step 7) not done)
 
-Shipped (in code): all five tools, error mapping, caps. Not shipped: real `get_blast_radius` (plan step 9; visible stub), CI workflow, per-client verification.
+Shipped (in code): all five tools, error mapping, caps. `get_blast_radius` is real (plan step 9, delivered by `docs/plans/2026-10-04-blast-radius.md`). Not shipped: CI workflow, per-client verification.
 
 ## Conventions shared by all tools
 
@@ -44,11 +44,13 @@ Shipped (in code): all five tools, error mapping, caps. Not shipped: real `get_b
 - Output: `{scanned_at, conventions:[{category, rule, accepted, evidence:"path:line"}], more?}`. All candidates of the latest scan (accepted first, API order kept inside each group), at most 50, `rule` <= 300 chars, `evidence_path` <= 200 chars; snippets and ids dropped; `more` = rules cut.
 - Errors: `No conventions scan for <owner/name> yet. Ask the user to run the Conventions extractor in DevDigest.` (emitted when the scan has zero candidates, before the category filter; a filter that matches nothing returns an empty list instead).
 
-### `get_blast_radius` — read-only, stub
-- Description: `Show which symbols, callers and endpoints a pull request affects. Not implemented yet.`
-- Input: `repo`, `pr` (validated, then ignored).
-- Output: always `isError: true`, text `get_blast_radius is not implemented yet. Do not retry; continue without it.`
-- Status: Planned (plan step 9: new read-only server route + real handler; input schema stays).
+### `get_blast_radius` — read-only
+- Description: `Show which symbols, callers and endpoints a pull request affects. Read-only, from the repo index; may be partial.`
+- Input: `repo`, `pr` (resolved to the pull id like `get_findings`).
+- API: `GET /pulls/:id/blast` (pure read of the stored PR files + the repo index; no LLM, no GitHub call).
+- Output: `{summary, changed_symbols:[{name, file, kind}], downstream:[{symbol, callers:[{name, file, line}], more_callers?, endpoints, crons}], more?, degraded?, degraded_reason?, hint?}`. No recalculation: only caps and trimming (`domain/blast-shape.ts`). Caps: changed symbols <= 30, downstream groups <= 20, callers per group <= 10 (`more_callers` = cut), endpoints and crons per group <= 10; `more` = changed symbols plus groups cut. Strings are flattened with `clipText`: names <= 100, `file` <= 200, endpoint/cron <= 100, `summary` <= 200.
+- Degraded: `degraded: true` (+ `degraded_reason`: `flag_off|index_failed|index_partial|repo_too_large|no_data`) is returned as a normal result together with whatever data exists, plus a fixed `hint` chosen from the reason (never API text). Today the API only emits `no_data`. A PR whose files were never saved (never opened in the DevDigest UI) yields an empty result with `no_data`.
+- Errors: unknown repo or PR hints come from the resolver; transport/HTTP/contract failures are mapped like every other tool.
 
 ## Review shape
 
@@ -144,6 +146,5 @@ Both diagrams: not rendered/validated (no `mmdc` available); syntax checked by h
 
 ## Planned (not implemented)
 
-- Real `get_blast_radius` backed by a new read-only server route (plan step 9).
 - Per-client verification, eval prompts and client configs (plan step 7; owned by other files, `mcp/README.md`, `.mcp.json`, `mcp/evals/tasks.md`).
 - CI workflow `mcp.yml` (needs owner approval; `.github/workflows/` is Do Not Touch).

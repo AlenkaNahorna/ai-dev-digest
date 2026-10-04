@@ -59,6 +59,17 @@ const cases: Case[] = [
     ],
     make: (handler) => createGetConventionsTool({ log, ...(handler ? { handler } : {}) }),
   },
+  {
+    name: 'get_blast_radius',
+    valid: { repo: 'acme/payments-api', pr: 482 },
+    invalid: [
+      { repo: 'nope', pr: 482 },
+      { repo: 'acme/payments-api', pr: 0 },
+      { repo: 'acme/payments-api', pr: '482' },
+      { repo: 'acme/payments-api' },
+    ],
+    make: (handler) => createGetBlastRadiusTool({ log, ...(handler ? { handler } : {}) }),
+  },
 ];
 
 describe.each(cases)('$name tool adapter', ({ name, valid, invalid, make }) => {
@@ -92,23 +103,5 @@ describe.each(cases)('$name tool adapter', ({ name, valid, invalid, make }) => {
       throw new HintError('Agent x not found.');
     }).call(valid);
     expect(result).toEqual({ content: [{ type: 'text', text: 'Agent x not found.' }], isError: true });
-  });
-});
-
-describe('get_blast_radius stub', () => {
-  const tool = createGetBlastRadiusTool({ log });
-
-  it('returns the verbatim stub text as an error result', async () => {
-    const result = await tool.call({ repo: 'acme/payments-api', pr: 482 });
-    expect(result.isError).toBe(true);
-    expect(text(result)).toBe(
-      'get_blast_radius is not implemented yet. Do not retry; continue without it.',
-    );
-  });
-
-  it('still validates its input', async () => {
-    const result = await tool.call({ repo: 'nope', pr: 482 });
-    expect(result.isError).toBe(true);
-    expect(text(result)).toMatch(/^Invalid arguments: repo must look like owner\/name/);
   });
 });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   Agent,
   ApiErrorBody,
+  BlastRadius,
   ConventionCandidate,
   ConventionExtractResult,
   FindingRecord,
@@ -226,5 +227,6 @@ export function createHttpDevDigestApi(options: HttpApiOptions): DevDigestApi {
       waitForRunEvents({ baseUrl, fetch: doFetch }, runId, opts),
     listConventions: (repoId) =>
       request('GET', `/repos/${id(repoId)}/conventions`, ConventionScanSchema),
+    getBlastRadius: (pullId) => request('GET', `/pulls/${id(pullId)}/blast`, BlastRadius),
   };
 }

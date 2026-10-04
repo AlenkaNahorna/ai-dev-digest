@@ -16,7 +16,7 @@ const DESCRIPTIONS = {
   get_conventions:
     'Get the house rules extracted from a repository (latest scan). Use before writing or reviewing code there.',
   get_blast_radius:
-    'Show which symbols, callers and endpoints a pull request affects. Not implemented yet.',
+    'Show which symbols, callers and endpoints a pull request affects. Read-only, from the repo index; may be partial.',
 } as const;
 
 const PARAM = {

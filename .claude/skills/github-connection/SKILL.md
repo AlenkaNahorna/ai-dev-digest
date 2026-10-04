@@ -51,7 +51,7 @@ Tool names in Claude Code look like `mcp__devdigest__list_agents`. The server is
 | `run_agent_on_pr` | Run ONE agent on a PR and wait up to 2 min for verdict + findings | **paid LLM run** |
 | `get_findings` | Read already-run reviews (newest per agent); optional `agent`, `severity` | free, read-only |
 | `get_conventions` | Repo house rules from the latest scan; optional `category` | free, read-only |
-| `get_blast_radius` | Stub: always returns "not implemented yet" | free |
+| `get_blast_radius` | Symbols, callers (`file:line`), endpoints and crons a PR affects; may be `degraded` (partial) | free, read-only |
 
 Argument mapping from GitHub: `repo` = the same `owner/name` you pass to `gh -R`; `pr` = the same PR number; `agent` = an exact name from `list_agents` (for example `Security Reviewer`, not `Security`).
 
@@ -69,7 +69,7 @@ Argument mapping from GitHub: `repo` = the same `owner/name` you pass to `gh -R`
 ### Other combinations
 
 - **Conventions check:** `get_conventions` (repo) + `gh pr diff` → compare and report mismatches, labelled as your own analysis against DevDigest's rules.
-- **Blast radius:** call `get_blast_radius` once. It is a stub; do not retry. As a manual substitute you may list changed files and callers with `gh pr view --json files` and a code search, clearly labelled as not DevDigest's blast radius.
+- **Blast radius:** call `get_blast_radius` once. A `degraded: true` result is partial data (with a `hint`), not an error and not "nothing is affected": report it as partial and do not retry. If it has no data (for example `no_data`), you may list changed files and callers with `gh pr view --json files` and a code search, clearly labelled as not DevDigest's blast radius.
 - **"Is this PR in DevDigest?"** DevDigest answers with hints like "Repo … is not added" or "PR #n is not imported". The MCP cannot add repos or import PRs: tell the user to do it in the DevDigest UI. `gh pr view` tells you whether the PR exists on GitHub, so you can say "typo" versus "not imported".
 - **Posting results to GitHub** (a PR comment with findings) is a write: ask first and show the exact text.
 
@@ -82,4 +82,4 @@ Argument mapping from GitHub: `repo` = the same `owner/name` you pass to `gh -R`
 | `is not added to DevDigest` / `not imported` | Ask the user to add the repo / import PRs in the UI |
 | `No conventions scan` | Ask the user to run the Conventions extractor in the UI |
 | `rate limit` | Wait a minute before another `run_agent_on_pr` |
-| `not implemented yet` (blast radius) | Do not retry; continue without it |
+| `degraded` / `degraded_reason` (blast radius) | Report as partial, follow the `hint`; do not retry |

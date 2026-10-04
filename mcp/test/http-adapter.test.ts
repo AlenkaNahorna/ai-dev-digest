@@ -38,6 +38,34 @@ describe('http adapter', () => {
     expect(calls[0]?.url).toBe('http://localhost:3001/agents');
   });
 
+  it('reads the blast radius incl. the degraded flag, and encodes the id', async () => {
+    const body = {
+      changed_symbols: [{ name: 'a', file: 'a.ts', kind: 'function' }],
+      downstream: [{ symbol: 'a', callers: [{ name: 'c', file: 'b.ts', line: 3 }], endpoints_affected: ['GET /x'], crons_affected: [] }],
+      summary: '1 symbols · 1 callers · 1 endpoints · 0 crons',
+      degraded: true,
+      degraded_reason: 'no_data',
+      extra: 'dropped',
+    };
+    const { api, calls } = setup(() => json(body));
+    const out = await api.getBlastRadius('p/1');
+    expect(calls[0]?.url).toBe('http://localhost:3001/pulls/p%2F1/blast');
+    expect(out.degraded).toBe(true);
+    expect(out.degraded_reason).toBe('no_data');
+    expect(out.downstream[0]?.callers).toEqual([{ name: 'c', file: 'b.ts', line: 3 }]);
+    expect(out).not.toHaveProperty('extra');
+  });
+
+  it('fails with a contract error when the blast response lacks downstream', async () => {
+    const { api } = setup(() => json({ changed_symbols: [], summary: 's' }));
+    await expect(api.getBlastRadius('p1')).rejects.toMatchObject({ kind: 'contract' });
+  });
+
+  it('maps a 404 envelope on the blast route to an http error', async () => {
+    const { api } = setup(() => json({ error: { code: 'not_found', message: 'Pull request not found' } }, 404));
+    await expect(api.getBlastRadius('p1')).rejects.toMatchObject({ kind: 'http', info: { status: 404 } });
+  });
+
   it('percent-encodes ids placed in paths', async () => {
     const { api, calls } = setup(() => json([]));
     await api.listPulls('a/b?x=1');
