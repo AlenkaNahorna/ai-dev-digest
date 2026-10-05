@@ -9,6 +9,8 @@ export const NAME_MAX = 100;
 export const FILE_MAX = 200;
 export const FACT_MAX = 100;
 export const SUMMARY_MAX = 200;
+export const PRIOR_PRS_MAX = 5;
+export const TITLE_MAX = 100;
 
 export interface BlastInput {
   readonly changed_symbols: readonly { readonly name: string; readonly file: string; readonly kind: string }[];
@@ -21,6 +23,7 @@ export interface BlastInput {
   readonly summary: string;
   readonly degraded?: boolean | undefined;
   readonly degraded_reason?: string | undefined;
+  readonly prior_prs?: readonly { readonly number: number; readonly title: string; readonly status: string; readonly shared_files: number }[] | undefined;
 }
 
 export interface BlastView {
@@ -36,6 +39,8 @@ export interface BlastView {
   }[];
   /** Changed symbols plus downstream groups cut by the caps; omitted when nothing was cut. */
   more?: number;
+  /** Earlier PRs that touched the same files (newest first); omitted when none. */
+  prior_prs?: { number: number; title: string; status: string; shared_files: number }[];
   degraded?: true;
   degraded_reason?: string;
   /** Fixed text chosen from the reason; never API text. */
@@ -80,6 +85,14 @@ export function shapeBlast(input: BlastInput): BlastView {
 
   const view: BlastView = { summary: clipText(input.summary, SUMMARY_MAX), changed_symbols, downstream };
   if (more > 0) view.more = more;
+  if (input.prior_prs && input.prior_prs.length > 0) {
+    view.prior_prs = input.prior_prs.slice(0, PRIOR_PRS_MAX).map((p) => ({
+      number: p.number,
+      title: clipText(p.title, TITLE_MAX),
+      status: clipText(p.status, 30),
+      shared_files: p.shared_files,
+    }));
+  }
   if (input.degraded === true) {
     view.degraded = true;
     if (input.degraded_reason !== undefined) view.degraded_reason = clipText(input.degraded_reason, 30);

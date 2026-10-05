@@ -33,7 +33,7 @@ const cases: Case[] = [
       { repo: 'acme', pr: 482, agent: 'security' },
       { repo: 'acme/payments-api', pr: 0, agent: 'security' },
       { repo: 'acme/payments-api', pr: 1.5, agent: 'security' },
-      { repo: 'acme/payments-api', pr: '482', agent: 'security' },
+      { repo: 'acme/payments-api', pr: '48x', agent: 'security' },
       { repo: 'acme/payments-api', pr: 482, agent: '  ' },
       { repo: 'acme/payments-api', pr: 482 },
     ],
@@ -65,7 +65,7 @@ const cases: Case[] = [
     invalid: [
       { repo: 'nope', pr: 482 },
       { repo: 'acme/payments-api', pr: 0 },
-      { repo: 'acme/payments-api', pr: '482' },
+      { repo: 'acme/payments-api', pr: '48x' },
       { repo: 'acme/payments-api' },
     ],
     make: (handler) => createGetBlastRadiusTool({ log, ...(handler ? { handler } : {}) }),
@@ -103,5 +103,21 @@ describe.each(cases)('$name tool adapter', ({ name, valid, invalid, make }) => {
       throw new HintError('Agent x not found.');
     }).call(valid);
     expect(result).toEqual({ content: [{ type: 'text', text: 'Agent x not found.' }], isError: true });
+  });
+});
+
+describe('pr argument', () => {
+  it.each(['482', ' 482 ', 482])('accepts %j and hands the handler a number', async (pr) => {
+    const handler = vi.fn(async (_args: Record<string, unknown>) => ({}));
+    const result = await createGetBlastRadiusTool({ log, handler }).call({ repo: 'acme/payments-api', pr });
+    expect(result.isError).toBeUndefined();
+    expect(handler).toHaveBeenCalledWith({ repo: 'acme/payments-api', pr: 482 });
+  });
+
+  it.each(['0', '-3', '1.5', 'abc', ''])('rejects %j', async (pr) => {
+    const handler = vi.fn(async () => ({}));
+    const result = await createGetBlastRadiusTool({ log, handler }).call({ repo: 'acme/payments-api', pr });
+    expect(result.isError).toBe(true);
+    expect(handler).not.toHaveBeenCalled();
   });
 });

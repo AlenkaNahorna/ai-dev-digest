@@ -72,6 +72,28 @@ d('blast route (Testcontainers pg)', () => {
     await a.close();
   });
 
+  it('lists earlier PRs of the same repo that touched the same files, newest first', async () => {
+    const { pr, repoId } = await setupPr(pg.handle.db, workspaceId, ['src/a.ts', 'src/z.ts']);
+    const older = async (number: number, title: string, files: string[]) => {
+      const [row] = await pg.handle.db
+        .insert(t.pullRequests)
+        .values({ workspaceId, repoId, number, title, author: 'a', branch: 'b', base: 'main', headSha: 'old', status: 'merged' })
+        .returning();
+      await pg.handle.db.insert(t.prFiles).values(files.map((path) => ({ prId: row!.id, path, additions: 1, deletions: 0 })));
+    };
+    await older(5, 'Touches a', ['src/a.ts']);
+    await older(6, 'Touches both', ['src/a.ts', 'src/z.ts']);
+    await older(7, 'Unrelated', ['docs/x.md']);
+    const a = await app();
+    const res = await a.inject({ method: 'GET', url: `/pulls/${pr.id}/blast` });
+    const body = BlastRadius.parse(res.json());
+    expect(body.prior_prs).toEqual([
+      { number: 6, title: 'Touches both', status: 'merged', shared_files: 2 },
+      { number: 5, title: 'Touches a', status: 'merged', shared_files: 1 },
+    ]);
+    await a.close();
+  });
+
   it('404 for an unknown pull id', async () => {
     const a = await app();
     const res = await a.inject({ method: 'GET', url: '/pulls/00000000-0000-4000-8000-000000000000/blast' });

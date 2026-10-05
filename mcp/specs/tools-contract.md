@@ -6,7 +6,7 @@ Shipped (in code): all five tools, error mapping, caps. `get_blast_radius` is re
 
 ## Conventions shared by all tools
 
-- Arguments are flat scalars: `repo` = `"owner/name"` (anchored regex, `domain/input.ts:REPO_PATTERN`), `pr` = positive safe integer, `agent` = agent name (trimmed, 1-200 chars; matched case-insensitively, `domain/match.ts`). Invalid arguments never reach a use case: result is `isError` with `Invalid arguments: <path> <message>; ... Fix the arguments and call again.` (`define-tool.ts`).
+- Arguments are flat scalars: `repo` = `"owner/name"` (anchored regex, `domain/input.ts:REPO_PATTERN`), `pr` = positive safe integer, published as a digits-only string (`"42"`; a plain number is also accepted and both reach the handler as a number), `agent` = agent id (exact, wins) or name (trimmed, 1-200 chars; names matched case-insensitively, `domain/match.ts`). Every parameter description carries an example (`ARG_DOC` in `arg-schemas.ts`). Invalid arguments never reach a use case: result is `isError` with `Invalid arguments: <path> <message>; ... Fix the arguments and call again.` (`define-tool.ts`).
 - Success = one text content item with compact JSON (`JSON.stringify`). Failure = `isError: true` with a one-line message (see "Errors").
 - No `outputSchema`, no `title`. Server `instructions`: `DevDigest PR review. Start with list_agents.`
 - Unknown tool name: `Unknown tool '<name>'. Available tools: <list>.` (`server.ts`).
@@ -19,7 +19,7 @@ Shipped (in code): all five tools, error mapping, caps. `get_blast_radius` is re
 ### `list_agents` — read-only
 - Description: `List the review agents configured in DevDigest. Call first to get a valid agent name.`
 - Input: none.
-- Output: `{agents:[{name, description, enabled}], more?}`. name <= 100 chars, description <= 120 chars, at most 100 agents; `more` = agents cut (omitted when 0). `id`, `system_prompt` and every other field are dropped at the HTTP boundary.
+- Output: `{agents:[{id, name, description, model, enabled}], more?}`. Pass `id` (unique) or `name` as `agent` to `run_agent_on_pr` / `get_findings`. id <= 64 chars, name <= 100, description <= 120, model <= 60, at most 100 agents; `more` = agents cut (omitted when 0). `system_prompt` and every other field are dropped at the HTTP boundary.
 - Calls: `GET /agents`.
 - Errors: API errors only.
 
@@ -48,7 +48,7 @@ Shipped (in code): all five tools, error mapping, caps. `get_blast_radius` is re
 - Description: `Show which symbols, callers and endpoints a pull request affects. Read-only, from the repo index; may be partial.`
 - Input: `repo`, `pr` (resolved to the pull id like `get_findings`).
 - API: `GET /pulls/:id/blast` (pure read of the stored PR files + the repo index; no LLM, no GitHub call).
-- Output: `{summary, changed_symbols:[{name, file, kind}], downstream:[{symbol, callers:[{name, file, line}], more_callers?, endpoints, crons}], more?, degraded?, degraded_reason?, hint?}`. No recalculation: only caps and trimming (`domain/blast-shape.ts`). Caps: changed symbols <= 30, downstream groups <= 20, callers per group <= 10 (`more_callers` = cut), endpoints and crons per group <= 10; `more` = changed symbols plus groups cut. Strings are flattened with `clipText`: names <= 100, `file` <= 200, endpoint/cron <= 100, `summary` <= 200.
+- Output: `{summary, changed_symbols:[{name, file, kind}], downstream:[{symbol, callers:[{name, file, line}], more_callers?, endpoints, crons}], more?, prior_prs?, degraded?, degraded_reason?, hint?}`. `prior_prs:[{number, title, status, shared_files}]` = earlier PRs of the repo that touched the same files, newest first, <= 5, title <= 100. No recalculation: only caps and trimming (`domain/blast-shape.ts`). Caps: changed symbols <= 30, downstream groups <= 20, callers per group <= 10 (`more_callers` = cut), endpoints and crons per group <= 10; `more` = changed symbols plus groups cut. Strings are flattened with `clipText`: names <= 100, `file` <= 200, endpoint/cron <= 100, `summary` <= 200.
 - Degraded: `degraded: true` (+ `degraded_reason`: `flag_off|index_failed|index_partial|repo_too_large|no_data`) is returned as a normal result together with whatever data exists, plus a fixed `hint` chosen from the reason (never API text). Today the API only emits `no_data`. A PR whose files were never saved (never opened in the DevDigest UI) yields an empty result with `no_data`.
 - Errors: unknown repo or PR hints come from the resolver; transport/HTTP/contract failures are mapped like every other tool.
 

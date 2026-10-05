@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AgentArg, PrArg, RepoArg } from './arg-schemas.js';
+import { ARG_DOC, AgentArg, PrArg, RepoArg } from './arg-schemas.js';
 import { defineTool, notImplementedHandler } from './define-tool.js';
 import type { McpTool, ToolOptions, ToolSpec } from './define-tool.js';
 
@@ -14,9 +14,9 @@ const spec: ToolSpec = {
   inputSchema: {
     type: 'object',
     properties: {
-      repo: { type: 'string', description: 'Repository as owner/name' },
-      pr: { type: 'integer', minimum: 1, description: 'PR number' },
-      agent: { type: 'string', description: 'Agent name from list_agents' },
+      repo: { type: 'string', description: ARG_DOC.repo },
+      pr: { type: 'string', pattern: '^[0-9]+$', description: ARG_DOC.pr },
+      agent: { type: 'string', description: ARG_DOC.agentRequired },
     },
     required: ['repo', 'pr', 'agent'],
   },

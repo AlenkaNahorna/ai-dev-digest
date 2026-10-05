@@ -43,5 +43,9 @@
   "resyncing": "Resyncing…",
   "resyncFailed": "Resync could not be started. Check that the API is running and try again.",
   "moreFiles": "{count, plural, one {+# more file} other {+# more files}}",
-  "resyncTimeout": "Resync is taking longer than expected. Reload the page in a moment to see the updated map."
+  "resyncTimeout": "Resync is taking longer than expected. Reload the page in a moment to see the updated map.",
+  "priorPrs": {
+    "title": "Prior PRs on these files",
+    "shared": "{count, plural, one {# shared file} other {# shared files}}"
+  }
 }

@@ -26,7 +26,7 @@ import { waitForRunEvents } from './wait-for-run.js';
 // agent's `system_prompt` never leave this file. A contract drift (missing or
 // retyped field) fails loudly in `request()` instead of producing garbage.
 
-const AgentRowSchema = Agent.pick({ id: true, name: true, description: true, enabled: true });
+const AgentRowSchema = Agent.pick({ id: true, name: true, description: true, model: true, enabled: true });
 const RepoRowSchema = Repo.pick({ id: true, owner: true, name: true, full_name: true });
 const PullRowSchema = PrMeta.pick({ id: true, number: true, title: true }).extend({
   id: z.string(), // nullish in the contract; a pull we can address always has one

@@ -33,7 +33,7 @@ describe('http adapter', () => {
       ]),
     );
     const agents = await api.listAgents();
-    expect(agents).toEqual([{ id: 'a1', name: 'Security', description: 'Finds vulns', enabled: true }]);
+    expect(agents).toEqual([{ id: 'a1', name: 'Security', description: 'Finds vulns', model: 'gpt', enabled: true }]);
     expect(JSON.stringify(agents)).not.toContain('SECRET');
     expect(calls[0]?.url).toBe('http://localhost:3001/agents');
   });

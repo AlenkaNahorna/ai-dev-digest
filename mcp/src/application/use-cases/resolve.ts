@@ -78,7 +78,7 @@ export function createResolver(api: ResolverApi): Resolver {
 
   async function resolveAgent(name: string): Promise<AgentRow> {
     if (name.trim() === '') {
-      throw new HintError('Agent name is required. Call list_agents for valid names.');
+      throw new HintError('Agent name is required. Call list_agents for valid ids or names.');
     }
     const agents = await api.listAgents();
     const match = matchAgent(agents, name);
@@ -89,10 +89,10 @@ export function createResolver(api: ResolverApi): Resolver {
         .map((a) => `${clipText(a.name, 60)} [${shortId(a.id)}]`)
         .join(', ');
       throw new HintError(
-        `Agent name '${asked}' is ambiguous: it matches ${match.items.length} agents (${options}). Ask the user to give the agents distinct names in the DevDigest UI.`,
+        `Agent name '${asked}' is ambiguous: it matches ${match.items.length} agents (${options}). Pass the agent id from list_agents instead of the name.`,
       );
     }
-    throw new HintError(`Agent '${asked}' not found. Call list_agents for valid names.`);
+    throw new HintError(`Agent '${asked}' not found. Call list_agents for valid ids or names.`);
   }
 
   return { resolveRepo, resolvePull, resolveAgent };

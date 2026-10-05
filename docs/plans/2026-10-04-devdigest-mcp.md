@@ -196,3 +196,11 @@ Appended per the owner's process (plans are immutable records; the sections abov
 - The stub response text ("get_blast_radius is not implemented yet. Do not retry; continue without it.") is removed from the code and the golden test. The "Stub response text" section above remains as history only.
 - Output shape: `{ summary, changed_symbols: [{name, file, kind}], downstream: [{symbol, callers: [{name, file, line}], more_callers?, endpoints, crons}], more?, degraded?, degraded_reason?, hint? }`. `degraded` data is returned as a normal result (never `isError`), with a fixed `hint` chosen from `degraded_reason` (our text, never API text). Caps are listed in `mcp/specs/tools-contract.md`.
 - The `tools/list` token budget (<= 800, `cl100k_base`) is re-checked by `test/tools-list.test.ts` in the same change.
+
+## Amendment 2026-10-05: PR review fixes (arg schemas, agent ids, prior PRs)
+Appended per the owner's process; the sections above stay as history.
+- `pr` is published as a digits-only string (`{type:"string", pattern:"^[0-9]+$"}`, example `"42"`) and the server also tolerates a plain number, so clients that send either work. The handler still receives a positive safe integer. Supersedes "`pr` integer min 1" in the Schemas row.
+- Every parameter description now carries an example (`e.g. "acme/payments"`, `"42"`, `"security"`, `"WARNING"`, `"naming"`). One constant (`ARG_DOC` in `arg-schemas.ts`) feeds both `tools/list` and Zod `.describe()`. Tool descriptions are unchanged. Golden test and the <= 800-token budget updated (about 580 tokens).
+- `list_agents` returns `{agents:[{id, name, description, model, enabled}], more?}`. Ids are unique, so `run_agent_on_pr` and `get_findings` accept an agent id or name for `agent`; an exact id wins over a name. This reverses "`id` ... dropped at the HTTP boundary" in the tool contract.
+- `get_blast_radius` adds `prior_prs?: [{number, title, status, shared_files}]` (earlier PRs that touched the same files, newest first, <= 5), passed through from `GET /pulls/:id/blast`.
+

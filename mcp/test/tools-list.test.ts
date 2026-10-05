@@ -19,14 +19,18 @@ const DESCRIPTIONS = {
     'Show which symbols, callers and endpoints a pull request affects. Read-only, from the repo index; may be partial.',
 } as const;
 
+// Amended 2026-10-05 (see the dated amendment in the plan): examples in every param description,
+// `pr` published as a digits-only string, agents addressable by id or name.
 const PARAM = {
-  repo: 'Repository as owner/name',
-  pr: 'PR number',
-  agentRequired: 'Agent name from list_agents',
-  agentOptional: 'Only this agent (name from list_agents)',
-  severity: 'Minimum severity',
-  category: 'Only this category',
+  repo: 'Repository as owner/name, e.g. "acme/payments"',
+  pr: 'PR number as a string, e.g. "42"',
+  agentRequired: 'Agent id or name from list_agents, e.g. "security"',
+  agentOptional: 'Only this agent (id or name from list_agents), e.g. "security"',
+  severity: 'Minimum severity, e.g. "WARNING"',
+  category: 'Only this category, e.g. "naming"',
 } as const;
+
+const PR_PROP = { type: 'string', pattern: '^[0-9]+$', description: PARAM.pr } as const;
 
 const TOKEN_BUDGET = 800;
 
@@ -45,7 +49,7 @@ const EXPECTED_TOOLS = [
       type: 'object',
       properties: {
         repo: { type: 'string', description: PARAM.repo },
-        pr: { type: 'integer', minimum: 1, description: PARAM.pr },
+        pr: PR_PROP,
         agent: { type: 'string', description: PARAM.agentRequired },
       },
       required: ['repo', 'pr', 'agent'],
@@ -58,7 +62,7 @@ const EXPECTED_TOOLS = [
       type: 'object',
       properties: {
         repo: { type: 'string', description: PARAM.repo },
-        pr: { type: 'integer', minimum: 1, description: PARAM.pr },
+        pr: PR_PROP,
         agent: { type: 'string', description: PARAM.agentOptional },
         severity: {
           type: 'string',
@@ -94,7 +98,7 @@ const EXPECTED_TOOLS = [
       type: 'object',
       properties: {
         repo: { type: 'string', description: PARAM.repo },
-        pr: { type: 'integer', minimum: 1, description: PARAM.pr },
+        pr: PR_PROP,
       },
       required: ['repo', 'pr'],
     },
@@ -154,6 +158,7 @@ describe('tools/list contract', () => {
         expect(property['properties'], `${tool.name}.${name}`).toBeUndefined();
         expect(property['items'], `${tool.name}.${name}`).toBeUndefined();
         expect(typeof property['description'], `${tool.name}.${name}`).toBe('string');
+        expect(property['description'], `${tool.name}.${name} needs an example`).toMatch(/e\.g\./);
       }
     }
   });

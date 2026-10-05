@@ -2,6 +2,9 @@ import type { BlastRadius } from '@devdigest/shared';
 import { formatBlastSummary, mapBlast } from '../../domain/map-blast.js';
 import type { BlastIntelPort, BlastPullFilesPort } from '../ports/blast-ports.js';
 
+/** Prior PRs shown with the blast radius. */
+export const PRIOR_PRS_LIMIT = 5;
+
 export interface GetBlastRadiusDeps {
   files: BlastPullFilesPort;
   intel: BlastIntelPort;
@@ -24,6 +27,11 @@ export function createGetBlastRadius({ files, intel }: GetBlastRadiusDeps) {
         degraded_reason: 'no_data',
       };
     }
-    return mapBlast(await intel.getBlastRadius(pull.repoId, pull.changedFiles));
+    const [blast, priorPrs] = await Promise.all([
+      intel.getBlastRadius(pull.repoId, pull.changedFiles),
+      files.listPriorPulls(workspaceId, pull.repoId, pullId, pull.changedFiles, PRIOR_PRS_LIMIT),
+    ]);
+    const mapped = mapBlast(blast);
+    return priorPrs.length > 0 ? { ...mapped, prior_prs: priorPrs } : mapped;
   };
 }

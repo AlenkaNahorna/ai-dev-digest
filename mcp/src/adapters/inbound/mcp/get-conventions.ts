@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ConventionCategory } from '@devdigest/shared';
-import { RepoArg } from './arg-schemas.js';
+import { ARG_DOC, RepoArg } from './arg-schemas.js';
 import { defineTool, notImplementedHandler } from './define-tool.js';
 import type { McpTool, ToolOptions, ToolSpec } from './define-tool.js';
 
@@ -13,11 +13,11 @@ const spec: ToolSpec = {
   inputSchema: {
     type: 'object',
     properties: {
-      repo: { type: 'string', description: 'Repository as owner/name' },
+      repo: { type: 'string', description: ARG_DOC.repo },
       category: {
         type: 'string',
         enum: [...ConventionCategory.options],
-        description: 'Only this category',
+        description: ARG_DOC.category,
       },
     },
     required: ['repo'],
@@ -27,7 +27,7 @@ const spec: ToolSpec = {
 
 const GetConventionsArgs = z.object({
   repo: RepoArg,
-  category: ConventionCategory.optional(),
+  category: ConventionCategory.describe(ARG_DOC.category).optional(),
 });
 export type GetConventionsArgs = z.infer<typeof GetConventionsArgs>;
 

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Severity } from '@devdigest/shared';
-import { AgentArg, PrArg, RepoArg } from './arg-schemas.js';
+import { ARG_DOC, AgentArg, PrArg, RepoArg } from './arg-schemas.js';
 import { defineTool, notImplementedHandler } from './define-tool.js';
 import type { McpTool, ToolOptions, ToolSpec } from './define-tool.js';
 
@@ -13,10 +13,10 @@ const spec: ToolSpec = {
   inputSchema: {
     type: 'object',
     properties: {
-      repo: { type: 'string', description: 'Repository as owner/name' },
-      pr: { type: 'integer', minimum: 1, description: 'PR number' },
-      agent: { type: 'string', description: 'Only this agent (name from list_agents)' },
-      severity: { type: 'string', enum: [...Severity.options], description: 'Minimum severity' },
+      repo: { type: 'string', description: ARG_DOC.repo },
+      pr: { type: 'string', pattern: '^[0-9]+$', description: ARG_DOC.pr },
+      agent: { type: 'string', description: ARG_DOC.agentOptional },
+      severity: { type: 'string', enum: [...Severity.options], description: ARG_DOC.severity },
     },
     required: ['repo', 'pr'],
   },
@@ -26,8 +26,8 @@ const spec: ToolSpec = {
 const GetFindingsArgs = z.object({
   repo: RepoArg,
   pr: PrArg,
-  agent: AgentArg.optional(),
-  severity: Severity.optional(),
+  agent: AgentArg.describe(ARG_DOC.agentOptional).optional(),
+  severity: Severity.describe(ARG_DOC.severity).optional(),
 });
 export type GetFindingsArgs = z.infer<typeof GetFindingsArgs>;
 

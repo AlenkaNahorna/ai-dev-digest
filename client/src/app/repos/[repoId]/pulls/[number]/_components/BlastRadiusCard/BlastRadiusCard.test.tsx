@@ -180,6 +180,28 @@ describe("BlastRadiusCard", () => {
     expect(screen.getAllByRole("link", { name: "src/r.ts:4" })).toHaveLength(1);
   });
 
+  it("lists prior PRs that touched the same files with links to GitHub", () => {
+    renderCard({
+      data: {
+        ...data,
+        prior_prs: [
+          { number: 41, title: "Tune limiter", status: "merged", shared_files: 2 },
+          { number: 12, title: "Add auth", status: "open", shared_files: 1 },
+        ],
+      },
+    });
+    expect(screen.getByText("Prior PRs on these files")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "#41" })).toHaveAttribute("href", "https://github.com/acme/payments/pull/41");
+    expect(screen.getByText("Tune limiter")).toBeInTheDocument();
+    expect(screen.getByText("2 shared files")).toBeInTheDocument();
+    expect(screen.getByText("1 shared file")).toBeInTheDocument();
+  });
+
+  it("shows no prior PRs section when the response has none", () => {
+    renderCard();
+    expect(screen.queryByText("Prior PRs on these files")).not.toBeInTheDocument();
+  });
+
   it("uses singular and plural caller labels", () => {
     renderCard();
     expect(screen.getAllByText("1 caller").length).toBeGreaterThan(0);

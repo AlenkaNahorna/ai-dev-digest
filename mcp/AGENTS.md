@@ -48,7 +48,7 @@ Dependency rules: `domain/` imports nothing outside itself; `application/` impor
 - **Tool descriptions, parameter descriptions, server `instructions` are verbatim from the plan** ("Tool descriptions" section). `test/tools-list.test.ts` compares them to a golden payload.
 - **Token budget**: serialized `tools/list` definitions + `instructions` <= 800 tokens (`cl100k_base`), enforced by `test/tools-list.test.ts`. Also: exactly 5 tools, descriptions <= 200 chars, flat scalar params only, no `outputSchema`/`title`, `readOnlyHint: true` on four tools and none on `run_agent_on_pr`.
 - **Bounded output**: every response is capped (items + per-field length); see `specs/tools-contract.md`. Strings from the API are untrusted: flattened (`clipText`) and never interpolated into instructions.
-- **Validate before URLs**: `repo` must match an anchored `owner/name` regex, `pr` a positive safe integer, ids are `encodeURIComponent`-ed.
+- **Validate before URLs**: `repo` must match an anchored `owner/name` regex, `pr` a positive safe integer (sent as a digits-only string, a number is tolerated), ids are `encodeURIComponent`-ed.
 - **Reads never run a review**: only `run_agent_on_pr` may cost money; it never starts a second run for an agent that already has one in flight.
 - **No polling**: waiting for a run uses the SSE stream, not request loops (API global limit is 120 req/min shared with the web UI).
 
@@ -69,7 +69,7 @@ Every message says what is wrong and what to do next. Expected, user-fixable pro
 - `src/compose.ts` — wiring; `src/adapters/inbound/mcp/define-tool.ts` — arg validation + guarded handler + compact JSON result
 - `src/adapters/inbound/mcp/server.ts` — low-level `Server`, `tools/list` and `tools/call` handlers
 - `src/adapters/outbound/http/devdigest-api.ts` / `wait-for-run.ts` — HTTP + SSE
-- `src/application/use-cases/resolve.ts` — `owner/name`, PR number, agent name -> ids
+- `src/application/use-cases/resolve.ts` — `owner/name`, PR number, agent id or name -> ids
 - `src/domain/review-shape.ts` — newest review per agent, severity order, caps
 
 ## Do Not Touch

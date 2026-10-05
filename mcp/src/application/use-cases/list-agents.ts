@@ -4,7 +4,7 @@ import type { DevDigestApi } from '../ports/devdigest-api.js';
 
 export type ListAgentsApi = Pick<DevDigestApi, 'listAgents'>;
 
-/** `list_agents`: one read, trimmed to name + description + enabled. */
+/** `list_agents`: one read, trimmed to id + name + description + model + enabled. */
 export function createListAgents(api: ListAgentsApi): () => Promise<AgentsView> {
   return async () => shapeAgents(await api.listAgents());
 }

@@ -14,6 +14,7 @@ const agent = (id: string, name: string, enabled = true): AgentRow => ({
   id,
   name,
   description: '',
+  model: 'gpt-x',
   enabled,
 });
 const pull = (id: string, number: number): PullRow => ({ id, number, title: `PR ${number}` });
@@ -79,6 +80,19 @@ describe('domain/match', () => {
     expect(matchAgent(agents, ' SECURITY ')).toEqual({ kind: 'many', items: agents });
     const pulls = [pull('p1', 7), pull('p2', 7)];
     expect(matchPull(pulls, 7).kind).toBe('many');
+  });
+});
+
+describe('domain/match: agent by id', () => {
+  it('prefers an exact id over names, so same-named agents stay addressable', () => {
+    const agents = [agent('a1', 'Security'), agent('a2', 'security')];
+    expect(matchAgent(agents, 'a2')).toEqual({ kind: 'one', item: agents[1] });
+    expect(matchAgent(agents, ' a1 ')).toEqual({ kind: 'one', item: agents[0] });
+  });
+
+  it('falls back to the name when the text is not an id', () => {
+    const agents = [agent('a1', 'Security')];
+    expect(matchAgent(agents, 'SECURITY')).toEqual({ kind: 'one', item: agents[0] });
   });
 });
 

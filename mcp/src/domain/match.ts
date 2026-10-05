@@ -31,11 +31,16 @@ export function matchPull<T extends { readonly number: number }>(
   return toMatch(pulls.filter((p) => p.number === number));
 }
 
-/** Agent whose `name` equals `name`, case-insensitively (names are not unique). */
-export function matchAgent<T extends { readonly name: string }>(
+/**
+ * Agent referenced by exact `id` (unique, so it wins), else by `name`, case-insensitively
+ * (names are not unique).
+ */
+export function matchAgent<T extends { readonly id: string; readonly name: string }>(
   agents: readonly T[],
-  name: string,
+  ref: string,
 ): Match<T> {
-  const wanted = normalizeKey(name);
+  const byId = agents.filter((a) => a.id === ref.trim());
+  if (byId.length === 1) return toMatch(byId);
+  const wanted = normalizeKey(ref);
   return toMatch(agents.filter((a) => normalizeKey(a.name) === wanted));
 }

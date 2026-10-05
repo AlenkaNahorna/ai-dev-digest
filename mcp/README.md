@@ -45,7 +45,7 @@ Names, descriptions and annotations are copied from `src/adapters/inbound/mcp/*.
 | Tool | Description | Arguments | `readOnlyHint` |
 |---|---|---|---|
 | `list_agents` | List the review agents configured in DevDigest. Call first to get a valid agent name. | none | yes |
-| `run_agent_on_pr` | Run one review agent on a pull request and wait for the result (up to 2 min). Returns verdict and findings. Starts a paid LLM run. | `repo` (`owner/name`), `pr` (integer), `agent` (name) | **absent** |
+| `run_agent_on_pr` | Run one review agent on a pull request and wait for the result (up to 2 min). Returns verdict and findings. Starts a paid LLM run. | `repo` (`owner/name`), `pr` (number as string, e.g. `"42"`), `agent` (id or name from `list_agents`) | **absent** |
 | `get_findings` | Read verdict and findings of reviews already run on a pull request. Does not start a review. | `repo`, `pr`, `agent?`, `severity?` (`CRITICAL`/`WARNING`/`SUGGESTION`, minimum level) | yes |
 | `get_conventions` | Get the house rules extracted from a repository (latest scan). Use before writing or reviewing code there. | `repo`, `category?` | yes |
 | `get_blast_radius` | Show which symbols, callers and endpoints a pull request affects. Read-only, from the repo index; may be partial. | `repo`, `pr` | yes |
@@ -224,7 +224,7 @@ Tick each item; paste what you see in the "Observed" column. **Nothing here has 
 |---|---|---|---|
 | 1 | Connect; `initialize` result | `instructions` = `DevDigest PR review. Start with list_agents.`; stderr (Console tab) shows `ready (API http://127.0.0.1:3001, run wait limit 120000 ms)` | |
 | 2 | Tools tab: tool count and names | exactly 5: `list_agents`, `run_agent_on_pr`, `get_findings`, `get_conventions`, `get_blast_radius` | |
-| 3 | Schemas | flat scalars only; `pr` integer min 1; `severity` enum `CRITICAL`/`WARNING`/`SUGGESTION`; `category` enum `naming`/`structure`/`testing`/`error-handling`/`api-contract`/`other`; no `outputSchema`; parameter descriptions as in the table above | |
+| 3 | Schemas | flat scalars only; `pr` digits-only string (a number is also accepted); every parameter description has an example; `severity` enum `CRITICAL`/`WARNING`/`SUGGESTION`; `category` enum `naming`/`structure`/`testing`/`error-handling`/`api-contract`/`other`; no `outputSchema`; parameter descriptions as in the table above | |
 | 4 | Annotations | `readOnlyHint: true` on `list_agents`, `get_findings`, `get_conventions`, `get_blast_radius`; **no** `readOnlyHint` on `run_agent_on_pr` | |
 | 5 | `list_agents` | 5 agents with `name`, `description` (<= 120 chars), `enabled`; no prompts or model config. Record response size (chars/bytes) | |
 | 6 | `get_findings repo=acme/payments-api pr=482` | the seeded review: `verdict: request_changes`, `score: 61`, counts critical 1 / warning 1 / suggestion 0, two findings, CRITICAL first, `more: 0`. The seed review has no agent, so `agent` may be an empty string (assumption, check). Record size | |

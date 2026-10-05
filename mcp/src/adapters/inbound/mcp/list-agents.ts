@@ -15,7 +15,7 @@ const spec: ToolSpec = {
 const ListAgentsArgs = z.object({});
 export type ListAgentsArgs = z.infer<typeof ListAgentsArgs>;
 
-/** Output: `{agents:[{name, description, enabled}]}` (plan step 4). */
+/** Output: `{agents:[{id, name, description, model, enabled}]}` (plan step 4, amended 2026-10-05). */
 export type ListAgentsHandler = (args: ListAgentsArgs) => Promise<unknown>;
 
 export function createListAgentsTool(options: ToolOptions<ListAgentsHandler>): McpTool {

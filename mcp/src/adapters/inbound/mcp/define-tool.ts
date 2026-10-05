@@ -7,6 +7,8 @@ export interface ToolProperty {
   type: 'string' | 'integer';
   description: string;
   minimum?: number;
+  /** Regex a string value must match (used for the digits-only PR number). */
+  pattern?: string;
   enum?: string[];
 }
 

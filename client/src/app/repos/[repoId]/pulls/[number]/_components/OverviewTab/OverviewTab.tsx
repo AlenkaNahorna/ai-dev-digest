@@ -6,7 +6,7 @@ import { SectionLabel } from "@devdigest/ui";
 import { useBlastRadius } from "@/features/reviews/api/hooks";
 import { useResyncWithCompletion } from "@/lib/hooks/repo-intel";
 import { blastKeys } from "@/shared/api/query-keys";
-import { BlastRadiusCard } from "../BlastRadiusCard";
+import { BlastRadiusBoundary, BlastRadiusCard } from "../BlastRadiusCard";
 import { s } from "./styles";
 
 interface OverviewTabProps {
@@ -32,22 +32,24 @@ export function OverviewTab({ prBody, prId, repoId, repoFullName, headSha, inten
     <>
       <div style={s.grid}>
         {intent}
-        <BlastRadiusCard
-          data={blast.data}
-          isLoading={blast.isLoading}
-          isError={blast.isError}
-          onRetry={() => blast.refetch()}
-          repoFullName={repoFullName}
-          headSha={headSha}
-          index={{
-            status: resync.status?.status,
-            reason: resync.status?.degradedReason ?? resync.status?.reason,
-            onResync: resync.start,
-            resyncing: resync.resyncing,
-            resyncError: resync.error,
-            timedOut: resync.timedOut,
-          }}
-        />
+        <BlastRadiusBoundary resetKey={blast.data} onRetry={() => blast.refetch()}>
+          <BlastRadiusCard
+            data={blast.data}
+            isLoading={blast.isLoading}
+            isError={blast.isError}
+            onRetry={() => blast.refetch()}
+            repoFullName={repoFullName}
+            headSha={headSha}
+            index={{
+              status: resync.status?.status,
+              reason: resync.status?.degradedReason ?? resync.status?.reason,
+              onResync: resync.start,
+              resyncing: resync.resyncing,
+              resyncError: resync.error,
+              timedOut: resync.timedOut,
+            }}
+          />
+        </BlastRadiusBoundary>
       </div>
       {prBody && (
         <section style={s.descriptionSection}>

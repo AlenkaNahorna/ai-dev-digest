@@ -68,6 +68,29 @@ describe("OverviewTab", () => {
     expect(screen.getByText(/taking longer than expected/)).toBeInTheDocument();
   });
 
+  it("contains a render error in the blast block so the rest of the page keeps working", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const refetch = vi.fn();
+    renderTab({});
+    // A malformed payload makes the card throw while rendering.
+    blastState.value = { data: { changed_symbols: null, downstream: [], summary: "" }, isLoading: false, isError: false, refetch };
+    cleanup();
+    const client = new QueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <NextIntlClientProvider locale="en" messages={{ blast: messages }}>
+          <OverviewTab prBody="PR text" prId="pr-1" repoId="repo-1" repoFullName="acme/payments" headSha="abc" intent={<div>INTENT CARD</div>} />
+        </NextIntlClientProvider>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText("Couldn't load blast radius")).toBeInTheDocument();
+    expect(screen.getByText("INTENT CARD")).toBeInTheDocument();
+    expect(screen.getByText("PR text")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(refetch).toHaveBeenCalledOnce();
+    spy.mockRestore();
+  });
+
   it("reloads the blast radius when the resync settles", () => {
     const { invalidate } = renderTab({});
     (resyncState.options as { onSettled: () => void }).onSettled();

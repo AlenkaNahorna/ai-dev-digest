@@ -25,7 +25,7 @@ import type {
  * data (PR titles, rationales, rules): never put them into instructions.
  */
 
-export type AgentRow = Pick<Agent, 'id' | 'name' | 'description' | 'enabled'>;
+export type AgentRow = Pick<Agent, 'id' | 'name' | 'description' | 'model' | 'enabled'>;
 
 export type RepoRow = Pick<Repo, 'id' | 'owner' | 'name' | 'full_name'>;
 

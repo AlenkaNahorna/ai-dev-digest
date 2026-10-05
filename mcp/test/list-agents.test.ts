@@ -8,14 +8,17 @@ const agent = (name: string, description = 'd', enabled = true): AgentRow => ({
   id: `id-${name}`,
   name,
   description,
+  model: 'gpt-x',
   enabled,
 });
 
 describe('domain/agent-shape', () => {
-  it('keeps name, description and enabled only', () => {
-    const view = shapeAgents([agent('security', 'Finds vulns', false)]);
-    expect(view).toEqual({ agents: [{ name: 'security', description: 'Finds vulns', enabled: false }] });
-    expect(JSON.stringify(view)).not.toContain('id-security');
+  it('keeps id, name, description, model and enabled only', () => {
+    const view = shapeAgents([{ ...agent('security', 'Finds vulns', false), system_prompt: 'SECRET' } as AgentRow]);
+    expect(view).toEqual({
+      agents: [{ id: 'id-security', name: 'security', description: 'Finds vulns', model: 'gpt-x', enabled: false }],
+    });
+    expect(JSON.stringify(view)).not.toContain('SECRET');
   });
 
   it('cuts descriptions to 120 chars with an ellipsis', () => {
@@ -42,7 +45,7 @@ describe('domain/agent-shape', () => {
 });
 
 describe('list_agents use case + tool', () => {
-  it('returns the shaped agents as compact JSON, never leaking ids', async () => {
+  it('returns the shaped agents (with ids, so run_agent_on_pr can be called next) as compact JSON', async () => {
     const listAgents = vi.fn(async () => [agent('security', 'S'), agent('style', 'T', false)]);
     const tool = createListAgentsTool({ log: () => {}, handler: createListAgents({ listAgents }) });
     const result = await tool.call({});
@@ -50,11 +53,10 @@ describe('list_agents use case + tool', () => {
     const text = result.content[0]?.text ?? '';
     expect(JSON.parse(text)).toEqual({
       agents: [
-        { name: 'security', description: 'S', enabled: true },
-        { name: 'style', description: 'T', enabled: false },
+        { id: 'id-security', name: 'security', description: 'S', model: 'gpt-x', enabled: true },
+        { id: 'id-style', name: 'style', description: 'T', model: 'gpt-x', enabled: false },
       ],
     });
-    expect(text).not.toContain('id-');
     expect(listAgents).toHaveBeenCalledTimes(1);
   });
 });

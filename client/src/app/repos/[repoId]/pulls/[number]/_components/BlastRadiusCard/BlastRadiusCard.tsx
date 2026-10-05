@@ -7,6 +7,7 @@ import type { BlastRadius } from "@devdigest/shared";
 import { BlastGraph } from "./BlastGraph";
 import { BlastSymbolRow } from "./BlastSymbolRow";
 import { IndexNotice } from "./IndexNotice";
+import { PriorPrsList } from "./PriorPrsList";
 import { blastCounts, callersForSymbol, isIndexIncomplete, symbolEntries, type BlastIndexInfo } from "./helpers";
 import { s } from "./styles";
 
@@ -92,6 +93,7 @@ export function BlastRadiusCard({ data, isLoading, isError, onRetry, repoFullNam
           )}
         </>
       )}
+      {data.prior_prs && <PriorPrsList priorPrs={data.prior_prs} repoFullName={repoFullName} />}
     </section>
   );
 }

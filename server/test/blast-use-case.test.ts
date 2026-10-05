@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createGetBlastRadius } from '../src/modules/blast/application/use-cases/get-blast-radius.js';
+import type { PriorPr } from '@devdigest/shared';
 import type { BlastResult } from '../src/modules/repo-intel/types.js';
 
 const result = (over: Partial<BlastResult> = {}): BlastResult => ({
@@ -9,11 +10,16 @@ const result = (over: Partial<BlastResult> = {}): BlastResult => ({
   ...over,
 });
 
-function setup(pull: { repoId: string; changedFiles: string[] } | undefined, facade: BlastResult = result()) {
+function setup(
+  pull: { repoId: string; changedFiles: string[] } | undefined,
+  facade: BlastResult = result(),
+  prior: PriorPr[] = [],
+) {
   const resolvePullFiles = vi.fn(async () => pull);
+  const listPriorPulls = vi.fn(async () => prior);
   const getBlastRadius = vi.fn(async () => facade);
-  const run = createGetBlastRadius({ files: { resolvePullFiles }, intel: { getBlastRadius } });
-  return { run, resolvePullFiles, getBlastRadius };
+  const run = createGetBlastRadius({ files: { resolvePullFiles, listPriorPulls }, intel: { getBlastRadius } });
+  return { run, resolvePullFiles, listPriorPulls, getBlastRadius };
 }
 
 describe('getBlastRadius use case', () => {
@@ -51,5 +57,22 @@ describe('getBlastRadius use case', () => {
     expect(out?.degraded).toBe(true);
     expect(out?.degraded_reason).toBe('no_data');
     expect(out?.downstream).toHaveLength(1);
+  });
+
+  it('adds prior PRs that touched the same files, and omits the field when there are none', async () => {
+    const prior = [{ number: 41, title: 'Tune limiter', status: 'merged', shared_files: 2 }];
+    const withPrior = setup({ repoId: 'r1', changedFiles: ['a.ts'] }, result(), prior);
+    const out = await withPrior.run('ws', 'pr');
+    expect(withPrior.listPriorPulls).toHaveBeenCalledWith('ws', 'r1', 'pr', ['a.ts'], 5);
+    expect(out?.prior_prs).toEqual(prior);
+
+    const without = setup({ repoId: 'r1', changedFiles: ['a.ts'] });
+    expect((await without.run('ws', 'pr'))?.prior_prs).toBeUndefined();
+  });
+
+  it('does not look up prior PRs when the pull has no files', async () => {
+    const { run, listPriorPulls } = setup({ repoId: 'r', changedFiles: [] });
+    await run('ws', 'pr');
+    expect(listPriorPulls).not.toHaveBeenCalled();
   });
 });

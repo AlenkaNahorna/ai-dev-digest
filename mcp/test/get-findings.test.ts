@@ -4,8 +4,8 @@ import type { AgentRow, ReviewRow } from '../src/application/ports/devdigest-api
 import { createGetFindings } from '../src/application/use-cases/get-findings.js';
 import type { Resolver } from '../src/application/use-cases/resolve.js';
 
-const security: AgentRow = { id: 'a1', name: 'security', description: '', enabled: true };
-const style: AgentRow = { id: 'a2', name: 'style', description: '', enabled: true };
+const security: AgentRow = { id: 'a1', name: 'security', description: '', model: 'gpt-x', enabled: true };
+const style: AgentRow = { id: 'a2', name: 'style', description: '', model: 'gpt-x', enabled: true };
 
 const row = (over: Partial<ReviewRow>): ReviewRow => ({
   id: 'r',
