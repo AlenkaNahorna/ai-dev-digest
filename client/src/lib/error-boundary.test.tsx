@@ -41,9 +41,11 @@ describe("ErrorBoundary", () => {
       </ErrorBoundary>
     );
     const { rerender } = render(view());
+    // The cause is fixed while the fallback is shown; the boundary stays on the fallback until reset.
     explode = false;
-    fireEvent.click(screen.getByText("retry"));
     rerender(view());
+    expect(screen.getByText("retry")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("retry"));
     expect(screen.getByText("fine")).toBeInTheDocument();
     spy.mockRestore();
   });
