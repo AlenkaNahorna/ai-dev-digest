@@ -15,6 +15,7 @@ aliases, not published modules):
 | `client/`        | `@devdigest/web`            | Next.js 15 web app (the studio)                       | 3005 |
 | `reviewer-core/` | `@devdigest/reviewer-core`  | Pure review engine: diff → prompt → LLM → findings    | —    |
 | `e2e/`           | `@devdigest/e2e`            | Deterministic browser e2e (agent-browser)             | —    |
+| `mcp/`           | `@devdigest/mcp`            | Local stdio MCP server over the API (5 tools)         | —    |
 | `server/src/vendor/shared` | `@devdigest/shared` | Zod contracts shared across every package             | —    |
 
 `repo-intel` (the codebase indexer that powers the **Indexed** badge and feeds
@@ -61,7 +62,8 @@ Each package has its own README with deeper diagrams:
 [`client`](client/README.md) (UI route map) ·
 [`server`](server/README.md) (API map) ·
 [`reviewer-core`](reviewer-core/README.md) (review pipeline) ·
-[`e2e`](e2e/README.md).
+[`e2e`](e2e/README.md) ·
+[`mcp`](mcp/AGENTS.md) (MCP tool contract: [`mcp/specs/tools-contract.md`](mcp/specs/tools-contract.md)).
 
 ## What works on day 1
 

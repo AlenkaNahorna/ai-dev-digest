@@ -85,6 +85,10 @@ describe('AI contracts parse fixtures', () => {
         summary: 's',
       }),
     ).not.toThrow();
+    const blastBase = { changed_symbols: [], downstream: [], summary: 's' };
+    expect(() => BlastRadius.parse({ ...blastBase, degraded: true, degraded_reason: 'no_data' })).not.toThrow();
+    expect(() => BlastRadius.parse({ ...blastBase, degraded: false })).not.toThrow();
+    expect(() => BlastRadius.parse({ ...blastBase, degraded: true, degraded_reason: 'bogus' })).toThrow();
     expect(() =>
       Risks.parse({
         risks: [{ kind: 'security', title: 't', explanation: 'e', severity: 'high', file_refs: [] }],

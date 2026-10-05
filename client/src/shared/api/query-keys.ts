@@ -20,3 +20,7 @@ export const runKeys = {
 export const intentKeys = {
   byPull: (prId: string | null | undefined) => ["pr-intent", prId] as const,
 };
+/** Blast radius depends on `pr_files` + the repo index, not on reviews, so it has its own root. */
+export const blastKeys = {
+  byPull: (prId: string | null | undefined) => ["pr-blast", prId] as const,
+};

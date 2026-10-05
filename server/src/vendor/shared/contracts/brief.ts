@@ -75,10 +75,35 @@ export const DownstreamImpact = z.object({
 });
 export type DownstreamImpact = z.infer<typeof DownstreamImpact>;
 
+/** Why blast data is partial or missing. Mirrors repo-intel `DegradedReason`. */
+export const BlastDegradedReason = z.enum([
+  'flag_off',
+  'index_failed',
+  'index_partial',
+  'repo_too_large',
+  'no_data',
+]);
+export type BlastDegradedReason = z.infer<typeof BlastDegradedReason>;
+
+/** An earlier PR of the same repo that touched some of the files this PR changes. */
+export const PriorPr = z.object({
+  number: z.number().int(),
+  title: z.string(),
+  status: z.string(),
+  /** How many of this PR's changed files the earlier PR also touched. */
+  shared_files: z.number().int().nonnegative(),
+});
+export type PriorPr = z.infer<typeof PriorPr>;
+
 export const BlastRadius = z.object({
   changed_symbols: z.array(ChangedSymbol),
   downstream: z.array(DownstreamImpact),
   summary: z.string(),
+  /** Optional so older payloads (and `PrBrief.blast`) keep parsing. */
+  degraded: z.boolean().optional(),
+  degraded_reason: BlastDegradedReason.optional(),
+  /** Earlier PRs that touched the same files (newest first, capped). Absent when none or no data. */
+  prior_prs: z.array(PriorPr).optional(),
 });
 export type BlastRadius = z.infer<typeof BlastRadius>;
 

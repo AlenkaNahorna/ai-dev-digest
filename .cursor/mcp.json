@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "devdigest": {
+      "command": "npm",
+      "args": ["--silent", "--prefix", "${workspaceFolder}/mcp", "run", "dev"],
+      "env": {
+        "DEVDIGEST_API_URL": "http://127.0.0.1:3001",
+        "DEVDIGEST_MCP_WAIT_MS": "120000"
+      }
+    }
+  }
+}

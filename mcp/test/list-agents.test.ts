@@ -1,0 +1,62 @@
+import { describe, expect, it, vi } from 'vitest';
+import { createListAgentsTool } from '../src/adapters/inbound/mcp/list-agents.js';
+import type { AgentRow } from '../src/application/ports/devdigest-api.js';
+import { createListAgents } from '../src/application/use-cases/list-agents.js';
+import { AGENTS_MAX, AGENT_DESCRIPTION_MAX, shapeAgents } from '../src/domain/agent-shape.js';
+
+const agent = (name: string, description = 'd', enabled = true): AgentRow => ({
+  id: `id-${name}`,
+  name,
+  description,
+  model: 'gpt-x',
+  enabled,
+});
+
+describe('domain/agent-shape', () => {
+  it('keeps id, name, description, model and enabled only', () => {
+    const view = shapeAgents([{ ...agent('security', 'Finds vulns', false), system_prompt: 'SECRET' } as AgentRow]);
+    expect(view).toEqual({
+      agents: [{ id: 'id-security', name: 'security', description: 'Finds vulns', model: 'gpt-x', enabled: false }],
+    });
+    expect(JSON.stringify(view)).not.toContain('SECRET');
+  });
+
+  it('cuts descriptions to 120 chars with an ellipsis', () => {
+    const [first] = shapeAgents([agent('a', 'x'.repeat(500))]).agents;
+    expect(first?.description).toHaveLength(AGENT_DESCRIPTION_MAX);
+    expect(first?.description.endsWith('…')).toBe(true);
+  });
+
+  it('keeps a short description untouched and flattens newlines', () => {
+    const [first] = shapeAgents([agent('a', 'line1\nline2')]).agents;
+    expect(first?.description).toBe('line1 line2');
+  });
+
+  it('caps the number of agents and reports `more`', () => {
+    const rows = Array.from({ length: AGENTS_MAX + 3 }, (_, i) => agent(`a${i}`));
+    const view = shapeAgents(rows);
+    expect(view.agents).toHaveLength(AGENTS_MAX);
+    expect(view.more).toBe(3);
+  });
+
+  it('omits `more` when nothing was cut and handles an empty list', () => {
+    expect(shapeAgents([])).toEqual({ agents: [] });
+  });
+});
+
+describe('list_agents use case + tool', () => {
+  it('returns the shaped agents (with ids, so run_agent_on_pr can be called next) as compact JSON', async () => {
+    const listAgents = vi.fn(async () => [agent('security', 'S'), agent('style', 'T', false)]);
+    const tool = createListAgentsTool({ log: () => {}, handler: createListAgents({ listAgents }) });
+    const result = await tool.call({});
+    expect(result.isError).toBeUndefined();
+    const text = result.content[0]?.text ?? '';
+    expect(JSON.parse(text)).toEqual({
+      agents: [
+        { id: 'id-security', name: 'security', description: 'S', model: 'gpt-x', enabled: true },
+        { id: 'id-style', name: 'style', description: 'T', model: 'gpt-x', enabled: false },
+      ],
+    });
+    expect(listAgents).toHaveBeenCalledTimes(1);
+  });
+});
