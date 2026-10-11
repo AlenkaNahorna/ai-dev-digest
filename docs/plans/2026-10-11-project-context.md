@@ -1,6 +1,6 @@
 # Implementation Plan: Project Context (view-only repo docs attached to agents/skills)
 
-- **Spec:** `specs/SPEC-01-project-context.md` (status: approved, 48 ACs)
+- **Spec:** `specs/SPEC-2026-10-11-project-context.md` (status: approved, 48 ACs)
 - **Branch:** `feature/L05-spec-driven-development` (no additional branches)
 - **Execution mode:** multi-agent — implementer → (architecture-reviewer ‖ security-reviewer ‖ plan-verifier) → test-writer (run separately; `implement-plan` skips it by default) → pr-self-review (merge verdict)
 - **Modules affected:** `server` (new module `project-context`, run-executor, container, config, DB), `reviewer-core` (prompt helper), `server/src/vendor/shared` (canonical contracts; `client/src/vendor/shared` is a symlink), `client`

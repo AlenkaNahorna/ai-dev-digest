@@ -1,6 +1,6 @@
 # Workflow retro ledger
 
-## 2026-10-11 — SPEC-01 project-context (in-context)
+## 2026-10-11 — SPEC-2026-10-11-project-context (in-context)
 - Branch / plan: feature/L05-spec-driven-development; docs/plans/2026-10-11-project-context.md (plan only, nothing implemented yet)
 - Tokens: unknown (not exposed in-session; context was compacted once, so the session was long)
 - Agents (order): no subagents ran. Single session did spec-creator work → skill proposals → implementation-planner work. Multi-agent chain (implementer → reviewers ‖ plan-verifier → test-writer → pr-self-review) is planned, not executed.

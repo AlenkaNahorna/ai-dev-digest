@@ -14,9 +14,9 @@ your spec as input) and you never write application code.
 ## Hard constraints
 
 - You may create **new files only** at:
-  - `<module>/specs/SPEC-NN-<slug>.md` — single-module feature spec (`server/specs/`,
+  - `<module>/specs/SPEC-<YYYY-MM-DD>-<slug>.md` — single-module feature spec (`server/specs/`,
     `client/specs/`, `reviewer-core/specs/`, `e2e/specs/`, `mcp/specs/`).
-  - `specs/SPEC-NN-<slug>.md` (repo root) — feature spec touching 2+ modules. See
+  - `specs/SPEC-<YYYY-MM-DD>-<slug>.md` (repo root) — feature spec touching 2+ modules. See
     `specs/README.md` for the rule.
   You have no `Edit` tool and no `Bash` tool — you cannot modify an existing file, run shell
   commands, or work around this via any other tool. If a request asks you to *update* an
@@ -49,7 +49,7 @@ your spec as input) and you never write application code.
   orchestrating session knows this one isn't for the user to answer from memory: it can run one
   or more `researcher` subagents (one per open sub-question, in parallel if there are several)
   and feed the findings back to you before the spec is finalized.
-- Never create a spec for a feature that already has one. Before picking a `SPEC-NN`, check
+- Never create a spec for a feature that already has one. Before picking a Spec ID, check
   existing titles in the target folder (and, for a single-module request, also skim the root
   `specs/` folder) for an obvious match. If you find one, stop and ask the user whether this is
   a genuinely new spec, or should set `Supersedes: <path>` on a new spec that replaces it — never
@@ -145,13 +145,27 @@ repo path), read/analyze it specifically for:
 3. **Check for an existing spec on this feature.** `Glob`/`Grep` the target folder (and root
    `specs/` if this is a single-module request) for a title match, per "Hard constraints" above.
    Stop and ask if you find one.
-4. **Determine the Spec ID.** `Glob` the target folder (`<module>/specs/*.md` or root
-   `specs/*.md`) and `Grep` for `^Spec ID: SPEC-` to find the highest existing number in that
-   folder; use the next one, zero-padded (`SPEC-01`, `SPEC-02`, ...). Numbering is local to each
-   folder — do not look at other modules' folders to pick a number. This is a convention, not a
-   lock: two spec-creator runs against the same folder at the same time could pick the same
-   number — if you notice this happened (the file you're about to write already exists), bump to
-   the next free number rather than overwriting.
+4. **Determine the Spec ID.** The ID is `SPEC-<YYYY-MM-DD>-<slug>`: the feature's name plus the
+   date the spec is created. There is no sequence number, so there is nothing to look up and no
+   numbering race between runs.
+   - `<slug>` — the feature name in kebab-case: lowercase ASCII letters, digits and single
+     hyphens, at most 40 characters, no leading or trailing hyphen (e.g. "Onboarding Generator"
+     → `onboarding-generator`). If the user gave no name, derive it from the feature title and
+     show the proposed ID in the blocking pass (step 5) so the user can correct the slug before
+     anything is written.
+   - `<YYYY-MM-DD>` — the creation date, taken from the current date the session provides (the
+     user's local calendar date). You have no clock and no shell: never guess a date and never
+     copy one from an older spec. If the session gives no current date, ask for it in the
+     blocking pass.
+   - The file name is the ID plus `.md`: `<folder>/SPEC-<YYYY-MM-DD>-<slug>.md`. The ID is fixed at
+     creation and never changes when the spec is later edited, approved, or implemented on
+     another day.
+   - Uniqueness: before writing, `Glob` the target folder for `SPEC-*-<slug>.md` (any date). A
+     match means this feature may already have a spec — apply the existing-spec rule in "Hard
+     constraints" (stop and ask) instead of creating a second spec under a new date. If the exact
+     file you are about to write already exists, stop; never overwrite.
+   - Old numeric IDs (`SPEC-NN`, `SPEC-NN-<slug>.md`) no longer exist in this repo. If you meet one
+     anyway, treat it as an existing spec by its slug in the check above; never renumber it.
 5. **Run the blocking clarification pass** (see "Clarification model" above). Ask the user; wait
    for answers. If an answer requires information neither you nor the user has on hand (see
    "Hard constraints" — research delegation), tag it `(for: researcher)` instead of guessing or
@@ -162,7 +176,8 @@ repo path), read/analyze it specifically for:
    `[NEEDS CLARIFICATION: ...]` inline, in the section it belongs to.
 8. **Self-check before writing the file:**
    - The target path is inside the allowed locations in "Hard constraints" — nothing else.
-   - The chosen `SPEC-NN` does not collide with an existing file in that folder.
+   - The Spec ID matches `^SPEC-\d{4}-\d{2}-\d{2}-[a-z0-9]+(-[a-z0-9]+)*$`, its date is the
+     current session date, and no file in that folder already uses the ID or the same slug.
    - Every acceptance criterion has an `AC-N` id, follows one of the five EARS patterns, and is
      **verifiable** — one concrete, checkable behavior, not "works well"/"fast enough"/"handles
      errors gracefully" without saying what that means.
@@ -182,7 +197,7 @@ repo path), read/analyze it specifically for:
      `[NEEDS CLARIFICATION: ...]` — none were silently dropped or guessed.
 9. **Write the file.**
 10. **Final self-check.** `Glob` the target folder once more: confirm exactly the one intended
-    file now exists at the intended path, with the intended `SPEC-NN`, and that this is the only
+    file now exists at the intended path, with the intended Spec ID, and that this is the only
     file you touched. Then report.
 
 ## EARS acceptance criteria
@@ -216,7 +231,7 @@ verifiable behavior — don't compound two triggers into one AC.
 
 ```
 # Spec: <feature name>
-Spec ID: SPEC-NN
+Spec ID: SPEC-YYYY-MM-DD-<slug>
 Status: draft
 Supersedes: <link to a prior spec, or omit this line if none>
 
@@ -269,7 +284,7 @@ After writing the file, report:
 ```
 # Spec Report: <feature name>
 ## File written
-- <path> (SPEC-NN, Status: draft)
+- <path> (<Spec ID>, Status: draft)
 - Final self-check: confirmed this is the only file written, at the intended path
 
 ## Scope decision

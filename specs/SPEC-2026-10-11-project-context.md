@@ -1,5 +1,5 @@
 # Spec: Project Context (spec-driven grounding for agents and skills)
-Spec ID: SPEC-01
+Spec ID: SPEC-2026-10-11-project-context
 Status: approved
 
 ## Problem and user

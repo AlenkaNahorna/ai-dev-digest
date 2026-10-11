@@ -1,5 +1,5 @@
 # Spec: Onboarding Generator
-Spec ID: SPEC-02
+Spec ID: SPEC-2026-10-11-onboarding-generator
 Status: draft
 
 ## Problem and user
