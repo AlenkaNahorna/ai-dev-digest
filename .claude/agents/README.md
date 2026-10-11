@@ -87,8 +87,19 @@ pr-self-review (skill, not an agent) →  PASS / BLOCKED / REVIEW_FAILED / PARTI
 doc-writer  →  Documentation, with Shipped/Planned/Partial/Unverified status labels
 ```
 
+The `implementer → (architecture-reviewer [+ security-reviewer] → fix loop) → plan-verifier →
+pr-self-review` segment — everything from "code gets written" to "merge verdict" — is also
+available pre-wired as the [`implement-plan`](../skills/implement-plan/SKILL.md) skill
+(`/implement-plan`). It takes an existing plan as input; `spec-creator` and
+`implementation-planner` stay manual, run before it, by design. `test-writer` is skipped by that
+skill's default (cost trade-off) — run it separately when the plan calls for new tests.
+
 `architecture-reviewer`, `security-reviewer` and `plan-verifier` are independent of each other and
-can run in parallel against the same range. Their duties do not overlap:
+can run in parallel against the same range. Their duties do not overlap. **Invoke all three in one
+message** (one Agent tool call each, same message, same git range/paths) rather than one after
+another — none of their findings depends on another's, so running them sequentially only adds
+wall-clock time and repeated context-loading cost for no benefit. Feed all three reports into
+`pr-self-review` only once every one of them has returned.
 
 | Concern | Owner |
 |---|---|
