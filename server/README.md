@@ -72,6 +72,9 @@ flowchart TB
   subgraph Review["Review & runs"]
     reviews["reviews<br/>/pulls/:id/review · /pulls/:id/smart-diff · /reviews · /findings/:id/(accept|dismiss)<br/>/runs/:id/(events|trace)"]
   end
+  subgraph Brief["PR Brief"]
+    prBrief["pr-brief<br/>GET /pulls/:id/brief (stored brief or null; no LLM)<br/>POST /pulls/:id/brief (generate/regenerate; one model call; 10 req/min)<br/>errors: 404 PR not found · 422 brief_files_unavailable · 502 brief_model_failed"]
+  end
   subgraph Agents["Agents"]
     agents["agents<br/>/agents · /agents/:id"]
   end

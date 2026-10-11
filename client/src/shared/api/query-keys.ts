@@ -24,6 +24,10 @@ export const intentKeys = {
 export const blastKeys = {
   byPull: (prId: string | null | undefined) => ["pr-blast", prId] as const,
 };
+/** The stored PR Brief has its own root (not nested under `reviewKeys.byPull`): it changes only on Generate/refresh. */
+export const briefKeys = {
+  byPull: (prId: string | null | undefined) => ["pr-brief", prId] as const,
+};
 /** Project Context: discovered docs per repo, one doc's text, and per-agent/skill attachments. */
 export type ContextOwnerKind = "agent" | "skill";
 export const contextKeys = {

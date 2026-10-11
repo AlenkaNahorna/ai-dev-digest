@@ -35,9 +35,12 @@ export function PullDetailScreen({ repoId, number }: { repoId: string; number: s
   const liveRunIds = (activeRuns ?? []).map((r) => r.run_id); const reviewRunning = liveRunIds.length > 0;
   const invalidateActiveRuns = () => { if (prId) qc.invalidateQueries({ queryKey: runKeys.active(prId) }); };
   const invalidateRunHistory = () => { if (prId) qc.invalidateQueries({ queryKey: runKeys.history(prId) }); };
-  const tab = search.get("tab") ?? "overview"; const traceRunId = search.get("trace"); const severityFilter = search.get("severity");
-  const setParam = (key: string, val: string | null) => { const sp = new URLSearchParams(search.toString()); if (val == null) sp.delete(key); else sp.set(key, val); router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`); };
-  const setTab = (value: string) => setParam("tab", value);
+  const tab = search.get("tab") ?? "overview"; const traceRunId = search.get("trace"); const severityFilter = search.get("severity"); const focusFile = search.get("file");
+  // Several params change in ONE router.replace: two sequential calls would both copy the same stale `search` and lose one value.
+  const setParams = (updates: Record<string, string | null>) => { const sp = new URLSearchParams(search.toString()); for (const [key, val] of Object.entries(updates)) { if (val == null) sp.delete(key); else sp.set(key, val); } router.replace(`/repos/${repoId}/pulls/${number}${sp.toString() ? `?${sp.toString()}` : ""}`); };
+  const setParam = (key: string, val: string | null) => setParams({ [key]: val });
+  // `file` (the Review focus target) only means something on the diff tab, so leaving it clears it.
+  const setTab = (value: string) => setParams(value === "diff" ? { tab: value } : { tab: value, file: null });
   const allFindings: FindingRecord[] = React.useMemo(() => (reviews ?? []).flatMap((r) => r.findings), [reviews]);
   const lethalTrifecta = allFindings.filter((f) => f.kind === "lethal_trifecta"); const findingsCount = allFindings.length;
   const severityCounts: Partial<Record<Severity, number>> = React.useMemo(() => { const counts: Partial<Record<Severity, number>> = {}; for (const f of allFindings) { const sev = f.severity as Severity; counts[sev] = (counts[sev] ?? 0) + 1; } return counts; }, [allFindings]);
@@ -49,12 +52,12 @@ export function PullDetailScreen({ repoId, number }: { repoId: string; number: s
   const runs = reviews ?? [];
   const intentCard = <IntentCard intent={intent} loading={intentLoading} onRederive={() => rederive.mutate()} rederiving={rederive.isPending} errorMessage={rederive.isError ? (rederive.error instanceof Error ? rederive.error.message : String(rederive.error)) : null} />;
   return <AppShell crumb={crumb}>
-    <PrDetailHeader repoId={repoId} pr={pr} prId={prId} tab={tab} findingsCount={findingsCount} severityCounts={severityCounts} severityFilter={severityFilter} onSelectSeverity={(severity) => { setParam("severity", severityFilter === severity ? null : severity); setTab("findings"); }} githubUrl={repoFullName ? githubPrUrl(repoFullName, pr.number) : null} onSetTab={setTab} onRunStart={() => setTab("findings")} onRunsStarted={invalidateActiveRuns} />
+    <PrDetailHeader repoId={repoId} pr={pr} prId={prId} tab={tab} findingsCount={findingsCount} severityCounts={severityCounts} severityFilter={severityFilter} onSelectSeverity={(severity) => setParams({ severity: severityFilter === severity ? null : severity, tab: "findings", file: null })} githubUrl={repoFullName ? githubPrUrl(repoFullName, pr.number) : null} onSetTab={setTab} onRunStart={() => setTab("findings")} onRunsStarted={invalidateActiveRuns} />
     <div style={{ padding: "24px 32px 44px", display: "flex", flexDirection: "column", gap: 24, maxWidth: tab === "overview" ? "none" : 1080, margin: "0 auto" }}>
       {tab === "findings" && intentCard}
-      {tab === "overview" && <OverviewTab prBody={pr.body} prId={prId} repoId={repoId} repoFullName={repoFullName} headSha={pr.head_sha} intent={intentCard} />}
+      {tab === "overview" && <OverviewTab prBody={pr.body} prId={prId} repoId={repoId} repoFullName={repoFullName} headSha={pr.head_sha} intent={intentCard} onOpenFile={(file) => setParams({ tab: "diff", file })} />}
   {tab === "findings" && <FindingsTab prId={prId} liveRunIds={liveRunIds} reviewRunning={reviewRunning} lethalTrifecta={lethalTrifecta} runs={runs} prRuns={prRuns} prCommits={pr.commits} repoFullName={repoFullName} headSha={pr.head_sha} cancelMutation={cancel} severityFilter={severityFilter} onOpenTrace={(id) => setParam("trace", id)} onDelete={(id) => { if (window.confirm(t("pullDetail.deleteRunConfirm"))) deleteRun.mutate(id); }} onRunDone={() => { invalidateActiveRuns(); invalidateRunHistory(); if (prId) qc.invalidateQueries({ queryKey: reviewKeys.byPull(prId) }); refetchReviews(); refetchIntent(); }} />}
-      {tab === "diff" && <DiffTab prId={prId} filesCount={pr.files_count} files={pr.files} canComment={pr.status === "open"} />}
+      {tab === "diff" && <DiffTab prId={prId} filesCount={pr.files_count} files={pr.files} canComment={pr.status === "open"} focusFile={focusFile} />}
     </div>
     {prId && traceRunId && <RunTraceDrawer runId={traceRunId} prNumber={pr.number} findings={runs.find((r) => r.run_id === traceRunId)?.findings ?? []} agentName={runs.find((r) => r.run_id === traceRunId)?.agent_name ?? null} onClose={() => setParam("trace", null)} />}
   </AppShell>;

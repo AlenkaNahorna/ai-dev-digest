@@ -15,6 +15,7 @@ export function FileGroup({
   fileCount,
   findingCount,
   defaultOpen,
+  forceOpen,
   children,
 }: {
   role: string;
@@ -24,10 +25,15 @@ export function FileGroup({
   fileCount: number;
   findingCount: number;
   defaultOpen: boolean;
+  /** Open the group when it holds the file to reveal (a collapsed group would hide it). */
+  forceOpen?: boolean;
   children: React.ReactNode;
 }) {
   const t = useTranslations("prReview");
-  const [open, setOpen] = React.useState(defaultOpen);
+  const [open, setOpen] = React.useState(defaultOpen || !!forceOpen);
+  React.useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
   return (
     <section data-role={role}>
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} style={fs.groupHeader}>

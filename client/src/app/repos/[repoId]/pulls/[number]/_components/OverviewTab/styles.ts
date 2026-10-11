@@ -8,6 +8,8 @@ export const s = {
     gap: 16,
     alignItems: "start",
   } satisfies CSSProperties,
+  /** Left column: the Intent block with the Risk areas under it. */
+  column: { display: "flex", flexDirection: "column", gap: 16, minWidth: 0 } satisfies CSSProperties,
   /** Keeps the description readable now that the Overview tab uses the full width. */
   descriptionSection: { maxWidth: 1080 } satisfies CSSProperties,
   descriptionBox: {

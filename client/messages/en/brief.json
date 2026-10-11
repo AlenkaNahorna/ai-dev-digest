@@ -5,11 +5,42 @@
     "risks": "Risks",
     "history": "PR history"
   },
+  "title": "PR Brief",
+  "generate": "Generate brief",
+  "generating": "Generating brief…",
+  "refresh": "Refresh brief",
+  "updating": "Updating…",
+  "retry": "Try again",
+  "loading": "Loading brief…",
+  "loadError": {
+    "title": "Could not load the brief",
+    "body": "The stored brief could not be read."
+  },
+  "generateError": "The brief could not be generated: {message}",
+  "generateErrorGeneric": "The brief could not be generated. Try again.",
+  "filesUnavailable": "File data is unavailable for this pull request, so no brief can be written.",
+  "partial": "Built from partial data: some files, callers, findings or documents were left out.",
+  "missingTitle": "Built without:",
+  "missing": {
+    "intent": "Intent not derived yet",
+    "blast": "Blast radius not available",
+    "findings": "No review findings yet",
+    "documents": "No attached documents"
+  },
+  "riskAreas": "Risk areas",
+  "severity": {
+    "high": "High severity",
+    "medium": "Medium severity",
+    "low": "Low severity"
+  },
+  "reviewFocus": "Review focus — read these first",
+  "noFocus": "No focus yet",
+  "openFile": "Open {file} in Files changed",
   "noRisks": "No notable risks flagged.",
   "noHistory": "No prior PRs overlap these files.",
   "overlap": "{count} overlap",
   "unavailable": "Brief not available yet.",
-  "unavailableHint": "Run a review or open the PR to compute it.",
+  "unavailableHint": "Press Generate brief to write it from the Intent, Blast radius and findings.",
   "why": {
     "title": "git-why",
     "blame": "blame",

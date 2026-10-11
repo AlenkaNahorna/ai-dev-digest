@@ -55,6 +55,7 @@ Each module is a self-contained plugin. HTTP entrypoints live under
 | `pulls/` | `GET /pulls/:id`, `GET /pulls/:id/comments` | PR data from GitHub |
 | `reviews/` | `POST /pulls/:id/review`, `GET /pulls/:id/smart-diff`, `GET /findings/:id/(accept\|dismiss)` | Run review, persist findings |
 | `blast/` | `GET /pulls/:id/blast` | Blast radius of a PR (repo-intel facade mapped to `BlastRadius`; pure read, no LLM) |
+| `pr-brief/` | `GET /pulls/:id/brief`, `POST /pulls/:id/brief` | PR Brief: GET is a pure DB read (brief or `null`); POST gathers precomputed facts, makes one `risk_brief` model call, replaces the `pr_brief` row (rate limit 10/min; 422 `brief_files_unavailable`, 502 `brief_model_failed`) |
 | `agents/` | `GET /agents`, `POST /agents`, `GET /agents/:id` | Agent CRUD (system prompt + model) |
 | `runs/` | `GET /runs/:id/trace`, `GET /runs/:id/events` | Stream review run traces (SSE) |
 | `polling/` | `GET /repos/:id/poll` | Long-poll repo indexing status |

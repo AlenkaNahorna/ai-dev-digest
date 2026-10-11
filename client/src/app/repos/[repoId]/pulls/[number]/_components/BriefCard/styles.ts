@@ -1,0 +1,40 @@
+import type { CSSProperties } from "react";
+
+/** Co-located styles for the PR Brief pieces. */
+export const s = {
+  wrap: {
+    border: "1px solid var(--border)",
+    borderRadius: 10,
+    background: "var(--bg-elevated)",
+    padding: 18,
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  } satisfies CSSProperties,
+  head: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" } satisfies CSSProperties,
+  spacer: { flex: 1 } satisfies CSSProperties,
+  sectionTitle: { fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-tertiary)" } satisfies CSSProperties,
+  summary: { fontSize: 15, lineHeight: 1.55, color: "var(--text-primary)", margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" } satisfies CSSProperties,
+  muted: { fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5 } satisfies CSSProperties,
+  note: { fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5 } satisfies CSSProperties,
+  error: { fontSize: 13, color: "var(--danger, #f85149)", lineHeight: 1.5 } satisfies CSSProperties,
+  list: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 } satisfies CSSProperties,
+  item: { borderRadius: 8, background: "var(--bg-hover)", padding: "8px 12px", display: "flex", flexDirection: "column", gap: 4 } satisfies CSSProperties,
+  itemHead: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } satisfies CSSProperties,
+  itemTitle: { fontSize: 13.5, fontWeight: 600, color: "var(--text-primary)", overflowWrap: "anywhere" } satisfies CSSProperties,
+  fileRefs: { display: "flex", flexWrap: "wrap", gap: "2px 12px" } satisfies CSSProperties,
+  mono: { fontFamily: "var(--font-mono, monospace)", fontSize: 12.5, color: "var(--text-secondary)", overflowWrap: "anywhere" } satisfies CSSProperties,
+  focusButton: {
+    all: "unset",
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 8,
+    background: "var(--bg-hover)",
+    padding: "8px 12px",
+  } satisfies CSSProperties,
+  focusReason: { fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, overflowWrap: "anywhere" } satisfies CSSProperties,
+} as const;

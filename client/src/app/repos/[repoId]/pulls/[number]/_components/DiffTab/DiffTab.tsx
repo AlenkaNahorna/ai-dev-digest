@@ -22,11 +22,13 @@ interface DiffTabProps {
   files: PrFile[];
   /** Inline commenting is offered only on open PRs (GitHub rejects otherwise). */
   canComment?: boolean;
+  /** Path to open and scroll to (from a Review focus click); a path not in the diff is ignored. */
+  focusFile?: string | null;
 }
 
 type Order = "smart" | "original";
 
-export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
+export function DiffTab({ prId, filesCount, files, canComment, focusFile }: DiffTabProps) {
   const t = useTranslations("prReview");
   const { data: comments } = usePrComments(prId);
   const { data: reviews } = usePrReviews(prId);
@@ -140,6 +142,7 @@ export function DiffTab({ prId, filesCount, files, canComment }: DiffTabProps) {
         findingApi={findingApi}
         groups={groups}
         ungrouped={smartActive ? grouped.ungrouped : undefined}
+        focusFile={focusFile}
       />
     </section>
   );

@@ -176,11 +176,31 @@ export const SmartDiff = z.object({
 });
 export type SmartDiff = z.infer<typeof SmartDiff>;
 
+// ---- Review focus (model-written, checked against the PR's files) ----
+export const ReviewFocusItem = z.object({
+  file: z.string(),
+  /** Only a line that belongs to a provided finding of that file; otherwise absent. */
+  line: z.number().int().positive().nullish(),
+  reason: z.string(),
+});
+export type ReviewFocusItem = z.infer<typeof ReviewFocusItem>;
+
+/** Inputs that were not available when the brief was generated. */
+export const BriefMissingInput = z.enum(['intent', 'blast', 'findings', 'documents']);
+export type BriefMissingInput = z.infer<typeof BriefMissingInput>;
+
 // ---- Composed PR Brief (pr_brief.json) ----
 export const PrBrief = z.object({
-  intent: Intent,
-  blast: BlastRadius,
+  /** Optional: blocks that read live data are not copied into the brief. */
+  intent: Intent.optional(),
+  blast: BlastRadius.optional(),
+  summary: z.string(),
   risks: Risks,
-  history: PrHistory,
+  review_focus: z.array(ReviewFocusItem).default([]),
+  history: PrHistory.optional(),
+  /** Inputs that were missing when the brief was generated (shown on the card). */
+  missing_inputs: z.array(BriefMissingInput).default([]),
+  /** true when the input bounds omitted files, callers, findings or documents. */
+  partial: z.boolean().default(false),
 });
 export type PrBrief = z.infer<typeof PrBrief>;
