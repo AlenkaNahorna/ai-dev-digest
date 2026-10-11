@@ -24,3 +24,13 @@ export const intentKeys = {
 export const blastKeys = {
   byPull: (prId: string | null | undefined) => ["pr-blast", prId] as const,
 };
+/** Project Context: discovered docs per repo, one doc's text, and per-agent/skill attachments. */
+export type ContextOwnerKind = "agent" | "skill";
+export const contextKeys = {
+  all: ["project-context"] as const,
+  list: (repoId: string | null | undefined) => ["project-context", "list", repoId] as const,
+  doc: (repoId: string | null | undefined, path: string | null | undefined) =>
+    ["project-context", "doc", repoId, path] as const,
+  attachments: (kind: ContextOwnerKind, ownerId: string | null | undefined, repoId: string | null | undefined) =>
+    ["project-context", "attachments", kind, ownerId, repoId] as const,
+};

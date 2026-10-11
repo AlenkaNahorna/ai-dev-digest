@@ -110,6 +110,10 @@ export const RunTrace = z.object({
   raw_output: z.string(),
   memory_pulled: z.array(MemoryPulled),
   specs_read: z.array(z.string()),
+  /** Per-document token counts of the injected project-context docs, in prompt order. */
+  specs_detail: z.array(z.object({ path: z.string(), tokens: z.number().int() })).nullish(),
+  /** Token count of the whole injected `## Project context` block (heading + delimiters). */
+  specs_block_tokens: z.number().int().nullish(),
   /** Separate intent-classifier call (cheap model); absent on runs without one. */
   intent_call: IntentCallTrace.nullish(),
   log: z.array(RunLogLine),

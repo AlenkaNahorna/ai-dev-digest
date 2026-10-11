@@ -17,6 +17,10 @@ import {
   Repo,
   PrDetail,
   ConventionPatch,
+  SpecFile,
+  ProjectContextList,
+  ContextDocBody,
+  ContextAttachments,
 } from '@devdigest/shared';
 
 /**
@@ -243,5 +247,44 @@ describe('ConventionPatch (PATCH /conventions/:id body)', () => {
     expect(() => ConventionPatch.parse({ rule: '   ' })).toThrow();
     expect(() => ConventionPatch.parse({ rule: 'x'.repeat(501) })).toThrow();
     expect(() => ConventionPatch.parse({ category: 'style' })).toThrow();
+  });
+});
+
+describe('Project Context contracts', () => {
+  it('SpecFile stays backward compatible: new fields are optional', () => {
+    expect(SpecFile.parse({ path: 'specs/a.md' })).toEqual({ path: 'specs/a.md' });
+    const full = SpecFile.parse({ path: 'specs/a.md', type: 'specs', tokens: 12, used_by_agents: 2, size: 40, updated_at: '2026-01-01T00:00:00.000Z' });
+    expect(full.tokens).toBe(12);
+  });
+
+  it('ProjectContextList / ContextDocBody / ContextAttachments round-trip', () => {
+    const list = ProjectContextList.parse({
+      roots: ['specs', 'docs', 'insights'],
+      warn_tokens: 100000,
+      tokens_total: 12,
+      files: [{ path: 'specs/a.md', type: 'specs', tokens: 12, used_by_agents: 0 }],
+      index: { files: 1, indexed_at: '2026-01-01T00:00:00.000Z' },
+    });
+    expect(list.index.files).toBe(1);
+    expect(() => ContextDocBody.parse({ path: 'a.md', content: 'x', size: 1, tokens: 1, used_by_agents: 0 })).not.toThrow();
+    const att = ContextAttachments.parse({ repo_id: '11111111-1111-4111-8111-111111111111', docs: [{ path: 'specs/a.md', order: 0, missing: true }] });
+    expect(att.docs[0]!.missing).toBe(true);
+  });
+
+  it('RunTrace accepts the new nullish specs_detail / specs_block_tokens and old traces without them', () => {
+    const base = {
+      config: { agent: 'A', model: 'm' },
+      stats: { duration_ms: 1, tokens_in: 1, tokens_out: 1, cost_usd: null, findings: 0, grounding: '0/0 passed' },
+      prompt_assembly: { system: 's', user: 'u', specs: '<untrusted source="spec-0">\nx\n</untrusted>' },
+      tool_calls: [],
+      raw_output: '',
+      memory_pulled: [],
+      log: [],
+    };
+    const old = RunTrace.parse({ ...base, specs_read: [] });
+    expect(old.specs_detail).toBeUndefined();
+    const next = RunTrace.parse({ ...base, specs_read: ['specs/a.md'], specs_detail: [{ path: 'specs/a.md', tokens: 3 }], specs_block_tokens: 20 });
+    expect(next.specs_detail).toEqual([{ path: 'specs/a.md', tokens: 3 }]);
+    expect(next.specs_block_tokens).toBe(20);
   });
 });

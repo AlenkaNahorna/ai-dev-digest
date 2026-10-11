@@ -12,6 +12,27 @@ import { join, isAbsolute, resolve } from 'node:path';
  * that reads process.env directly (see adapters/secrets/local.ts). Listing them
  * here would be dead config that never reaches AppConfig.
  */
+/** Default Project Context search roots (folder names, matched at any depth). */
+export const DEFAULT_PROJECT_CONTEXT_ROOTS = ['specs', 'docs', 'insights'] as const;
+export const DEFAULT_PROJECT_CONTEXT_WARN_TOKENS = 100_000;
+
+/** A root is a single plain folder name — no separators, traversal or glob characters. */
+const ROOT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+function parseProjectContextRoots(raw: string | undefined): string[] {
+  const names = (raw ?? '')
+    .split(',')
+    .map((r) => r.trim())
+    .filter((r) => r.length > 0);
+  if (names.length === 0) return [...DEFAULT_PROJECT_CONTEXT_ROOTS];
+  for (const n of names) {
+    if (n !== '*' && (!ROOT_NAME.test(n) || n === '.' || n === '..')) {
+      throw new Error(`PROJECT_CONTEXT_ROOTS: "${n}" is not a plain folder name (or * for all)`);
+    }
+  }
+  return [...new Set(names)];
+}
+
 const EnvSchema = z.object({
   DATABASE_URL: z
     .string()
@@ -31,6 +52,14 @@ const EnvSchema = z.object({
   // prompts are assembled. Honoured only when NODE_ENV=development; ignored (with
   // a warning) elsewhere. Never streamed to the UI or persisted.
   DEVDIGEST_PROMPT_LOG_VERBOSE: z.string().optional(),
+  // Project Context: comma-separated FOLDER NAMES (not globs) whose `.md` files
+  // are discoverable at any depth of the synced clone. Blank → the default set.
+  PROJECT_CONTEXT_ROOTS: z.string().optional(),
+  // Attached-total token threshold above which the UI warns (never truncates).
+  PROJECT_CONTEXT_WARN_TOKENS: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int().positive().default(DEFAULT_PROJECT_CONTEXT_WARN_TOKENS),
+  ),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -64,6 +93,10 @@ export type AppConfig = {
    * EXACTLY like the ripgrep-only baseline.
    */
   repoIntelEnabled: boolean;
+  /** Project Context search roots: folder names matched at any depth of the clone. */
+  projectContextRoots: string[];
+  /** Attached-total token threshold above which the UI shows a warning (no truncation). */
+  projectContextWarnTokens: number;
   /** Verbose prompt-composition logging (dev only, stdout only). See EnvSchema. */
   promptLogVerbose: boolean;
   /** Verbose was requested but ignored because this is not a local dev run. */
@@ -87,6 +120,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     webOrigin: `http://localhost:${parsed.WEB_PORT}`,
     embeddingsEnabled: parsed.EMBEDDINGS_ENABLED === 'true',
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
+    projectContextRoots: parseProjectContextRoots(parsed.PROJECT_CONTEXT_ROOTS),
+    projectContextWarnTokens: parsed.PROJECT_CONTEXT_WARN_TOKENS,
     promptLogVerbose: promptLogRequested && parsed.NODE_ENV === 'development',
     promptLogVerboseIgnored: promptLogRequested && parsed.NODE_ENV !== 'development',
   };

@@ -117,6 +117,13 @@ repo path), read/analyze it specifically for:
   destructive action). Do not fold a UX improvement into Acceptance criteria as if the user
   asked for it — propose it explicitly (e.g. under Open questions as "Proposal: ...") and let
   the user confirm before it becomes a requirement.
+- **Data-source check** — for every value the design shows as a number, count, total, date, or
+  status (e.g. "N chunks", "last indexed", "tokens"), find who produces it today: `Grep`/`Read`
+  the repo for the writer of the table/field/endpoint behind it. Existence of a schema or type
+  is not enough — a table nothing writes to has no producer. If no producer exists, do not draft
+  the AC as if the data were available: either mark it `[NEEDS CLARIFICATION: producer of <value>
+  is missing — keep, replace, or add a producer?]` or, when the user already decided, write the
+  AC against the agreed replacement value.
 - **Conflicts between sources** — if the user's text description, a Figma source, and the
   existing code disagree with each other (e.g. Figma shows a state the text never mentions, or
   the current code already behaves differently from what's described), do not silently pick
@@ -164,6 +171,11 @@ repo path), read/analyze it specifically for:
      orphan AC, no goal left unverified. Note any gap instead of silently padding one side.
    - Every non-functional requirement states not just the requirement but how it would be
      checked (see template).
+   - **Data-source check**: every AC that shows or depends on a number, count, total, date, or
+     status names (in the AC, Inputs and provenance, or an Open question) where that value comes
+     from, and you verified a producer exists in the repo. Any AC without a verified producer
+     carries a `[NEEDS CLARIFICATION]` marker; none is left `approved`-ready with an unverified
+     data source.
    - No implementation detail (file paths to change, order of work, specific functions) leaked
      in, unless it's genuinely part of an external contract.
    - Every open question from steps 5–6 that wasn't answered is present as
@@ -271,6 +283,10 @@ After writing the file, report:
 
 ## Design sources analyzed
 - <source> → <what it was checked for: gaps / corner cases / cross-module / UX / conflicts>
+
+## Data-source check
+- <each AC showing a number/count/date/status → its producer (file/endpoint/table) or "missing —
+  marked [NEEDS CLARIFICATION]">
 
 ## Traceability
 - Goal → AC coverage: <each goal → the AC-N(s) that verify it; flag any goal with none>
