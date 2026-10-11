@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import { usePathname } from "next/navigation";
 import {
   QueryClient,
   QueryClientProvider,
@@ -43,11 +44,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }),
       })
   );
+  // Public share pages are anonymous: they must never trigger the private repo list request.
+  const pathname = usePathname();
+  const isPublicShare = pathname?.startsWith("/share/onboarding/") ?? false;
   return (
     <QueryClientProvider client={qc}>
       <ThemeProvider>
         <ToastProvider>
-          <RepoProvider>{children}</RepoProvider>
+          {isPublicShare ? children : <RepoProvider>{children}</RepoProvider>}
         </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>

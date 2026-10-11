@@ -10,6 +10,7 @@ import type {
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
 import { JobRunner } from './jobs.js';
+import { PgAdvisoryRepoIndexLock, type RepoIndexLock } from './repo-index-lock.js';
 import { runBus, type RunBus } from './sse.js';
 import { LocalSecretsProvider } from '../adapters/secrets/local.js';
 import { LocalNoAuthProvider } from '../adapters/auth/local.js';
@@ -55,6 +56,8 @@ export interface ContainerOverrides {
   tokenizer?: Tokenizer;
   /** Project Context facade — tests inject fakes (run-executor reads docs through it). */
   projectContext?: ProjectContextFacade;
+  /** Per-repository index lock — tests inject a passthrough instead of Postgres advisory locks. */
+  repoIndexLock?: RepoIndexLock;
 }
 
 export class Container {
@@ -81,6 +84,8 @@ export class Container {
   private _tokenizer?: Tokenizer;
   private _projectContext?: ProjectContextFacade;
   private _priceBook?: PriceBook;
+  private _repoIndexLock?: RepoIndexLock;
+  private readonly indexCompletedListeners: Array<(repoId: string) => void> = [];
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -92,6 +97,29 @@ export class Container {
     this.auth = overrides.auth ?? new LocalNoAuthProvider(db);
     this.runBus = runBus;
     this.jobs = new JobRunner(db);
+  }
+
+  /** Per-repository lock serializing index mutations and onboarding evidence capture. */
+  get repoIndexLock(): RepoIndexLock {
+    if (this.overrides.repoIndexLock) return this.overrides.repoIndexLock;
+    this._repoIndexLock ??= new PgAdvisoryRepoIndexLock(this.db);
+    return this._repoIndexLock;
+  }
+
+  /** Features (e.g. onboarding) subscribe to "index completed with usable status". */
+  onIndexCompleted(listener: (repoId: string) => void): void {
+    this.indexCompletedListeners.push(listener);
+  }
+
+  /** Fire-and-forget: a listener failure can never fail or delay indexing. */
+  notifyIndexCompleted(repoId: string): void {
+    for (const l of this.indexCompletedListeners) {
+      try {
+        l(repoId);
+      } catch {
+        /* listeners are best-effort */
+      }
+    }
   }
 
   get git(): GitClient {

@@ -23,6 +23,8 @@ function buildDegradedService(opts: {
   const container = {
     config: { repoIntelEnabled: opts.flag },
     db: {} as never,
+    repoIndexLock: { withLock: async (_id: string, fn: () => Promise<unknown>) => fn() },
+    notifyIndexCompleted: () => {},
     // codeIndex is reached by getBlastRadius; we stub minimal behaviour.
     codeIndex: {
       symbols: async () => [],

@@ -34,3 +34,12 @@ export const contextKeys = {
   attachments: (kind: ContextOwnerKind, ownerId: string | null | undefined, repoId: string | null | undefined) =>
     ["project-context", "attachments", kind, ownerId, repoId] as const,
 };
+
+/** Onboarding Tour: persisted state per repo, its shares, and a public snapshot by token. */
+export const onboardingTourKeys = {
+  all: ["onboarding-tour"] as const,
+  state: (repoId: string | null | undefined) => ["onboarding-tour", "state", repoId] as const,
+  shares: (repoId: string | null | undefined) => ["onboarding-tour", "shares", repoId] as const,
+  /** Public snapshot — deliberately NOT under `all` so private invalidations never touch it. */
+  publicSnapshot: (token: string | null | undefined) => ["public-onboarding", token] as const,
+};

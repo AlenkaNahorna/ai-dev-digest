@@ -120,6 +120,13 @@
       "when": 1791739349950,
       "tag": "0016_stale_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791745200000,
+      "tag": "0017_onboarding_generator",
+      "breakpoints": true
     }
   ]
 }

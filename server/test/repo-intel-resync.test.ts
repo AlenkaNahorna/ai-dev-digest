@@ -45,6 +45,9 @@ function makeService(opts: { basics: Basics | null; state?: IndexState | null; g
     db: {}, // never queried — service.repo is overridden below
     depgraph: { buildEdges: async () => [] },
     tokenizer: { count: (text: string) => Math.ceil(text.length / 4) },
+    // Index mutations are serialized by a per-repo lock; unit tests use a passthrough.
+    repoIndexLock: { withLock: async <T>(_id: string, fn: () => Promise<T>) => fn() },
+    notifyIndexCompleted: () => {},
   } as unknown as Container;
 
   const service = new RepoIntelService(container);

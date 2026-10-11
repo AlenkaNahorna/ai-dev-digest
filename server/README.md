@@ -78,6 +78,9 @@ flowchart TB
   subgraph Intel["Repo intelligence"]
     repoIntel["repo-intel<br/>/repos/:id/index-state · /resync"]
   end
+  subgraph Onboarding["Onboarding tour"]
+    onboardingGen["onboarding-generator<br/>/repos/:id/onboarding-tour · /regenerate · /shares<br/>/public/onboarding/:token (anonymous snapshot)"]
+  end
   subgraph Platform["Platform"]
     settings["settings<br/>/settings · /providers"]
     workspace["workspace<br/>/workspace"]

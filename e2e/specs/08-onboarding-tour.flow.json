@@ -1,0 +1,22 @@
+{
+  "name": "Onboarding Tour renders the seeded tour for the demo repo",
+  "description": "From the seeded repo's PR list, open the Onboarding Tour via the sidebar and confirm the five section cards, provenance and owner actions render, then collapse a card. Read-only: reads the seeded tour version; never triggers generation or a model call. Distinct from 06-onboarding (the add-repository import screen).",
+  "steps": [
+    { "cmd": ["open", "{BASE}/"], "label": "load the app root" },
+    { "cmd": ["wait", "--url", "/pulls"], "label": "land on the PR list" },
+    { "cmd": ["find", "text", "Onboarding Tour", "click"], "label": "open Onboarding Tour from the sidebar" },
+    { "cmd": ["wait", "--url", "/onboarding"], "label": "tour route reached" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "tour state settles" },
+    { "cmd": ["wait", "--text", "Onboarding for"], "label": "page title renders" },
+    { "cmd": ["wait", "--text", "Generated from commit 0123456"], "label": "truthful provenance shows the stored commit" },
+    { "cmd": ["wait", "--text", "Architecture overview"], "label": "architecture card renders" },
+    { "cmd": ["wait", "--text", "Critical paths"], "label": "critical paths card renders" },
+    { "cmd": ["wait", "--text", "How to run locally"], "label": "local run card renders" },
+    { "cmd": ["wait", "--text", "Guided reading path"], "label": "reading path card renders" },
+    { "cmd": ["wait", "--text", "First tasks"], "label": "first tasks card renders (explicitly unavailable)" },
+    { "cmd": ["wait", "--text", "ON THIS PAGE"], "label": "section anchors render" },
+    { "cmd": ["wait", "--text", "Share link"], "label": "owner Share action is available" },
+    { "cmd": ["find", "text", "Critical paths", "click"], "label": "collapse the critical paths card" },
+    { "cmd": ["wait", "--text", "Architecture overview"], "label": "other cards stay visible" }
+  ]
+}

@@ -60,6 +60,20 @@ const EnvSchema = z.object({
     (v) => (v === '' ? undefined : v),
     z.coerce.number().int().positive().default(DEFAULT_PROJECT_CONTEXT_WARN_TOKENS),
   ),
+  // Onboarding generator. PUBLIC_WEB_ORIGIN is the externally reachable ORIGIN of the
+  // web app used to build share links (never derived from a request Host header).
+  // https only, no path/query/credentials; http://localhost[:port] is accepted
+  // outside production. Unset → share links are local-only.
+  PUBLIC_WEB_ORIGIN: z.string().optional(),
+  ONBOARDING_AUTO_GENERATE: z.string().optional(),
+  ONBOARDING_DAILY_BUDGET: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int().min(1).max(1000).default(10),
+  ),
+  ONBOARDING_RETAINED_VERSIONS: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int().min(1).max(50).default(5),
+  ),
   API_PORT: z.coerce.number().int().default(3001),
   WEB_PORT: z.coerce.number().int().default(3000),
   DEVDIGEST_CLONE_DIR: z.string().optional(),
@@ -97,11 +111,39 @@ export type AppConfig = {
   projectContextRoots: string[];
   /** Attached-total token threshold above which the UI shows a warning (no truncation). */
   projectContextWarnTokens: number;
+  /** Validated public web origin for share links, or null (links are then local-only). */
+  publicWebOrigin: string | null;
+  /** Generate a tour automatically after a usable index completes. Default true. */
+  onboardingAutoGenerate: boolean;
+  /** Per-repository cap on onboarding generation requests per 24h. */
+  onboardingDailyBudget: number;
+  /** Newest tour versions kept per repository (plus any version a share references). */
+  onboardingRetainedVersions: number;
   /** Verbose prompt-composition logging (dev only, stdout only). See EnvSchema. */
   promptLogVerbose: boolean;
   /** Verbose was requested but ignored because this is not a local dev run. */
   promptLogVerboseIgnored: boolean;
 };
+
+/** Strict origin parse: absolute, no path/query/hash/credentials; https (or http://localhost outside production). */
+export function parsePublicWebOrigin(raw: string | undefined, nodeEnv: string): string | null {
+  const v = (raw ?? '').trim();
+  if (v === '') return null;
+  let u: URL;
+  try {
+    u = new URL(v);
+  } catch {
+    throw new Error('PUBLIC_WEB_ORIGIN must be an absolute origin such as https://devdigest.example.com');
+  }
+  if (u.username || u.password || u.search || u.hash || (u.pathname !== '/' && u.pathname !== '')) {
+    throw new Error('PUBLIC_WEB_ORIGIN must be an origin only (no path, query, fragment or credentials)');
+  }
+  const localHttp = u.protocol === 'http:' && u.hostname === 'localhost' && nodeEnv !== 'production';
+  if (u.protocol !== 'https:' && !localHttp) {
+    throw new Error('PUBLIC_WEB_ORIGIN must use https (http://localhost is allowed outside production)');
+  }
+  return u.origin;
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = EnvSchema.parse(env);
@@ -122,6 +164,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     repoIntelEnabled: parsed.REPO_INTEL_ENABLED !== 'false',
     projectContextRoots: parseProjectContextRoots(parsed.PROJECT_CONTEXT_ROOTS),
     projectContextWarnTokens: parsed.PROJECT_CONTEXT_WARN_TOKENS,
+    publicWebOrigin: parsePublicWebOrigin(parsed.PUBLIC_WEB_ORIGIN, parsed.NODE_ENV),
+    onboardingAutoGenerate: parsed.ONBOARDING_AUTO_GENERATE !== 'false',
+    onboardingDailyBudget: parsed.ONBOARDING_DAILY_BUDGET,
+    onboardingRetainedVersions: parsed.ONBOARDING_RETAINED_VERSIONS,
     promptLogVerbose: promptLogRequested && parsed.NODE_ENV === 'development',
     promptLogVerboseIgnored: promptLogRequested && parsed.NODE_ENV !== 'development',
   };
