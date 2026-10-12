@@ -19,6 +19,10 @@ import { Row, Stat } from "../atoms";
 export function TraceBody({ trace, findings }: { trace: RunTrace; findings: FindingRecord[] }) {
   const t = useTranslations("runs");
   const stats = trace.stats;
+  const specTokens = new Map((trace.specs_detail ?? []).map((d) => [d.path, d.tokens]));
+  // The recorded block is what follows the heading in the user message; show the
+  // complete text exactly as sent (heading included). Hidden when nothing was injected.
+  const specsText = trace.prompt_assembly.specs ? `## Project context\n${trace.prompt_assembly.specs}` : null;
   return (
     <>
       <TraceSection icon="Settings" title={t("trace.configuration")}>
@@ -44,11 +48,24 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
                 trace.specs_read.map((sp, i) => (
                   <span key={i} className="mono" style={s.spec}>
                     {sp}
+                    {specTokens.has(sp) && (
+                      <span style={{ color: "var(--text-muted)" }}>
+                        {" · "}
+                        {t("trace.config.specTokens", { count: specTokens.get(sp)!.toLocaleString("en-US") })}
+                      </span>
+                    )}
                   </span>
                 ))
               )}
             </div>
           </Row>
+          {trace.specs_block_tokens != null && (
+            <Row label={t("trace.config.specsBlockTokens")}>
+              <span className="mono">
+                {t("trace.config.specsBlockTokensValue", { count: trace.specs_block_tokens.toLocaleString("en-US") })}
+              </span>
+            </Row>
+          )}
         </div>
       </TraceSection>
 
@@ -82,8 +99,8 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
         {trace.prompt_assembly.repo_map != null && (
           <PromptBlock label={t("trace.prompt.repoMap")} text={trace.prompt_assembly.repo_map} color={PROMPT_COLORS.repoMap} />
         )}
-        {trace.prompt_assembly.specs != null && (
-          <PromptBlock label={t("trace.prompt.specs")} text={trace.prompt_assembly.specs} color={PROMPT_COLORS.specs} />
+        {specsText != null && (
+          <PromptBlock label={t("trace.prompt.specs")} text={specsText} color={PROMPT_COLORS.specs} />
         )}
         {trace.prompt_assembly.callers != null && (
           <PromptBlock label={t("trace.prompt.callers")} text={trace.prompt_assembly.callers} color={PROMPT_COLORS.callers} />

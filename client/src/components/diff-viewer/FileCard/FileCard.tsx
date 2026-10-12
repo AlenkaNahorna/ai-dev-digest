@@ -49,18 +49,29 @@ export function FileCard({
   commenting,
   findingApi,
   hasFindings,
+  focused,
 }: {
   file: PrFile;
   commenting?: DiffCommentApi;
   findingApi?: DiffFindingApi;
   /** From smart-diff `finding_lines`; falls back to the file's own findings. */
   hasFindings?: boolean;
+  /** This is the file to reveal: open it and scroll it into view once per change. */
+  focused?: boolean;
 }) {
   const t = useTranslations("shell");
   const tp = useTranslations("prReview");
   const [open, setOpen] = React.useState(
     (file.additions ?? 0) + (file.deletions ?? 0) <= AUTO_EXPAND_MAX_LINES
   );
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!focused) return;
+    setOpen(true);
+    // Wait a frame so the opened body and any just-opened group are laid out before scrolling.
+    const frame = requestAnimationFrame(() => rootRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" }));
+    return () => cancelAnimationFrame(frame);
+  }, [focused]);
   const lines = React.useMemo(() => parsePatch(file.patch), [file.patch]);
 
   // Group this file's comments into threads, then split into ones we can anchor
@@ -89,7 +100,7 @@ export function FileCard({
     : 0;
 
   return (
-    <div style={s.fileCard}>
+    <div ref={rootRef} style={s.fileCard} data-file-path={file.path}>
       <div onClick={() => setOpen((o) => !o)} style={s.fileHeader}>
         <Icon.ChevronRight size={13} style={chevronFor(open)} />
         <Icon.FileText size={14} style={s.fileIcon} />

@@ -52,6 +52,17 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
         ? false
         : {
             level: config.logLevel,
+            // Public share tokens are bearer secrets: never write them to logs.
+            serializers: {
+              req(req: { method?: string; url?: string; hostname?: string; remoteAddress?: string }) {
+                return {
+                  method: req.method,
+                  url: req.url?.replace(/(\/public\/onboarding\/)[^/?#]+/, '$1[redacted]'),
+                  hostname: req.hostname,
+                  remoteAddress: req.remoteAddress,
+                };
+              },
+            },
             transport:
               config.nodeEnv === 'development'
                 ? { target: 'pino-pretty', options: { colorize: true } }

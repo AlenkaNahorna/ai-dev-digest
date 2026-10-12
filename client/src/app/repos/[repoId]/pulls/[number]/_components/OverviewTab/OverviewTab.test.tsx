@@ -5,11 +5,16 @@ import { NextIntlClientProvider } from "next-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { BlastRadius } from "@devdigest/shared";
 import messages from "../../../../../../../../messages/en/blast.json";
+import briefMessages from "../../../../../../../../messages/en/brief.json";
 
 const blastState = vi.hoisted(() => ({ value: {} as Record<string, unknown> }));
 const resyncState = vi.hoisted(() => ({ value: {} as Record<string, unknown>, options: undefined as unknown }));
 
-vi.mock("@/features/reviews/api/hooks", () => ({ useBlastRadius: () => blastState.value }));
+vi.mock("@/features/reviews/api/hooks", () => ({
+  useBlastRadius: () => blastState.value,
+  usePrBrief: () => ({ data: null, isLoading: false, isError: false, refetch: vi.fn() }),
+  useGenerateBrief: () => ({ mutate: vi.fn(), isPending: false, isError: false, error: null }),
+}));
 vi.mock("@/lib/hooks/repo-intel", () => ({
   useResyncWithCompletion: (_repoId: string, options: unknown) => {
     resyncState.options = options;
@@ -36,8 +41,8 @@ function renderTab(resync: Record<string, unknown>) {
   const invalidate = vi.spyOn(client, "invalidateQueries");
   render(
     <QueryClientProvider client={client}>
-      <NextIntlClientProvider locale="en" messages={{ blast: messages }}>
-        <OverviewTab prBody="PR text" prId="pr-1" repoId="repo-1" repoFullName="acme/payments" headSha="abc" intent={<div>INTENT CARD</div>} />
+      <NextIntlClientProvider locale="en" messages={{ blast: messages, brief: briefMessages }}>
+        <OverviewTab prBody="PR text" prId="pr-1" repoId="repo-1" repoFullName="acme/payments" headSha="abc" intent={<div>INTENT CARD</div>} onOpenFile={vi.fn()} />
       </NextIntlClientProvider>
     </QueryClientProvider>,
   );
@@ -78,8 +83,8 @@ describe("OverviewTab", () => {
     const client = new QueryClient();
     render(
       <QueryClientProvider client={client}>
-        <NextIntlClientProvider locale="en" messages={{ blast: messages }}>
-          <OverviewTab prBody="PR text" prId="pr-1" repoId="repo-1" repoFullName="acme/payments" headSha="abc" intent={<div>INTENT CARD</div>} />
+        <NextIntlClientProvider locale="en" messages={{ blast: messages, brief: briefMessages }}>
+          <OverviewTab prBody="PR text" prId="pr-1" repoId="repo-1" repoFullName="acme/payments" headSha="abc" intent={<div>INTENT CARD</div>} onOpenFile={vi.fn()} />
         </NextIntlClientProvider>
       </QueryClientProvider>,
     );

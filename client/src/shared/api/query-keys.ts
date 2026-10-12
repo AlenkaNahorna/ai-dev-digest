@@ -24,3 +24,26 @@ export const intentKeys = {
 export const blastKeys = {
   byPull: (prId: string | null | undefined) => ["pr-blast", prId] as const,
 };
+/** The stored PR Brief has its own root (not nested under `reviewKeys.byPull`): it changes only on Generate/refresh. */
+export const briefKeys = {
+  byPull: (prId: string | null | undefined) => ["pr-brief", prId] as const,
+};
+/** Project Context: discovered docs per repo, one doc's text, and per-agent/skill attachments. */
+export type ContextOwnerKind = "agent" | "skill";
+export const contextKeys = {
+  all: ["project-context"] as const,
+  list: (repoId: string | null | undefined) => ["project-context", "list", repoId] as const,
+  doc: (repoId: string | null | undefined, path: string | null | undefined) =>
+    ["project-context", "doc", repoId, path] as const,
+  attachments: (kind: ContextOwnerKind, ownerId: string | null | undefined, repoId: string | null | undefined) =>
+    ["project-context", "attachments", kind, ownerId, repoId] as const,
+};
+
+/** Onboarding Tour: persisted state per repo, its shares, and a public snapshot by token. */
+export const onboardingTourKeys = {
+  all: ["onboarding-tour"] as const,
+  state: (repoId: string | null | undefined) => ["onboarding-tour", "state", repoId] as const,
+  shares: (repoId: string | null | undefined) => ["onboarding-tour", "shares", repoId] as const,
+  /** Public snapshot — deliberately NOT under `all` so private invalidations never touch it. */
+  publicSnapshot: (token: string | null | undefined) => ["public-onboarding", token] as const,
+};

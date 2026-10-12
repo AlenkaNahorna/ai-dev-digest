@@ -264,8 +264,103 @@ export const SpecFile = z.object({
   content: z.string().nullish(),
   size: z.number().int().nullish(),
   updated_at: z.string().nullish(),
+  /** Matching root folder (`specs`, `docs`, `insights`, …); null when unknown. */
+  type: z.string().nullish(),
+  /** Approximate token count of the document text (cl100k_base, chars/4 fallback). */
+  tokens: z.number().int().nullish(),
+  /** Distinct agents that receive the document (direct attachment or enabled skill link). */
+  used_by_agents: z.number().int().nullish(),
 });
 export type SpecFile = z.infer<typeof SpecFile>;
+
+/** Repo-relative Markdown path inside the clone: no absolute/traversal/backslash/NUL, `.md` only. */
+export const ContextDocPath = z
+  .string()
+  .min(1)
+  .max(1024)
+  .refine(
+    (p) =>
+      !p.includes('\0') &&
+      !p.includes('\\') &&
+      !p.startsWith('/') &&
+      !/^[A-Za-z]:/.test(p) &&
+      p.split('/').every((seg) => seg !== '' && seg !== '.' && seg !== '..') &&
+      /\.md$/i.test(p),
+    { message: 'Must be a repo-relative .md path without traversal segments.' },
+  );
+export type ContextDocPath = z.infer<typeof ContextDocPath>;
+
+/** GET /repos/:id/context — discovered Markdown documents + list-footer facts. */
+export const ProjectContextList = z.object({
+  /** Search roots that were scanned (folder names). */
+  roots: z.array(z.string()),
+  /** Attached-total token threshold above which the UI warns (no truncation). */
+  warn_tokens: z.number().int(),
+  /** Sum of the tokens of all discovered documents ("tokens total"). */
+  tokens_total: z.number().int().nullish(),
+  files: z.array(SpecFile),
+  index: z.object({
+    /** Number of indexed (discovered) files. */
+    files: z.number().int(),
+    /** ISO time of the scan that produced this list. */
+    indexed_at: z.string(),
+  }),
+});
+export type ProjectContextList = z.infer<typeof ProjectContextList>;
+
+/** GET /repos/:id/context/doc?path= — one document's full text (view-only). */
+export const ContextDocBody = z.object({
+  path: z.string(),
+  type: z.string().nullish(),
+  content: z.string(),
+  size: z.number().int(),
+  tokens: z.number().int(),
+  updated_at: z.string().nullish(),
+  used_by_agents: z.number().int(),
+});
+export type ContextDocBody = z.infer<typeof ContextDocBody>;
+
+/** One attached document: path + order only, never the text. */
+export const ContextAttachmentItem = z.object({
+  path: ContextDocPath,
+  order: z.number().int().nonnegative(),
+});
+export type ContextAttachmentItem = z.infer<typeof ContextAttachmentItem>;
+
+/** PUT body for `/agents/:id/context` and `/skills/:id/context` (atomic replace of one repo's set). */
+export const ContextAttachmentsInput = z
+  .object({
+    repo_id: z.string().uuid(),
+    docs: z.array(ContextAttachmentItem).max(500),
+  })
+  .superRefine((value, ctx) => {
+    const paths = new Set<string>();
+    const orders = new Set<number>();
+    for (const [index, doc] of value.docs.entries()) {
+      if (paths.has(doc.path)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['docs', index, 'path'], message: 'A document may appear only once.' });
+      }
+      if (orders.has(doc.order)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['docs', index, 'order'], message: 'Order values must be unique.' });
+      }
+      paths.add(doc.path);
+      orders.add(doc.order);
+    }
+  });
+export type ContextAttachmentsInput = z.infer<typeof ContextAttachmentsInput>;
+
+/** GET/PUT response: the stored set of one repo, ordered; `missing` = no longer discovered. */
+export const ContextAttachments = z.object({
+  repo_id: z.string().uuid(),
+  docs: z.array(
+    z.object({
+      path: z.string(),
+      order: z.number().int(),
+      missing: z.boolean().nullish(),
+    }),
+  ),
+});
+export type ContextAttachments = z.infer<typeof ContextAttachments>;
 
 export const IndexStatus = z.object({
   status: z.enum(['idle', 'cloning', 'parsing', 'embedding', 'done', 'error']),

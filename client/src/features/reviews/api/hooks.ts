@@ -3,8 +3,8 @@ import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "@/lib/api";
 import { notify } from "@/lib/toast";
-import type { BlastRadius, FindingActionKind, PrIntentRecord, PrReviewComment, ReviewRecord, ReviewRunResponse, RunEvent, RunSummary, SmartDiffResponse } from "@devdigest/shared";
-import { blastKeys, intentKeys, pullKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
+import type { BlastRadius, FindingActionKind, PrBrief, PrIntentRecord, PrReviewComment, ReviewRecord, ReviewRunResponse, RunEvent, RunSummary, SmartDiffResponse } from "@devdigest/shared";
+import { blastKeys, briefKeys, intentKeys, pullKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
 export interface ActiveRun { run_id: string; agent_id: string | null; agent_name: string | null; ran_at: string | null; }
 export function usePrActiveRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.active(prId), queryFn: () => api.get<ActiveRun[]>(`/pulls/${prId}/runs/active`), enabled: !!prId, refetchInterval: (q) => (q.state.data?.length ?? 0) > 0 ? 4000 : false }); }
 export function usePrRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.history(prId), queryFn: () => api.get<RunSummary[]>(`/pulls/${prId}/runs`), enabled: !!prId, refetchInterval: (q) => (q.state.data ?? []).some((r) => r.status === "running") ? 4000 : false }); }
@@ -27,4 +27,8 @@ export function usePrIntent(prId: string | null | undefined) { return useQuery({
 export function useRederiveIntent(prId: string | null | undefined) { const qc = useQueryClient(); return useMutation({ mutationFn: () => api.post<PrIntentRecord>(`/pulls/${prId}/intent`), onSuccess: (rec) => { qc.setQueryData(intentKeys.byPull(prId), rec); qc.invalidateQueries({ queryKey: intentKeys.byPull(prId) }); } }); }
 /** Blast radius of a PR (pure read: DB + repo index, no LLM). */
 export function useBlastRadius(prId: string | null | undefined) { return useQuery({ queryKey: blastKeys.byPull(prId), queryFn: () => api.get<BlastRadius>(`/pulls/${prId}/blast`), enabled: !!prId }); }
-export { blastKeys, intentKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
+/** The stored PR Brief (single DB read on the server, never an LLM call); `null` until one is generated. */
+export function usePrBrief(prId: string | null | undefined) { return useQuery({ queryKey: briefKeys.byPull(prId), queryFn: () => api.get<PrBrief | null>(`/pulls/${prId}/brief`), enabled: !!prId }); }
+/** Generate or regenerate the brief (one model call). `isPending` disables Generate/refresh; the previous brief stays cached until the new one arrives. */
+export function useGenerateBrief(prId: string | null | undefined) { const qc = useQueryClient(); return useMutation({ mutationFn: () => api.post<PrBrief>(`/pulls/${prId}/brief`), onSuccess: (brief) => { qc.setQueryData(briefKeys.byPull(prId), brief); } }); }
+export { blastKeys, briefKeys, intentKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";

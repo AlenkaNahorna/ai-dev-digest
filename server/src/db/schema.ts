@@ -25,6 +25,8 @@ export * from './schema/ci';
 export * from './schema/runs';
 export * from './schema/ops';
 export * from './schema/repo-intel';
+export * from './schema/project-context';
+export * from './schema/onboarding-generator';
 
 import { users, workspaces, workspaceMembers, settings } from './schema/core';
 import { repos } from './schema/repos';
@@ -45,6 +47,13 @@ import {
   fileRank,
   repoMapCache,
 } from './schema/repo-intel';
+import { agentContextDocs, skillContextDocs } from './schema/project-context';
+import {
+  onboardingTourVersions,
+  onboardingGenerationRequests,
+  onboardingRepoState,
+  onboardingShares,
+} from './schema/onboarding-generator';
 
 /** Convenience: the full schema object for drizzle() client typing. */
 export const schema = {
@@ -89,4 +98,12 @@ export const schema = {
   fileFacts,
   fileRank,
   repoMapCache,
+  // project context: per-repo document attachments for agents and skills.
+  agentContextDocs,
+  skillContextDocs,
+  // onboarding generator: immutable tour versions, durable requests, pointers, share snapshots.
+  onboardingTourVersions,
+  onboardingGenerationRequests,
+  onboardingRepoState,
+  onboardingShares,
 };

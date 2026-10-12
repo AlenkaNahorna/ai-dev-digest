@@ -66,11 +66,11 @@ The repo works in both tools from one source of truth in `.claude/`:
 |------|-------------------|-------------|---------------------------|
 | Project rules | `CLAUDE.md` (symlink → this file) | `AGENTS.md` (root + nested per-module) | one file |
 | Skills | `.claude/skills/<name>/` | `.agents/skills/<name>/` | relative symlinks → `.claude/skills/<name>` |
-| Subagents (`brainstorm`, `researcher`, `planner`, `implementer`, `test-writer`, `architecture-reviewer`, `security-reviewer`, `plan-verifier`, `doc-writer`) | `.claude/agents/*.md` | `.codex/agents/*.toml` (snake_case names, e.g. `plan_verifier`) | **generated** from the `.md` files |
+| Subagents (`brainstorm`, `researcher`, `implementation-planner`, `implementer`, `test-writer`, `architecture-reviewer`, `security-reviewer`, `plan-verifier`, `doc-writer`) | `.claude/agents/*.md` | `.codex/agents/*.toml` (snake_case names, e.g. `plan_verifier`) | **generated** from the `.md` files |
 
 - After changing `.claude/agents/*.md` or adding/removing a skill, run `node scripts/sync-codex-agents.mjs` and commit the result. `node scripts/sync-codex-agents.mjs --check` exits non-zero when something is out of date. **Never edit `.codex/agents/*.toml` by hand.**
 - Read-only agents (`brainstorm`, `researcher`, `architecture_reviewer`, `security_reviewer`, `plan_verifier`) get `sandbox_mode = "read-only"` in Codex, which Codex enforces; the others get `workspace-write`, where path limits (tests only, docs only, `docs/plans/` only) remain conventions the agent must follow.
-- Codex starts a subagent only when asked, by name: e.g. "Spawn the `planner` agent to plan X, then the `implementer` agent to execute the plan." Codex agents inherit the session's model (the Claude `model: sonnet` alias is not carried over).
+- Codex starts a subagent only when asked, by name: e.g. "Spawn the `implementation-planner` agent to plan X, then the `implementer` agent to execute the plan." Codex agents inherit the session's model (the Claude `model: sonnet` alias is not carried over).
 - Details and caveats: [.claude/agents/README.md](.claude/agents/README.md#codex-portability).
 
 ## Links & References

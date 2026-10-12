@@ -8,6 +8,7 @@ import {
   PERFORMANCE_REVIEWER_PROMPT,
   API_CONTRACT_REVIEWER_PROMPT,
 } from './seed-prompts.js';
+import { seedOnboardingTour } from './seed-onboarding-tour.js';
 
 /** Default provider/model for the built-in reviewer agents. */
 const DEFAULT_PROVIDER = 'openrouter' as const;
@@ -301,6 +302,9 @@ export async function seed(db: Db): Promise<{ workspaceId: string; userId: strin
       { name: 'api-versioning-and-deprecation', type: 'custom', description: 'Require a version bump or deprecation path for unavoidable breaking changes.', body: '# API Versioning and Deprecation\nA breaking change needs a new version or a deprecation window with a migration path (Deprecation / Sunset headers, changelog entry). Prefer additive changes: keep the old field alongside the new one until clients have moved.' },
     ],
   );
+
+  // ---- Onboarding Tour demo data (one successful tour + one fixed-token public snapshot) ----
+  await seedOnboardingTour(db, { workspaceId, repoId, repoFullName: 'acme/payments-api', userId });
 
   return { workspaceId, userId };
 }

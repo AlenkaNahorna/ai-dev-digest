@@ -15,6 +15,7 @@
 export {
   assemblePrompt,
   wrapUntrusted,
+  renderSpecsBlock,
   type PromptParts,
   renderIntent,
   type AssembledPrompt,

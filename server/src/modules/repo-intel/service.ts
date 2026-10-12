@@ -83,7 +83,20 @@ export class RepoIntelService implements RepoIntel {
    * jobs already have their own time budget and don't want a second queue.
    */
   async indexRepo(repoId: string): Promise<IndexResult> {
-    return runFullIndex(this.container, this.repo, { repoId });
+    return this.withIndexLock(repoId, () => runFullIndex(this.container, this.repo, { repoId }));
+  }
+
+  /**
+   * Serialize all index mutations per repository (also against onboarding
+   * evidence capture) and, after the lock is released, notify completion
+   * listeners. Listener failures never affect the index result.
+   */
+  private async withIndexLock(repoId: string, fn: () => Promise<IndexResult>): Promise<IndexResult> {
+    const result = await this.container.repoIndexLock.withLock(repoId, fn);
+    if (result.status === 'full' || result.status === 'partial') {
+      this.container.notifyIndexCompleted(repoId);
+    }
+    return result;
   }
 
   /**
@@ -92,7 +105,7 @@ export class RepoIntelService implements RepoIntel {
    * delegates to `runFullIndex` internally.
    */
   async refreshIndex(repoId: string): Promise<IndexResult> {
-    return runIncremental(this.container, this.repo, { repoId });
+    return this.withIndexLock(repoId, () => runIncremental(this.container, this.repo, { repoId }));
   }
 
   /**
@@ -104,6 +117,10 @@ export class RepoIntelService implements RepoIntel {
    * repo isn't cloned yet or the fetch fails.
    */
   async resyncRepo(repoId: string): Promise<IndexResult> {
+    return this.withIndexLock(repoId, () => this.resyncRepoLocked(repoId));
+  }
+
+  private async resyncRepoLocked(repoId: string): Promise<IndexResult> {
     const startedAt = Date.now();
     const repo = await this.repo.getRepoBasics(repoId);
     if (!repo || !repo.clonePath) {

@@ -1,6 +1,6 @@
 import type { Container } from '../../platform/container.js';
 import type { Intent, IntentCallTrace, Provider, Review, RunTrace, UnifiedDiff } from '@devdigest/shared';
-import { reviewPullRequest, countBlockers } from '@devdigest/reviewer-core';
+import { reviewPullRequest, countBlockers, renderSpecsBlock } from '@devdigest/reviewer-core';
 import { logPrompt, newCorrelationId, reviewPromptInputs } from '../../platform/prompt-log.js';
 import { RunLogger } from '../../platform/run-logger.js';
 import * as schema from '../../db/schema.js';
@@ -26,6 +26,20 @@ export type Logger = {
   warn: (obj: unknown, msg?: string) => void;
   error: (obj: unknown, msg?: string) => void;
   debug: (obj: unknown, msg?: string) => void;
+};
+
+/**
+ * Project-context documents injected into ONE agent's prompt, kept outside the
+ * try block so a failed/cancelled run still persists exactly what was loaded.
+ */
+type InjectedContext = {
+  /** Repo-relative paths in prompt order (`specs_read`). */
+  paths: string[];
+  detail: { path: string; tokens: number }[];
+  /** The untrusted-wrapped block as `assemblePrompt` renders it (without the heading). */
+  block: string;
+  /** Tokens of the whole injected `## Project context` section (heading included). */
+  blockTokens: number;
 };
 
 // A reduced "Review per file" — same schema as Review (the model returns a small
@@ -174,6 +188,7 @@ export class ReviewRunExecutor {
     // (built from the buffer) includes them too.
     const runLog = parentLog.forRun(runId, { agent: agent.name });
     let promptSkills: string[] = [];
+    let injected: InjectedContext | undefined;
 
     runLog.info(`[review] Starting review with agent "${agent.name}" (${agent.provider}/${agent.model})`);
 
@@ -211,6 +226,23 @@ export class ReviewRunExecutor {
       promptSkills = skillBodies;
       if (skillBodies.length > 0) runLog.info(`Skills ready — ${skillBodies.length} enabled skill(s) attached`);
 
+      // ---- Project context: the agent's effective docs, read ONCE here ------
+      // (agent docs + enabled linked skills' docs, deduped). No LLM call. Paths
+      // and counts only are logged — never document text.
+      const resolved = await this.container.projectContext.resolveForRun(workspaceId, agent.id, repo);
+      for (const sk of resolved.skipped) runLog.warn(`Project context: skipped "${sk.path}" (${sk.reason})`);
+      const specs = resolved.docs.map((d) => `### ${d.path}\n\n${d.text}`);
+      const specsBlock = renderSpecsBlock(specs);
+      if (specsBlock) {
+        injected = {
+          paths: resolved.docs.map((d) => d.path),
+          detail: resolved.docs.map((d) => ({ path: d.path, tokens: d.tokens })),
+          block: specsBlock,
+          blockTokens: this.container.tokenizer.count(`## Project context\n${specsBlock}`),
+        };
+        runLog.info(`Project context ready — ${specs.length} document(s), ~${injected.blockTokens} token(s)`);
+      }
+
       // ---- Engine: assemble → single-pass → grounding -----------------------
       // The pure review pipeline lives in @devdigest/reviewer-core (shared with
       // the CI runner). The service owns only I/O: repo-intel context resolution
@@ -224,6 +256,8 @@ export class ReviewRunExecutor {
         // to the studio default. single-pass = whole diff in one call.
         strategy: agent.strategy ?? REVIEW_STRATEGY,
         skills: skillBodies,
+        // Project context: untrusted docs wrapped by assemblePrompt; omitted when empty.
+        ...(specs.length > 0 ? { specs } : {}),
         // T1.3 — pass the callers digest only when we built one. assemblePrompt
         // omits the section when this is empty/undefined.
         ...(callersDigest ? { callers: callersDigest } : {}),
@@ -329,7 +363,9 @@ export class ReviewRunExecutor {
         })),
         raw_output: outcome.raw,
         memory_pulled: [],
-        specs_read: [],
+        specs_read: injected?.paths ?? [],
+        specs_detail: injected?.detail ?? [],
+        specs_block_tokens: injected?.blockTokens ?? null,
         intent_call: intentCall ?? null,
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
@@ -359,7 +395,7 @@ export class ReviewRunExecutor {
         })
         .catch(() => undefined);
       await this.repo
-        .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start, promptSkills))
+        .saveRunTrace(runId, this.traceFromBuffer(runId, pull, agent, '0/0 passed', Date.now() - start, promptSkills, injected))
         .catch(() => undefined);
       this.container.runBus.complete(runId);
       throw err;
@@ -465,6 +501,7 @@ export class ReviewRunExecutor {
     grounding: string,
     durationMs = 0,
     skills: string[] = [],
+    injected?: InjectedContext,
   ): RunTrace {
     return {
       config: {
@@ -476,11 +513,13 @@ export class ReviewRunExecutor {
         source: 'local',
       },
       stats: { duration_ms: durationMs, tokens_in: 0, tokens_out: 0, cost_usd: null, findings: 0, grounding },
-      prompt_assembly: { system: agent.systemPrompt, skills: skills.length > 0 ? skills.join('\n\n') : null, memory: null, specs: null, user: '' },
+      prompt_assembly: { system: agent.systemPrompt, skills: skills.length > 0 ? skills.join('\n\n') : null, memory: null, specs: injected?.block ?? null, user: '' },
       tool_calls: [],
       raw_output: '',
       memory_pulled: [],
-      specs_read: [],
+      specs_read: injected?.paths ?? [],
+      specs_detail: injected?.detail ?? [],
+      specs_block_tokens: injected?.blockTokens ?? null,
       log: this.container.runBus.buffer(runId).map((e) => ({ t: e.t, kind: e.kind, msg: e.msg })),
     };
   }

@@ -10,6 +10,7 @@ import type {
 import type { AppConfig } from './config.js';
 import type { Db } from '../db/client.js';
 import { JobRunner } from './jobs.js';
+import { PgAdvisoryRepoIndexLock, type RepoIndexLock } from './repo-index-lock.js';
 import { runBus, type RunBus } from './sse.js';
 import { LocalSecretsProvider } from '../adapters/secrets/local.js';
 import { LocalNoAuthProvider } from '../adapters/auth/local.js';
@@ -29,6 +30,8 @@ import type { RepoIntel } from '../modules/repo-intel/types.js';
 import { RepoIntelService } from '../modules/repo-intel/service.js';
 import { type DepGraph, DepCruiseGraph } from '../adapters/depgraph/index.js';
 import { type Tokenizer, TiktokenTokenizer } from '../adapters/tokenizer/index.js';
+import type { ProjectContextFacade } from '../modules/project-context/application/facade.js';
+import { createProjectContext } from '../modules/project-context/index.js';
 
 /**
  * DI container. One per app instance. Holds config, db, the JobRunner,
@@ -51,6 +54,10 @@ export interface ContainerOverrides {
   /** repo-intel T3 adapters — only the indexer pipeline reads these. */
   depgraph?: DepGraph;
   tokenizer?: Tokenizer;
+  /** Project Context facade — tests inject fakes (run-executor reads docs through it). */
+  projectContext?: ProjectContextFacade;
+  /** Per-repository index lock — tests inject a passthrough instead of Postgres advisory locks. */
+  repoIndexLock?: RepoIndexLock;
 }
 
 export class Container {
@@ -75,7 +82,10 @@ export class Container {
   private _repoIntel?: RepoIntel;
   private _depgraph?: DepGraph;
   private _tokenizer?: Tokenizer;
+  private _projectContext?: ProjectContextFacade;
   private _priceBook?: PriceBook;
+  private _repoIndexLock?: RepoIndexLock;
+  private readonly indexCompletedListeners: Array<(repoId: string) => void> = [];
 
   constructor(config: AppConfig, db: Db, private overrides: ContainerOverrides = {}) {
     this.config = config;
@@ -87,6 +97,29 @@ export class Container {
     this.auth = overrides.auth ?? new LocalNoAuthProvider(db);
     this.runBus = runBus;
     this.jobs = new JobRunner(db);
+  }
+
+  /** Per-repository lock serializing index mutations and onboarding evidence capture. */
+  get repoIndexLock(): RepoIndexLock {
+    if (this.overrides.repoIndexLock) return this.overrides.repoIndexLock;
+    this._repoIndexLock ??= new PgAdvisoryRepoIndexLock(this.db);
+    return this._repoIndexLock;
+  }
+
+  /** Features (e.g. onboarding) subscribe to "index completed with usable status". */
+  onIndexCompleted(listener: (repoId: string) => void): void {
+    this.indexCompletedListeners.push(listener);
+  }
+
+  /** Fire-and-forget: a listener failure can never fail or delay indexing. */
+  notifyIndexCompleted(repoId: string): void {
+    for (const l of this.indexCompletedListeners) {
+      try {
+        l(repoId);
+      } catch {
+        /* listeners are best-effort */
+      }
+    }
   }
 
   get git(): GitClient {
@@ -127,7 +160,30 @@ export class Container {
     return this._depgraph;
   }
 
-  /** Token counter (js-tiktoken) for the repo-map budget search. */
+  /**
+   * Project Context facade: discovery/listing, attachments and the per-run
+   * effective-document resolution. Built lazily from this container's git,
+   * tokenizer and config so overrides apply; the run-executor consumes it here
+   * rather than importing the module's internals.
+   */
+  get projectContext(): ProjectContextFacade {
+    if (this.overrides.projectContext) return this.overrides.projectContext;
+    this._projectContext ??= createProjectContext({
+      db: this.db,
+      git: () => this.git,
+      tokenizer: () => this.tokenizer,
+      settings: {
+        roots: this.config.projectContextRoots,
+        warnTokens: this.config.projectContextWarnTokens,
+      },
+    });
+    return this._projectContext;
+  }
+
+  /**
+   * Token counter (js-tiktoken). Used by the repo-map budget search, the prompt
+   * log and Project Context sizing/trace counts (cl100k_base, chars/4 fallback).
+   */
   get tokenizer(): Tokenizer {
     if (this.overrides.tokenizer) return this.overrides.tokenizer;
     this._tokenizer ??= new TiktokenTokenizer();

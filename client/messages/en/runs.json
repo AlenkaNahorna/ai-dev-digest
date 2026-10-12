@@ -33,6 +33,9 @@
       "provider": "Provider",
       "memoryPulled": "Memory pulled",
       "specsRead": "Specs read",
+      "specTokens": "≈ {count} tokens",
+      "specsBlockTokens": "Project context block",
+      "specsBlockTokensValue": "≈ {count} tokens (heading and delimiters included)",
       "items": "{count, plural, one {# item} other {# items}}",
       "none": "none"
     },
@@ -47,7 +50,7 @@
       "skills": "Skills (dynamic)",
       "memory": "Memory (dynamic)",
       "repoMap": "Repo skeleton — repo-intel (dynamic)",
-      "specs": "Project context (dynamic)",
+      "specs": "Project context — attached specs (untrusted)",
       "callers": "Callers of changed symbols — repo-intel (dynamic)",
       "user": "User / diff (dynamic)",
       "copy": "Copy",

@@ -60,6 +60,8 @@ From repo root:
 | `05-pr-diff.flow.json` | PR detail → Files changed tab → diff viewer |
 | `06-onboarding.flow.json` | Onboarding page → add-repo form renders |
 | `07-settings.flow.json` | Settings pages render (API keys, models) |
+| `08-onboarding-tour.flow.json` | Onboarding Tour (seeded tour) renders for the demo repo |
+| `09-onboarding-public-snapshot.flow.json` | Public onboarding snapshot (seeded token) and generic unavailable page |
 
 ## Running Tests
 

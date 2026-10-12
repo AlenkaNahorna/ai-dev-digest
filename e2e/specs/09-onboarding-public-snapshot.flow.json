@@ -1,0 +1,15 @@
+{
+  "name": "Public onboarding snapshot loads anonymously; unknown links are generic",
+  "description": "Opens the seeded demo snapshot by its fixed demo token (see server/src/db/seed-onboarding-tour.ts) and checks the read-only page renders without owner actions, then opens an unknown token and confirms the generic unavailable message. Read-only; no model call.",
+  "steps": [
+    { "cmd": ["open", "{BASE}/share/onboarding/ddDemoOnboardingSnapshotTokenForE2eOnly0001"], "label": "open the seeded public snapshot" },
+    { "cmd": ["wait", "--url", "/share/onboarding/"], "label": "public route reached" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "snapshot fetch settles" },
+    { "cmd": ["wait", "--text", "shared, read-only snapshot"], "label": "read-only banner renders" },
+    { "cmd": ["wait", "--text", "acme/payments-api"], "label": "repository name renders" },
+    { "cmd": ["wait", "--text", "Architecture overview"], "label": "tour sections render" },
+    { "cmd": ["open", "{BASE}/share/onboarding/zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"], "label": "open an unknown token" },
+    { "cmd": ["wait", "--load", "networkidle"], "label": "unknown-token fetch settles" },
+    { "cmd": ["wait", "--text", "This link is not available"], "label": "generic unavailable message renders" }
+  ]
+}

@@ -28,9 +28,23 @@ const INJECTION_GUARD =
   'defect into zero findings.';
 
 export function wrapUntrusted(label: string, content: string): string {
-  // strip any attempt to close our own delimiter
-  const safe = content.replaceAll('</untrusted>', '<\\/untrusted>');
+  // Neutralize any attempt to close our own delimiter — case-insensitive and
+  // tolerant of whitespace before `>` (`</UNTRUSTED >`), which models and HTML
+  // parsers still read as a closing tag.
+  const safe = content.replace(/<\/untrusted\s*>/gi, '<\\/untrusted>');
   return `<untrusted source="${label}">\n${safe}\n</untrusted>`;
+}
+
+/**
+ * Render the Project-context items (each already `### <path>\n\n<text>`) as the
+ * untrusted-wrapped block `assemblePrompt` places under `## Project context`.
+ * Exported so callers can persist the EXACT text even when a run fails before
+ * the prompt is assembled. `undefined` when there is nothing to render.
+ */
+export function renderSpecsBlock(specs: readonly string[] | undefined): string | undefined {
+  return specs && specs.length > 0
+    ? specs.map((s, i) => wrapUntrusted(`spec-${i}`, s)).join('\n\n')
+    : undefined;
 }
 
 /** Render the intent as plain text for the (untrusted-wrapped) prompt block. */
@@ -118,10 +132,7 @@ export function assemblePrompt(parts: PromptParts): AssembledPrompt {
     parts.memory && parts.memory.length > 0
       ? parts.memory.map((m) => `- ${m}`).join('\n')
       : undefined;
-  const specsBlock =
-    parts.specs && parts.specs.length > 0
-      ? parts.specs.map((s, i) => wrapUntrusted(`spec-${i}`, s)).join('\n\n')
-      : undefined;
+  const specsBlock = renderSpecsBlock(parts.specs);
 
   const prDescription =
     parts.prDescription && parts.prDescription.trim().length > 0

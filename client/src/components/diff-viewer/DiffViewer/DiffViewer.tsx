@@ -21,6 +21,7 @@ export function DiffViewer({
   groups,
   ungrouped,
   findingApi,
+  focusFile,
 }: {
   files: PrFile[];
   commenting?: DiffCommentApi;
@@ -29,6 +30,8 @@ export function DiffViewer({
   /** Files missing from the smart-diff response; rendered last, flat. */
   ungrouped?: PrFile[];
   findingApi?: DiffFindingApi;
+  /** Open and scroll to this file. Route-agnostic: the caller decides where the path comes from. */
+  focusFile?: string | null;
 }) {
   const t = useTranslations("shell");
   if (!files || files.length === 0) {
@@ -47,6 +50,7 @@ export function DiffViewer({
             fileCount={g.files.length}
             findingCount={g.findingCount}
             defaultOpen={g.defaultOpen}
+            forceOpen={!!focusFile && g.files.some((f) => f.path === focusFile)}
           >
             {g.files.map((f) => (
               <FileCard
@@ -55,6 +59,7 @@ export function DiffViewer({
                 commenting={commenting}
                 findingApi={findingApi}
                 hasFindings={g.findingPaths.has(f.path) || undefined}
+                focused={f.path === focusFile}
               />
             ))}
           </FileGroup>
@@ -62,7 +67,7 @@ export function DiffViewer({
         {ungrouped && ungrouped.length > 0 && (
           <div style={s.list}>
             {ungrouped.map((f) => (
-              <FileCard key={f.path} file={f} commenting={commenting} findingApi={findingApi} />
+              <FileCard key={f.path} file={f} commenting={commenting} findingApi={findingApi} focused={f.path === focusFile} />
             ))}
           </div>
         )}
@@ -72,7 +77,7 @@ export function DiffViewer({
   return (
     <div style={s.list}>
       {files.map((f) => (
-        <FileCard key={f.path} file={f} commenting={commenting} findingApi={findingApi} />
+        <FileCard key={f.path} file={f} commenting={commenting} findingApi={findingApi} focused={f.path === focusFile} />
       ))}
     </div>
   );

@@ -70,6 +70,16 @@ export class RunLogger {
   info(msg: string, data?: unknown): void {
     this.event('info', msg, data);
   }
+  /**
+   * Non-fatal problem the run continued past (e.g. a skipped project-context
+   * document). Shown as an info line prefixed `WARNING:` in the Live Log and
+   * persisted log, and mirrored to stdout at warn level. Callers pass paths and
+   * counts only — never document text.
+   */
+  warn(msg: string, data?: unknown): void {
+    for (const runId of this.runIds) this.bus.publish(runId, 'info', `WARNING: ${msg}`, data);
+    this.base?.warn({ ...this.ctx, runIds: this.runIds, kind: 'warn', ...(data !== undefined ? { data } : {}) }, msg);
+  }
   /** External I/O (LLM / embedding / git) — shown amber in the Live Log. */
   tool(msg: string, data?: unknown): void {
     this.event('tool', msg, data);

@@ -37,7 +37,7 @@ Use this table to decide where a piece of documentation goes. It is the single s
 | Step-by-step recipe/runbook | `docs/how-to/<slug>.md` (new, on demand) | How-to | |
 | An accepted architectural decision (ADR) | `docs/decisions/NNNN-<slug>.md` (new, only if the request or plan explicitly contains a decision) | Explanation | ADR structure: context / decision / consequences |
 | Test strategy | `TESTING.md` — only on explicit request | Reference | |
-| Plans | `docs/plans/` | — | `planner` writes these; you only read them |
+| Plans | `docs/plans/` | — | `implementation-planner` writes these; you only read them |
 | Application reviewer-agent prompts | `docs/agent-prompts/` | — | out of your scope |
 | Claude Code subagents | `.claude/agents/README.md` | — | out of your scope (a separate process) |
 

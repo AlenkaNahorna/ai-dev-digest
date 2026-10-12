@@ -10,6 +10,9 @@ import repoIntel from './repo-intel/adapters/inbound/http/routes.js';
 import skills from './skills/adapters/inbound/http/routes.js';
 import conventions from './conventions/adapters/inbound/http/routes.js';
 import blast from './blast/adapters/inbound/http/routes.js';
+import onboardingGenerator from './onboarding-generator/adapters/inbound/http/routes.js';
+import prBrief from './pr-brief/adapters/inbound/http/routes.js';
+import projectContext from './project-context/adapters/inbound/http/routes.js';
 
 /**
  * Module registry. Each feature module is a Fastify plugin in
@@ -36,4 +39,7 @@ export const modules: Record<string, FastifyPluginAsync> = {
   skills,
   conventions,
   blast,
+  projectContext,
+  onboardingGenerator,
+  prBrief,
 };
