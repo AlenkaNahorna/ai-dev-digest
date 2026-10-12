@@ -1,0 +1,263 @@
+{
+  "metadata": {
+    "skill_name": "onion-architecture",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-10-12T20:38:25Z",
+    "evals_run": [
+      1,
+      2,
+      3
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.67,
+        "passed": 2,
+        "failed": 1,
+        "total": 3,
+        "time_seconds": 46.9,
+        "tokens": 2147,
+        "tool_calls": 11,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags domain/label-policy.ts for importing drizzle-orm / the db schema into the domain layer",
+          "passed": true,
+          "evidence": "Findings #1-#2: 'Imports drizzle-orm... which must contain pure business rules' and 'Imports server/src/db/schema.js... pulling a concrete persistence schema into the domain layer'"
+        },
+        {
+          "text": "Flags application/use-cases/create-label.ts for importing a Fastify type into the application layer",
+          "passed": false,
+          "evidence": "Not mentioned anywhere in the 7 findings. The with-skill run focused entirely on the domain/drizzle and routes/db-bypass violations and never flagged create-label.ts importing FastifyRequest."
+        },
+        {
+          "text": "Flags adapters/inbound/http/labels.routes.ts for querying the database directly instead of calling a use case",
+          "passed": true,
+          "evidence": "Finding #4: 'The GET handler runs db.select().from(labels)... bypassing the application use-case and outbound persistence layers entirely'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 38.3,
+        "tokens": 1842,
+        "tool_calls": 11,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags application/use-cases/assign-tag.ts for depending on the whole Container instead of a narrow port",
+          "passed": true,
+          "evidence": "Finding #2: 'createAssignTag takes the whole Container and reaches into container.tags.repository itself, instead of being injected a narrow TagRepositoryPort'"
+        },
+        {
+          "text": "Flags adapters/outbound/persistence/tag-repository.ts for returning an HTTP DTO shape and/or throwing a transport-specific error (statusCode)",
+          "passed": true,
+          "evidence": "Finding #4: 'returns a TagResponseDto containing a snake_case pull_id HTTP/API field... instead of the plain domain/port row' and Finding #5: 'throws an Error annotated with a statusCode property... a transport-specific (HTTP) error convention leaking into the persistence adapter'"
+        },
+        {
+          "text": "Flags index.ts for using a barrel export (export *) that hides the dependency direction",
+          "passed": true,
+          "evidence": "Finding #1: 'Uses export * from ... barrel exports across ports, use-cases, persistence, and HTTP routes, which the skill explicitly forbids'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 32.7,
+        "tokens": 2147,
+        "tool_calls": 11,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags domain/note-policy.ts for importing the concrete simple-git implementation into the domain layer",
+          "passed": true,
+          "evidence": "Finding #1: 'The domain layer imports simple-git and calls it directly, but domain/ must contain only pure business rules and must not import Node adapters or concrete SDKs'"
+        },
+        {
+          "text": "Flags the duplicated OpenAI SDK instantiation/call across summarize-note.ts and translate-note.ts instead of a shared port",
+          "passed": true,
+          "evidence": "Findings #2-#3 flag both files individually as importing/instantiating the openai SDK directly instead of through a port; finding #3 explicitly says 'Same violation as summarize-note.ts'"
+        },
+        {
+          "text": "Flags src/adapters/note-slugify.ts as a cross-cutting-looking utility that is actually only used by one feature (notes)",
+          "passed": true,
+          "evidence": "Finding #4: 'This cross-cutting adapter is only ever imported by the notes module's HTTP route... violating the rule that src/adapters/ must hold only genuinely reusable, multi-module utilities'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 33.1,
+        "tokens": 2450,
+        "tool_calls": 9,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags domain/label-policy.ts for importing drizzle-orm / the db schema into the domain layer",
+          "passed": true,
+          "evidence": "Finding #1: 'The domain layer imports labels from the Drizzle db/schema.js and re-exports labelsTableRef/byId... coupling the innermost layer to a persistence/ORM technology'"
+        },
+        {
+          "text": "Flags application/use-cases/create-label.ts for importing a Fastify type into the application layer",
+          "passed": true,
+          "evidence": "Finding #5: 'The use case takes a FastifyRequest parameter and calls req.log.info(...), pulling a framework-specific (Fastify) transport type into the application layer'"
+        },
+        {
+          "text": "Flags adapters/inbound/http/labels.routes.ts for querying the database directly instead of calling a use case",
+          "passed": true,
+          "evidence": "Finding #2: 'The GET route bypasses the application layer entirely and queries db.select().from(labels)... skipping the use case and the repository port'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 53.3,
+        "tokens": 2800,
+        "tool_calls": 11,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags application/use-cases/assign-tag.ts for depending on the whole Container instead of a narrow port",
+          "passed": true,
+          "evidence": "Finding #1: 'The use-case imports Container... and reaches into it as container.tags.repository, so the application layer depends directly on infrastructure wiring instead of declaring its own port dependency'"
+        },
+        {
+          "text": "Flags adapters/outbound/persistence/tag-repository.ts for returning an HTTP DTO shape and/or throwing a transport-specific error (statusCode)",
+          "passed": true,
+          "evidence": "Finding #4: 'defines a TagResponseDto (snake_case pull_id field) inside the persistence adapter and returns it from assign()... an outbound persistence adapter should not be shaping an HTTP-facing response DTO'"
+        },
+        {
+          "text": "Flags index.ts for using a barrel export (export *) that hides the dependency direction",
+          "passed": true,
+          "evidence": "Finding #6: 'The barrel file re-exports symbols from every layer... via export *, collapsing the onion's layer boundaries into one flat public surface'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "time_seconds": 49.3,
+        "tokens": 2950,
+        "tool_calls": 11,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Flags domain/note-policy.ts for importing the concrete simple-git implementation into the domain layer",
+          "passed": true,
+          "evidence": "Finding #1: 'The domain layer imports and calls simple-git... which means pure domain logic is coupled to infrastructure/IO'"
+        },
+        {
+          "text": "Flags the duplicated OpenAI SDK instantiation/call across summarize-note.ts and translate-note.ts instead of a shared port",
+          "passed": true,
+          "evidence": "Finding #4: 'Both files duplicate the identical OpenAI client construction... this cross-cutting LLM-access logic should be factored into a single shared adapter/port rather than copy-pasted into two use cases'"
+        },
+        {
+          "text": "Flags src/adapters/note-slugify.ts as a cross-cutting-looking utility that is actually only used by one feature (notes)",
+          "passed": true,
+          "evidence": "Finding #6: 'This slugify utility is a pure, note-domain-specific business rule... but lives in the generic cross-cutting adapters/ location outside the notes module entirely... a misplaced shared utility'"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.89,
+        "stddev": 0.1905,
+        "min": 0.67,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 39.3,
+        "stddev": 7.1526,
+        "min": 32.7,
+        "max": 46.9
+      },
+      "tokens": {
+        "mean": 2045.3333,
+        "stddev": 176.0918,
+        "min": 1842,
+        "max": 2147
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 45.2333,
+        "stddev": 10.6964,
+        "min": 33.1,
+        "max": 53.3
+      },
+      "tokens": {
+        "mean": 2733.3333,
+        "stddev": 256.5801,
+        "min": 2450,
+        "max": 2950
+      }
+    },
+    "delta": {
+      "pass_rate": "-0.11",
+      "time_seconds": "-5.9",
+      "tokens": "-688"
+    }
+  },
+  "notes": []
+}

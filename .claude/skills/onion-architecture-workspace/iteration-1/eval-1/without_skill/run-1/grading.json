@@ -1,0 +1,25 @@
+{
+  "expectations": [
+    {
+      "text": "Flags domain/label-policy.ts for importing drizzle-orm / the db schema into the domain layer",
+      "passed": true,
+      "evidence": "Finding #1: 'The domain layer imports labels from the Drizzle db/schema.js and re-exports labelsTableRef/byId... coupling the innermost layer to a persistence/ORM technology'"
+    },
+    {
+      "text": "Flags application/use-cases/create-label.ts for importing a Fastify type into the application layer",
+      "passed": true,
+      "evidence": "Finding #5: 'The use case takes a FastifyRequest parameter and calls req.log.info(...), pulling a framework-specific (Fastify) transport type into the application layer'"
+    },
+    {
+      "text": "Flags adapters/inbound/http/labels.routes.ts for querying the database directly instead of calling a use case",
+      "passed": true,
+      "evidence": "Finding #2: 'The GET route bypasses the application layer entirely and queries db.select().from(labels)... skipping the use case and the repository port'"
+    }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 },
+  "execution_metrics": { "total_tool_calls": 9, "output_chars": 2450 },
+  "timing": { "total_duration_seconds": 33.1 },
+  "eval_feedback": {
+    "overall": "Baseline (no skill) caught all 3 planted violations plus 5 extra, legitimate findings (unvalidated input, missing composition-root wiring, mixed domain/persistence concerns, unmapped DB row leaking through the port). General Clean/Onion Architecture knowledge was sufficient here without this project's specific skill."
+  }
+}

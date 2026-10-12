@@ -1,0 +1,22 @@
+{
+  "expectations": [
+    {
+      "text": "Flags application/use-cases/assign-tag.ts for depending on the whole Container instead of a narrow port",
+      "passed": true,
+      "evidence": "Finding #1: 'accepts the whole Container as a parameter, which the skill explicitly forbids for application/'"
+    },
+    {
+      "text": "Flags adapters/outbound/persistence/tag-repository.ts for returning an HTTP DTO shape and/or throwing a transport-specific error (statusCode)",
+      "passed": true,
+      "evidence": "Finding #2: 'returns a TagResponseDto (a snake_case HTTP-shaped object...)' and Finding #3: 'throws an Error with an attached statusCode property'"
+    },
+    {
+      "text": "Flags index.ts for using a barrel export (export *) that hides the dependency direction",
+      "passed": true,
+      "evidence": "Finding #4: 'every export is export * from ... (four barrel re-exports...), which the skill forbids... specifically in the checklist row for index.ts'"
+    }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 },
+  "execution_metrics": { "total_tool_calls": 10, "output_chars": 1700 },
+  "timing": { "total_duration_seconds": 33.8 }
+}

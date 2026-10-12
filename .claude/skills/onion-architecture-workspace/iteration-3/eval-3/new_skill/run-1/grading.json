@@ -1,0 +1,25 @@
+{
+  "expectations": [
+    {
+      "text": "Flags domain/note-policy.ts for importing the concrete simple-git implementation into the domain layer",
+      "passed": true,
+      "evidence": "Finding #1: 'imports simple-git... and calls it directly, which couples the pure domain layer to a concrete Git/filesystem implementation'"
+    },
+    {
+      "text": "Flags the duplicated OpenAI SDK instantiation/call across summarize-note.ts and translate-note.ts instead of a shared port",
+      "passed": true,
+      "evidence": "Finding #4: 'Both use cases independently construct an OpenAI client and duplicate near-identical chat-completion call logic, copying provider-specific logic into multiple use cases instead of sharing one port implementation'"
+    },
+    {
+      "text": "Flags src/adapters/note-slugify.ts as a cross-cutting-looking utility that is actually only used by one feature (notes)",
+      "passed": true,
+      "evidence": "Finding #5: 'A repo-wide search shows slugifyNoteTitle is imported only by notes.routes.ts, so this \"cross-cutting\" utility is consumed by a single feature module and belongs inside the notes module' — explicitly followed the new checklist row's instruction to grep for other importers."
+    }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 },
+  "execution_metrics": { "total_tool_calls": 13, "output_chars": 1750 },
+  "timing": { "total_duration_seconds": 41.1 },
+  "eval_feedback": {
+    "overall": "Confirmed fix: adding the explicit 'src/adapters/* consumed by only one module' checklist row restored the catch that the first v2 checklist draft had crowded out. All 3 assertions now pass for this eval."
+  }
+}

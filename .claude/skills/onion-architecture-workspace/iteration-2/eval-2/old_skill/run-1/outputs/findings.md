@@ -1,0 +1,9 @@
+1. **server/src/modules/tags/index.ts**: Uses `export * from ...` barrel exports across ports, use-cases, persistence, and HTTP routes, which the skill explicitly forbids ("barrel exports that hide dependency direction") and which also re-exports outbound persistence/adapter code from the module root where it could be imported directly by other layers.
+
+2. **server/src/modules/tags/application/use-cases/assign-tag.ts**: `createAssignTag` takes the whole `Container` and reaches into `container.tags.repository` itself, instead of being injected a narrow `TagRepositoryPort`; this violates the rule that application code must not receive the complete `Container` and that narrow ports should be injected into use cases.
+
+3. **server/src/modules/tags/adapters/inbound/http/tags.routes.ts**: `createTagsRoutes` also takes the whole `Container` (imported from `platform/container.js`) and passes it straight into the use-case factory, propagating the `Container` dependency into the inbound HTTP layer rather than constructing/injecting the specific port the use case needs.
+
+4. **server/src/modules/tags/adapters/outbound/persistence/tag-repository.ts**: The repository's `assign` method returns a `TagResponseDto` containing a snake_case `pull_id` HTTP/API field while being typed (per the `TagRepositoryPort`) to return `Promise<TagRow>` — the persistence adapter is producing an HTTP response DTO instead of the plain domain/port row, violating "a repository returning HTTP DTOs."
+
+5. **server/src/modules/tags/adapters/outbound/persistence/tag-repository.ts**: On insert failure it throws an `Error` annotated with a `statusCode` property (`err.statusCode = 500`), a transport-specific (HTTP) error convention leaking into the persistence adapter — violating "a repository returning HTTP DTOs or throwing transport-specific errors."

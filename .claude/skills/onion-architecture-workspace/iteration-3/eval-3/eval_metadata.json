@@ -1,0 +1,10 @@
+{
+  "eval_id": 3,
+  "eval_name": "notes-violations",
+  "prompt": "Review the `notes` module under `server/src/modules/notes/` in this workspace for Onion Architecture problems. Read every file in that module tree and list each architectural violation you find, with the exact file path and a one-sentence explanation of why it violates layering.",
+  "assertions": [
+    "Flags domain/note-policy.ts for importing the concrete simple-git implementation into the domain layer",
+    "Flags the duplicated OpenAI SDK instantiation/call across summarize-note.ts and translate-note.ts instead of a shared port",
+    "Flags src/adapters/note-slugify.ts as a cross-cutting-looking utility that is actually only used by one feature (notes)"
+  ]
+}

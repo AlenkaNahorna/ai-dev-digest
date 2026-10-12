@@ -1,0 +1,22 @@
+{
+  "expectations": [
+    {
+      "text": "Flags application/use-cases/assign-tag.ts for depending on the whole Container instead of a narrow port",
+      "passed": true,
+      "evidence": "Finding #1: 'The use-case imports Container... and reaches into it as container.tags.repository, so the application layer depends directly on infrastructure wiring instead of declaring its own port dependency'"
+    },
+    {
+      "text": "Flags adapters/outbound/persistence/tag-repository.ts for returning an HTTP DTO shape and/or throwing a transport-specific error (statusCode)",
+      "passed": true,
+      "evidence": "Finding #4: 'defines a TagResponseDto (snake_case pull_id field) inside the persistence adapter and returns it from assign()... an outbound persistence adapter should not be shaping an HTTP-facing response DTO'"
+    },
+    {
+      "text": "Flags index.ts for using a barrel export (export *) that hides the dependency direction",
+      "passed": true,
+      "evidence": "Finding #6: 'The barrel file re-exports symbols from every layer... via export *, collapsing the onion's layer boundaries into one flat public surface'"
+    }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 },
+  "execution_metrics": { "total_tool_calls": 11, "output_chars": 2800 },
+  "timing": { "total_duration_seconds": 53.3 }
+}

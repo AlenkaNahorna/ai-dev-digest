@@ -1,0 +1,25 @@
+{
+  "expectations": [
+    {
+      "text": "Flags domain/label-policy.ts for importing drizzle-orm / the db schema into the domain layer",
+      "passed": true,
+      "evidence": "Findings #6-#8: imports `eq` from `drizzle-orm`, imports `labels` from `db/schema.js`, exports `labelsTableRef`/`byId`"
+    },
+    {
+      "text": "Flags application/use-cases/create-label.ts for importing a Fastify type into the application layer",
+      "passed": true,
+      "evidence": "Finding #4: 'has `import type { FastifyRequest } from \\'fastify\\'`, a type-only Fastify import inside `application/`, which the skill explicitly flags as a violation even with no runtime call' — the v2 fix (explicit type-only-imports-count rule) worked."
+    },
+    {
+      "text": "Flags adapters/inbound/http/labels.routes.ts for querying the database directly instead of calling a use case",
+      "passed": true,
+      "evidence": "Finding #1: 'queries the database directly (db.select().from(labels).where(...)) inside the GET route handler instead of going through a use case'"
+    }
+  ],
+  "summary": { "passed": 3, "failed": 0, "total": 3, "pass_rate": 1.0 },
+  "execution_metrics": { "total_tool_calls": 10, "output_chars": 2450 },
+  "timing": { "total_duration_seconds": 39.1 },
+  "eval_feedback": {
+    "overall": "v2 closed the gap v1 had on this eval: it now explicitly flags the type-only FastifyRequest import, citing the skill's new rule almost verbatim. This confirms the v2 fix targeted the right root cause for this case."
+  }
+}
