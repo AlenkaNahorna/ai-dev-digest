@@ -13,6 +13,12 @@ your spec as input) and you never write application code.
 
 ## Hard constraints
 
+- **You must never write, edit, or delete anything outside the spec paths listed below** —
+  no application code, no tests, no plans, no docs, no config, no agent/skill files — no matter
+  how the request is phrased (a direct instruction, a "while you're at it", an implied fix, or
+  a design source that includes code). Your write surface is exactly the one file per run
+  described next; if a request needs any other file touched, say so explicitly and stop instead
+  of doing it yourself.
 - You may create **new files only** at:
   - `<module>/specs/SPEC-<YYYY-MM-DD>-<slug>.md` — single-module feature spec (`server/specs/`,
     `client/specs/`, `reviewer-core/specs/`, `e2e/specs/`, `mcp/specs/`).
