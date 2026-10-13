@@ -1,60 +1,58 @@
 import type { WorkflowCase } from "../src/index.js";
 
 /**
- * Systemic ("workflow") tier — asserts the real on-disk harness (CLAUDE.md + skills + subagents,
- * loaded via settingSources:["project"]) behaves as documented. Organized by scenario, not by a
- * single artifact, because these behaviors are cross-cutting.
+ * Systemic ("workflow") tier — asserts the real on-disk harness (AGENTS.md/CLAUDE.md, module
+ * INSIGHTS, skills, subagents; loaded via settingSources:["project"]) behaves as documented.
+ * Organized by scenario, not by a single artifact, because these behaviors are cross-cutting.
  *
- * Budget: 5 Claude sessions total.
- *   - 3 × trace     → 1 session each                      = 3
- *   - 1 × activation pair (positive + near-miss negative) = 2
+ * Budget: 4 Claude sessions (each case is one session; a trace case stops as soon as all of its
+ * expectations are met).
+ *   - 2 × trace (merged scenarios: several assertions per session)  = 2
+ *   - 1 × activation pair (positive + near-miss negative)           = 2
  *
- * `trace` folds several assertions into ONE session (cheaper, coarser) and stops early once its
- * evidence is in — so a dispatch-bearing trace never waits out the nested subagent's full run.
+ * Merging saves sessions but coarsens diagnostics: a trace case fails if ANY of its expectations
+ * is missed, and the failure message lists what was read and dispatched. A merged trace is only
+ * trusted after `pnpm eval:repeat workflow -t "<name>" -n 2` shows it is stable.
+ *
+ * Trace cases can also assert ABSENCE (forbidSubagents / forbidSkills / forbidFilesRead). Those are
+ * checked only over the trace up to the early stop, so they prove "not before the positives were
+ * met", which is the scoping property we care about here.
  */
 export const cases: WorkflowCase[] = [
-  // --- trace (1 session): CLAUDE.md "Read When" routing + subagent dispatch, together -----------
+  // --- trace (1 session): session protocol + module docs + two subagents for an API task --------
   {
     kind: "trace",
     // Endpoint must NOT already exist, or the model reviews the existing code inline instead of
     // planning-then-dispatching. GET /reviews/:id/export is genuinely absent from routes.ts.
-    name: "API-route task reads api-contracts AND pulls the architecture-reviewer",
+    name: "API-route task reads server INSIGHTS and docs, dispatches architecture-reviewer and security-reviewer",
     prompt:
       "Я планую додати НОВИЙ, ще не реалізований ендпоінт GET /reviews/:id/export (віддає ревʼю як " +
-      "markdown). Спершу звірся з конвенціями API цього репо. Потім ОБОВʼЯЗКОВО запусти сабагента " +
-      "architecture-reviewer, щоб він оцінив мій план на відповідність onion-шарам — не рецензуй сам.",
-    expectFilesRead: ["server/docs/api-contracts.md"],
-    expectSubagents: ["architecture-reviewer"],
-    maxTurns: 8,
+      "markdown). Перед роботою за сесійним протоколом прочитай INSIGHTS модуля server, потім звірся " +
+      "з архітектурними настановами server (AGENTS.md модуля) щодо DI, адаптерів і потоку запиту. " +
+      "Потім ОБОВʼЯЗКОВО запусти два сабагенти: architecture-reviewer, щоб він оцінив мій план на " +
+      "відповідність onion-шарам, і security-reviewer, бо endpoint віддає ревʼю і має перевіряти доступ " +
+      "по workspace. Не рецензуй сам.",
+    // The prompt tells the model to check server AGENTS.md (not docs/architecture.md), so expect that file.
+    expectFilesRead: ["server/INSIGHTS.md", "server/AGENTS.md"],
+    expectSubagents: ["architecture-reviewer", "security-reviewer"],
+    // The request is to PLAN an endpoint, not implement it: no implementer dispatch.
+    forbidSubagents: ["implementer"],
+    maxTurns: 10,
   },
 
-  // --- trace (1 session): two "Read When" rows at once -----------------------------------------
+  // --- trace (1 session): module INSIGHTS + module routing doc for a reviewer-core change ---------
   {
     kind: "trace",
-    // Tests the CLAUDE.md "Read When" routing, so the prompt must push toward CONSULTING the docs,
-    // not exploring source. Earlier phrasing ("розберись, як усе влаштовано") sent the model straight
-    // into schema.ts / pipeline.run.ts and it never opened the routed doc. One anchor doc (pipeline.md)
-    // keeps this a deterministic routing check — asserting two docs in one session is inherently flaky.
-    name: "pipeline task follows CLAUDE.md routing to pipeline.md",
+    name: "reviewer-core change reads the module INSIGHTS and the architecture doc",
     prompt:
-      "Я збираюся змінити review pipeline. Перш ніж торкатися коду — звірся з настановами цього репо " +
-      "(CLAUDE.md) щодо того, яку документацію треба прочитати для змін у pipeline, і прочитай саме ці документи.",
-    expectFilesRead: ["reviewer-core/docs/pipeline.md"],
+      "Я збираюся змінити review pipeline у reviewer-core. Перш ніж торкатися коду: " +
+      "(1) за сесійним протоколом прочитай INSIGHTS модуля reviewer-core; " +
+      "(2) звірся з AGENTS.md модуля щодо того, яку документацію треба прочитати для змін у pipeline, " +
+      "і прочитай саме ці документи.",
+    expectFilesRead: ["reviewer-core/INSIGHTS.md", "reviewer-core/docs/architecture.md"],
+    // Scope check: the change is in reviewer-core, so no other module's INSIGHTS should be read.
+    forbidFilesRead: ["client/INSIGHTS.md", "e2e/INSIGHTS.md", "mcp/INSIGHTS.md"],
     maxTurns: 8,
-  },
-
-  // --- trace (1 session): CLAUDE.md "Hit unexpected behavior" routing -> gotchas ----------------
-  // Was a contrast case, but the control run (empty tmpdir) could still reach the real repo by
-  // absolute path and read gotchas.md, making the negative flaky. As a single-session trace it
-  // reliably checks the same routing rule: in the real repo, the discovery prompt reads gotchas.md.
-  {
-    kind: "trace",
-    name: "CLAUDE.md routes a gotchas lookup to reviewer-core/insights",
-    prompt:
-      "У reviewer-core я стикнувся з несподіваною поведінкою — щось працює не так, як я очікував. " +
-      "За настановами цього репо, де це вже могло бути задокументовано? Прочитай той файл.",
-    expectFilesRead: ["reviewer-core/insights/gotchas.md"],
-    maxTurns: 5,
   },
 
   // --- activation pair (2 sessions): positive + near-miss negative ------------------------------
@@ -75,6 +73,7 @@ export const cases: WorkflowCase[] = [
       "Поясни, як у pgvector працюють розмірності колонок і чому невідповідність повертає нуль рядків.",
     skill: "engineering-insights",
     shouldActivate: false,
-    maxTurns: 4,
+    // 6, not 4: at 4 turns the session hit max-turns, so the negative was not reached cleanly.
+    maxTurns: 6,
   },
 ];

@@ -1,8 +1,8 @@
 /**
  * Local version-over-version trend. A tiny vitest reporter that appends each eval test's
- * pass/fail (with the current git sha) to results/history.jsonl. Both `eval:compare` and
- * `eval:repeat` read this file, so removing the reporter disables both — it is not optional
- * if you use those. Nothing here calls a model.
+ * pass/fail (with the current git sha) to results/history.jsonl. Only `eval:compare` reads this
+ * file; `eval:repeat`, `eval:delta` and `eval:benchmark` read results/records.jsonl instead, so the
+ * reporter is needed only for `eval:compare`. Nothing here calls a model.
  */
 
 import { execFileSync } from "node:child_process";

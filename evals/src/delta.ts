@@ -3,9 +3,9 @@
  * view, each side backed by N runs. Diffs at three levels: per-test pass rate, per-practice
  * (the primary signal — which practice improved/regressed), and metrics.
  *
- *   pnpm eval:repeat skills/onion-architecture -n 5 --label baseline   # BEFORE the edit
+ *   pnpm eval:repeat agents/architecture-reviewer -n 2 --label baseline   # BEFORE the edit
  *   ...edit...
- *   pnpm eval:repeat skills/onion-architecture -n 5 --label candidate  # AFTER
+ *   pnpm eval:repeat agents/architecture-reviewer -n 2 --label candidate  # AFTER
  *   pnpm eval:delta baseline candidate
  */
 

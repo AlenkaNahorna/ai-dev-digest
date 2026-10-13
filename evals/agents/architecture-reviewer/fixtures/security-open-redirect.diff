@@ -1,0 +1,14 @@
+diff --git a/server/src/modules/repos/adapters/inbound/http/routes.ts b/server/src/modules/repos/adapters/inbound/http/routes.ts
+--- a/server/src/modules/repos/adapters/inbound/http/routes.ts
++++ b/server/src/modules/repos/adapters/inbound/http/routes.ts
+@@ -24,6 +24,10 @@
+   // Register the clone job handler once.
+   service.registerCloneJobHandler();
+ 
++  app.get('/repos/:id/go', async (req, reply) => {
++    return reply.redirect(String((req.query as { to?: string }).to ?? '/'));
++  });
++
+   app.post('/repos', { schema: { body: RepoInput, response: { 200: responseSchemas.repos.element, 201: responseSchemas.repos.element } } }, async (req, reply) => {
+     const { workspaceId, userId } = await getContext(app.container, req);
+     const { repo, created } = await service.add(workspaceId, userId, req.body.url);

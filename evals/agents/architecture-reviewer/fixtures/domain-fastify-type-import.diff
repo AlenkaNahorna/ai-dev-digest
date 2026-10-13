@@ -1,0 +1,17 @@
+diff --git a/server/src/modules/onboarding-generator/domain/lifecycle.ts b/server/src/modules/onboarding-generator/domain/lifecycle.ts
+--- a/server/src/modules/onboarding-generator/domain/lifecycle.ts
++++ b/server/src/modules/onboarding-generator/domain/lifecycle.ts
+@@ -1,3 +1,4 @@
++import type { FastifyReply } from 'fastify';
+ import type { GenerationErrorCategory } from '@devdigest/shared/contracts/onboarding-generator.js';
+ 
+ /**
+@@ -66,3 +67,8 @@
+ 
+ export const BUDGET_REACHED_MESSAGE =
+   'The daily generation limit for this repository was reached. Automatic and manual generation resume when the 24-hour window moves on.';
++
++export function describeForReply(s: RequestStatus, reply: FastifyReply): string {
++  reply.header('x-request-status', s);
++  return s;
++}

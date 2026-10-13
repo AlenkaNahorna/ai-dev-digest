@@ -1,8 +1,8 @@
 # Implementation Plan: Eval statistics upgrade (skill-creator v2 parity, trimmed)
 
-> Place this file at `docs/plans/eval-stats-upgrade.md` and execute with
-> `run-plan plan:docs/plans/eval-stats-upgrade.md` (or hand it to a single Opus session).
-> All work is confined to the `evals/` package — no product code is touched.
+> **Status: implemented in this fork.** This file is kept as the record of the plan; it lives at
+> `evals/docs/eval-stats-upgrade.md`. All work was confined to the `evals/` package.
+> See the Status section at the end for what is verified.
 
 ## Overview
 
@@ -79,7 +79,7 @@ nothing and cost owned-path gymnastics.
   `artifacts/load.ts` (`skillContent`/`agentContent`), `tasks.ts`
   (`skillTask`/`agentTask`/`workflowTask`), `scoring/pattern-match.ts`, `scoring/llm-judge.ts`
   (`llmJudge`/`parseVerdict`/`Verdict`/rubric), `logging/log.ts` (`logTrace`/`logVerdict`).
-  Add `src/index.ts` barrel. `harness.ts` re-exports from the barrel for one release, then dies.
+  Add `src/index.ts` barrel. `harness.ts` has been removed; nothing re-exports from it.
 - **T0b** Add `dsl/describe.ts` (`describeSkill`/`describeAgent`/`describeWorkflow`) and
   `dsl/case.ts` (`SkillCase`/`AgentCase`/`WorkflowCase` types + `runSkillCases`/`runAgentCases`/
   `runWorkflowCases`, each doing the one true measure → record → assert body).
@@ -96,3 +96,21 @@ nothing and cost owned-path gymnastics.
 - [x] Dependencies form a DAG (no cycles); Phase 0 precedes all statistics tasks
 - [x] Every Acceptance is measurable (command + observable result)
 - [x] No edits to existing shared contracts
+
+## Status (checked against the code)
+
+| Req | Status | Evidence |
+|-----|--------|----------|
+| R0 modular `src/`, barrel, `*.cases.ts` | done | `src/index.ts`, `src/dsl/case.ts`, `*.cases.ts` next to each `*.eval.ts`. The lite variant was recreated as `architecture-reviewer-v2` (uses `onion-architecture-v2`), with the same cases as `architecture-reviewer`. |
+| R1–R3 records, metrics, practice-level repeat/delta | modules present | `src/records/record.ts`, `src/records/stats.ts`, `src/repeat.ts`, `src/delta.ts` (not re-verified line by line) |
+| R4 `eval:benchmark` with baseline | done | `src/records/benchmark.ts` writes `benchmark.json` and `benchmark.md` |
+| R5 analyst flags | done | `src/records/stats.ts` defines `non_discriminating`, `always_failing`, `flaky`, `cost_regression`, `missing_data` |
+| R6a vacuous `numTurns` assertion | done | removed from the workflow runner in `src/dsl/case.ts` |
+| R6b false `trend-reporter` claim | done | the comment now says only `eval:compare` reads `history.jsonl` |
+| R6c repeat git provenance | done | `src/repeat.ts` imports `gitInfo` |
+| R7 documented version-comparison loop | done | `README.md`, section on `eval:repeat` / `eval:delta` |
+| R8 near-miss activation case | done | `workflow/review-workflow.cases.ts` (`shouldActivate: false`) |
+
+Known gaps: the workflow tier has never produced a record in this fork (`results/records.jsonl` has
+no workflow entries), so it has not been run end to end here.
+

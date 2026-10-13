@@ -4,7 +4,7 @@
  * configuration, the delta, a per-practice matrix, and deterministic analyst flags. This is the
  * with_skill vs without_skill comparison from skill-creator v2.
  *
- *   pnpm eval:benchmark skills/engineering-insights -n 5
+ *   pnpm eval:benchmark skills/dependency-checker -n 5
  *
  * Skills/agents only — a "no artifact" baseline is meaningless for the workflow tier, which has
  * its own control-vs-treatment design; workflow patterns are refused.

@@ -1,20 +1,28 @@
-diff --git a/reviewer-core/src/pipeline/run.ts b/reviewer-core/src/pipeline/run.ts
-index ccccccc..ddddddd 100644
---- a/reviewer-core/src/pipeline/run.ts
-+++ b/reviewer-core/src/pipeline/run.ts
-@@ -1,4 +1,5 @@
- import type { PipelineInput, Finding } from "./types.js";
-+import { readFileSync } from "node:fs";
- import { draftFindings } from "./draft.js";
- import { dedupe } from "./dedupe.js";
- import { groundFindings } from "./ground.js";
-@@ -6,9 +7,10 @@ import { groundFindings } from "./ground.js";
- export async function runPipeline(input: PipelineInput): Promise<Finding[]> {
-   const llm = input.llm;
-+  const prompt = readFileSync(input.promptPath, "utf8");
-   const drafted = await draftFindings(input, llm);
-   const deduped = dedupe(drafted);
--  const grounded = await groundFindings(deduped, input.diff);
--  return grounded;
-+  return deduped;
- }
+diff --git a/reviewer-core/src/review/run.ts b/reviewer-core/src/review/run.ts
+--- a/reviewer-core/src/review/run.ts
++++ b/reviewer-core/src/review/run.ts
+@@ -11,6 +11,7 @@
+ import { assemblePrompt } from '../prompt.js';
+ import { applyIntentScope } from '../intent/scope.js';
+ import { groundFindings, groundingSummary } from '../grounding.js';
++import { readFileSync } from 'node:fs';
+ import { reduceReviews, scoreFromFindings, sliceDiff } from './reduce.js';
+ 
+ /**
+@@ -204,6 +205,7 @@
+     emit('result', `${chunk.label}: ${res.data.findings.length} candidate finding(s)`);
+   }
+ 
++  const systemPromptFile = readFileSync(new URL('./system.md', import.meta.url), 'utf8');
+   const merged = reduceReviews(partials);
+   emit(
+     'result',
+@@ -211,7 +213,7 @@
+   );
+ 
+   // SHARED citation-grounding gate (the only post-step; not duplicated per strategy).
+-  const ground = groundFindings(merged.findings, input.diff);
++  const ground = { kept: merged.findings, dropped: [] as { finding: Finding; reason: string }[] };
+   const grounding = groundingSummary(ground);
+   for (const d of ground.dropped) {
+     emit('info', `grounding dropped "${d.finding.title}": ${d.reason}`);

@@ -65,6 +65,14 @@ export type WorkflowCase =
       expectSubagents?: string[];
       expectSkills?: string[];
       expectFilesRead?: string[];
+      /**
+       * Negative checks: these must be ABSENT from the trace. They see only the trace up to the
+       * early stop (stopWhen fires once every positive expectation is met), so an absence is proven
+       * for that prefix of the session, not for the whole run. See README "Workflow case".
+       */
+      forbidSubagents?: string[];
+      forbidSkills?: string[];
+      forbidFilesRead?: string[];
       maxTurns?: number;
     };
 
@@ -135,6 +143,9 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
         const result = await workflowTask(c.prompt, { maxTurns: c.maxTurns });
         logTrace(c.name, result);
         try {
+          // A run that hit max-turns or errored did not reach a verdict, so its absence of a skill
+          // proves nothing. Fail loudly instead of passing a negative on a broken run.
+          expect(result.isError, `session errored (max-turns or SDK error) | turns: ${result.numTurns}`).toBe(false);
           expect(
             activated(result, c.skill),
             `skills: ${result.skillsInvoked.join(", ")} | reads: ${result.filesRead.join(", ")}`,
@@ -175,6 +186,21 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
               result.filesRead.some((f) => f.includes(file)),
               `${file} not read | reads: ${result.filesRead.join(", ")}`,
             ).toBe(true);
+          }
+          for (const sub of c.forbidSubagents ?? []) {
+            expect(result.subagents, `forbidden subagent ${sub} was dispatched: ${result.subagents.join(", ")}`).not.toContain(sub);
+          }
+          for (const skill of c.forbidSkills ?? []) {
+            expect(
+              activated(result, skill),
+              `forbidden skill ${skill} was engaged | skills: ${result.skillsInvoked.join(", ")} | reads: ${result.filesRead.join(", ")}`,
+            ).toBe(false);
+          }
+          for (const file of c.forbidFilesRead ?? []) {
+            expect(
+              result.filesRead.some((f) => f.includes(file)),
+              `forbidden file ${file} was read | reads: ${result.filesRead.join(", ")}`,
+            ).toBe(false);
           }
           expect(result.isError).toBe(false);
         } finally {

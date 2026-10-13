@@ -1,16 +1,12 @@
-diff --git a/server/src/modules/blast/score.ts b/server/src/modules/blast/score.ts
-index eeeeeee..fffffff 100644
---- a/server/src/modules/blast/score.ts
-+++ b/server/src/modules/blast/score.ts
-@@ -1,10 +1,12 @@
- export interface BlastRow {
-   id: string;
-   score: number;
+diff --git a/reviewer-core/src/review/reduce.ts b/reviewer-core/src/review/reduce.ts
+--- a/reviewer-core/src/review/reduce.ts
++++ b/reviewer-core/src/review/reduce.ts
+@@ -25,7 +25,7 @@
+  * beneath it.
+  */
+ export function scoreFromFindings(findings: Finding[]): number {
+-  const penalty = findings.reduce((sum, f) => sum + (SEVERITY_PENALTY[f.severity] ?? 0), 0);
++  const penalty = findings.reduce((total, finding) => total + (SEVERITY_PENALTY[finding.severity] ?? 0), 0);
+   return Math.max(0, Math.min(100, 100 - penalty));
  }
-
--export function summarize(rows: BlastRow[]) {
--  return rows.map((r) => ({ id: r.id, score: r.score }));
-+// Renamed locals for readability; behaviour unchanged.
-+export function summarize(rows: BlastRow[]) {
-+  return rows.map((row) => ({ id: row.id, score: row.score }));
- }
+ 

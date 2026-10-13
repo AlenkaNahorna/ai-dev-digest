@@ -115,7 +115,7 @@ Dependency injection container allows swapping implementations:
 - DI, adapters, and request flow: [docs/architecture.md](docs/architecture.md)
 - Review/cost/findings behavior: [specs/review-flow.md](specs/review-flow.md)
 
-- [API map & routes](README.md#api-map) — Full endpoint list
+- [API map & routes](README.md#api-map-starter) — Full endpoint list
 - [Request & DI flow diagram](README.md#request--di-flow) — Request lifecycle
 - [Testing strategy](../TESTING.md) — Unit vs integration split, CI workflows
 - [Root AGENTS.md](../AGENTS.md) — Project structure, key rules

@@ -16,19 +16,17 @@ The **same tests** can also run on **OpenRouter** (DeepSeek and other cheap mode
 > per-run records, per-practice statistics, and a with-vs-without-artifact benchmark, on top of
 > the modular `src/` engine described below.
 
-## Install (from the lesson template)
+## Install
 
-This package is self-contained — it only adds the `evals/` folder and never touches `server/`
-or `client/`, so it merges into your repo cleanly:
+This package is self-contained: it reads `.claude/skills/*` and `.claude/agents/*` by relative path
+and never touches `server/` or `client/`.
 
 ```bash
-git fetch upstream
-git merge upstream/l06-evals    # adds evals/ only — no conflicts
 cd evals && pnpm install
 ```
 
-If your repo has diverged too far for a clean merge, just copy the `evals/` directory in whole
-and commit it. It is deliberately **not** an npm package: it reads your `.claude/skills/*` and
+This folder started as a copy of the lesson template's `evals/` and has since been refactored in
+this fork, so there is no upstream to merge from. It is deliberately **not** an npm package: it reads your `.claude/skills/*` and
 `.claude/agents/*` by relative path, and you write cases in it — so the code sits in front of
 you, not hidden in `node_modules`.
 
@@ -188,6 +186,8 @@ workflow cases:
 
 ### Wiring it into GitHub Actions (per-PR)
 
+> **This fork has no workflow file for these evals.** `AGENTS.md` lists `.github/workflows/` under "Do Not Touch" (CI is gated by GitHub Actions), so adding the job is a decision for the repo owner, not something to do silently. The snippet below is an example only.
+
 The engine is CI-ready: bring the proxy up as a step, wait for it, run the tier, tear it down. Put
 the OpenRouter key in the repo's **Actions secrets** as `OPENROUTER_API_KEY` (Settings → Secrets and
 variables → Actions). Create `.github/workflows/<name>.yml` in your repo:
@@ -288,9 +288,9 @@ src/
 
 ## Case layout — where your tests, prompts, and fixtures live
 
-> The package ships with **no example cases** — `skills/`, `agents/`, and `workflow/` are yours to
-> fill. The names below (`onion-architecture`, `architecture-reviewer`, …) are **illustrations of
-> the format only**, not files in the repo. Create your own with `pnpm eval:scaffold`.
+> The package ships with example cases for this repo, so you can copy their shape:
+> `skills/dependency-checker/`, `agents/architecture-reviewer/` and `workflow/review-workflow.*`.
+> Add cases for your own skills and agents with `pnpm eval:scaffold`.
 
 You bring your own skills/agents, so **you scaffold cases, not hand-copy files**:
 
@@ -309,20 +309,19 @@ The folders mirror the artifacts one-to-one, and each case folder holds three ki
 
 | File | Holds | Example |
 |------|-------|---------|
-| `*.eval.ts` | thin: `describe* + run*Cases` — *what* runs, nothing else | `onion-architecture.eval.ts` |
-| `*.cases.ts` | the data: prompt, practices, grounding, threshold, maxTurns, kind | `onion-architecture.cases.ts` |
-| `fixtures/` | raw inputs inlined into prompts (diffs, code, session traces) | `fixtures/widgets-service.ts` |
+| `*.eval.ts` | thin: `describe* + run*Cases` — *what* runs, nothing else | `dependency-checker.eval.ts` |
+| `*.cases.ts` | the data: prompt, practices, grounding, threshold, maxTurns, kind | `dependency-checker.cases.ts` |
+| `fixtures/` | raw inputs inlined into prompts (diffs, code, session traces) | `agents/architecture-reviewer/fixtures/domain-fastify-type-import.diff` |
 
 ```
 evals/
-  skills/onion-architecture/
-    onion-architecture.eval.ts     # describeSkill("onion-architecture", () => runSkillCases(...))
-    onion-architecture.cases.ts    # export const cases: SkillCase[] = [ { name, prompt, practices, threshold } ]
-    fixtures/widgets-service.ts
+  skills/dependency-checker/
+    dependency-checker.eval.ts     # describeSkill("dependency-checker", () => runSkillCases(...))
+    dependency-checker.cases.ts    # export const cases: SkillCase[] = [ { name, prompt, practices, threshold } ]
   agents/architecture-reviewer/
     architecture-reviewer.eval.ts  # describeAgent(...) — identical shape to a skill
     architecture-reviewer.cases.ts
-    fixtures/auth-route-violation.diff
+    fixtures/domain-fastify-type-import.diff
   workflow/
     review-workflow.eval.ts        # describeWorkflow("review", () => runWorkflowCases(cases))
     review-workflow.cases.ts       # export const cases: WorkflowCase[] = [ ... ]  (see below)
@@ -332,15 +331,15 @@ A thin eval file is the whole file:
 
 ```ts
 import { describeSkill, runSkillCases } from "../../src";
-import { cases } from "./onion-architecture.cases.js";
+import { cases } from "./dependency-checker.cases.js";
 
-describeSkill("onion-architecture", () => runSkillCases("onion-architecture", cases));
-// vitest output groups as:  skill:onion-architecture > review flags widget-module layering violations
+describeSkill("dependency-checker", () => runSkillCases("dependency-checker", cases));
+// vitest output groups as:  skill:dependency-checker > full report follows the required report template with a Mermaid graph
 ```
 
-`run*Cases` owns the one true **measure → record → assert** body (model call + scorers in a
-`try`, `record()` in `finally`, `expect` strictly after). Case authors never write that loop, so
-the assert-before-record bug can't recur.
+The agent pair `architecture-reviewer` (primary, onion-architecture v1) and `architecture-reviewer-v2`
+(onion-architecture-v2) shares one `architecture-reviewer.cases.ts` and the same real-file fixtures, so
+the only variable between them is the onion skill version.
 
 ### Skill / agent case (`SkillCase` / `AgentCase`)
 
@@ -371,25 +370,29 @@ export const cases: SkillCase[] = [
 
 Trace-asserted, not judged — a discriminated union routed by `kind`. The folder is organized by
 *scenario* (`review-workflow`), not by a single artifact, because a workflow is cross-cutting
-(`CLAUDE.md` + skills + agents together).
+(`CLAUDE.md`/`AGENTS.md` + skills + agents together).
+
+The current `review-workflow.cases.ts` uses `trace` (several assertions in one session) and
+`activation` (a positive case and a near-miss negative):
 
 ```ts
 export const cases: WorkflowCase[] = [
-  { kind: "dispatch",   name: "dispatches the architecture-reviewer subagent",
-    prompt: `Use the architecture-reviewer subagent to audit ${AUTH_DIFF}...`,
-    expectSubagent: "architecture-reviewer", maxTurns: 6 },
-
-  { kind: "activation", name: "engineering-insights activates on a discovery prompt",
-    prompt: "I just figured out why the pgvector query returned nothing...",
-    skill: "engineering-insights", shouldActivate: true, maxTurns: 4 },
-
-  { kind: "activation", name: "near-miss negative — same topic as a question must NOT activate",
-    prompt: "Explain how pgvector column dimensions work and why a mismatch returns zero rows...",
-    skill: "engineering-insights", shouldActivate: false, maxTurns: 4 },
-
-  { kind: "contrast",   name: "CLAUDE.md routes an API-route task to api-contracts doc",
-    prompt: "I'm about to add POST /reviews/:id/rerun. Follow this repo's conventions...",
-    expectFileRead: "server/docs/api-contracts.md", tools: ["Read", "Grep", "Glob"], maxTurns: 6 },
+  {
+    kind: "trace",
+    name: "reviewer-core change reads the module INSIGHTS and the architecture doc",
+    prompt: "Я збираюся змінити review pipeline. ...",
+    expectFilesRead: ["reviewer-core/INSIGHTS.md", "reviewer-core/docs/architecture.md"],
+    forbidFilesRead: ["client/INSIGHTS.md", "e2e/INSIGHTS.md", "mcp/INSIGHTS.md"],
+    maxTurns: 8,
+  },
+  {
+    kind: "activation",
+    name: "engineering-insights activates on a genuine discovery",
+    prompt: "Щойно з'ясував, чому pgvector-запит повертав нуль рядків. ...",
+    skill: "engineering-insights",
+    shouldActivate: true,
+    maxTurns: 4,
+  },
 ];
 ```
 
@@ -397,11 +400,19 @@ How each `kind` asserts:
 
 | `kind` | Runs | Passes when |
 |--------|------|-------------|
-| `dispatch` | `workflowTask` | `result.subagents` contains `expectSubagent` |
+| `trace` | `workflowTask` | every provided `expectSubagents` / `expectSkills` / `expectFilesRead` entry is present in the same session, and no `forbidSubagents` / `forbidSkills` / `forbidFilesRead` entry appears; stops early once all positives are met |
 | `activation` | `workflowTask` | `activated(result, skill) === shouldActivate` (positive **and** near-miss negative) |
-| `contrast` | treatment (real repo) **and** control (empty tmpdir, `settingSources:[]`) | `expectFileRead` read in treatment, NOT in control |
+| `dispatch` | `workflowTask` | `result.subagents` contains `expectSubagent` (defined in the type; no current case uses it, `trace` covers it) |
+| `contrast` | treatment (real repo) **and** control (empty tmpdir, `settingSources: []`) | `expectFileRead` read in treatment, NOT in control (defined in the type; no current case uses it) |
 
-Workflow records carry an empty `practices[]` (no judge) but a full trace; `contrast` writes two
+**Negative checks** (`forbidSubagents`, `forbidSkills`, `forbidFilesRead`) assert that something did
+*not* happen, e.g. "a planning request must not dispatch `implementer`" or "a reviewer-core change must
+not read another module's INSIGHTS". **Limit:** a trace case stops early as soon as every positive
+expectation is met, so a forbidden item that would appear *later* in the session is never observed.
+The absence is therefore proven only for the part of the session that ran. A whole-session absence check
+needs a runner option that disables the early stop; that option does not exist yet.
+
+Workflow records carry an empty `practices[]` (no judge) but a full trace. `contrast` writes two
 records — `<label>:treatment` and `<label>:control`.
 
 ## Commands & parameters
@@ -414,19 +425,19 @@ pnpm eval                # all quality + workflow evals, once
 pnpm eval:skills         # just skills/
 pnpm eval:agents         # just agents/
 pnpm eval:workflow       # just workflow/
-pnpm vitest run skills/onion-architecture       # one artifact
+pnpm vitest run agents/architecture-reviewer     # one artifact
 pnpm vitest run src/records/stats.test.ts       # the only non-model unit test (stats math)
 ```
 
 ### `eval:repeat` — stability of one thing
 
 ```bash
-pnpm eval:repeat <vitest pattern> [-n times=5] [-t testNamePattern] [--label name]
-pnpm eval:repeat skills/onion-architecture -n 5 --label baseline
+pnpm eval:repeat <vitest pattern> [-n times<=2] [-t testNamePattern] [--label name]
+pnpm eval:repeat agents/architecture-reviewer -n 2 --label baseline
 ```
 Runs the pattern N times, then prints per-test pass rate, a per-**practice** table
 (`passed/total (pct)`), and metric stats (`turns`, `duration_ms`, `tokens_out` as mean ± stddev;
-n<5 prints an "indicative only" caveat). `--label` saves the aggregate to
+the cap is `MAX_TIMES = 2` in `src/repeat.ts` (token economy); with n=2 the output is always marked "indicative only"). `--label` saves the aggregate to
 `results/repeat-<label>.json` for delta.
 
 ### `eval:delta` — version vs version (the canonical loop)
@@ -435,9 +446,9 @@ The primary "before vs after a change" workflow. **Capture the baseline label BE
 there is no way to reconstruct it afterwards short of reverting.
 
 ```bash
-pnpm eval:repeat skills/onion-architecture -n 5 --label baseline   # BEFORE the edit
+pnpm eval:repeat agents/architecture-reviewer -n 2 --label baseline   # BEFORE the edit
 #   ...edit SKILL.md...
-pnpm eval:repeat skills/onion-architecture -n 5 --label candidate  # AFTER the edit
+pnpm eval:repeat agents/architecture-reviewer -n 2 --label candidate  # AFTER the edit
 pnpm eval:delta baseline candidate
 ```
 Shows the delta at three levels: per-test pass rate, per-**practice** (which practice
@@ -448,7 +459,7 @@ improved, red = regressed, dim = unchanged. A practice on one side only renders 
 
 ```bash
 pnpm eval:benchmark <vitest pattern> [-n runs=5]
-pnpm eval:benchmark skills/engineering-insights -n 5    # a skill
+pnpm eval:benchmark skills/dependency-checker -n 5      # a skill
 pnpm eval:benchmark agents/architecture-reviewer -n 5   # an agent
 ```
 
@@ -487,7 +498,7 @@ baseline a different input would change two variables at once and make Δ meanin
 different distances).
 
 **Low lift is usually a task-design signal, not a baseline problem.** If a fixture already spells
-out the answers the practices check for (e.g. `session-pgvector-dim.md` literally contains
+out the answers the practices check for (e.g. a fixture whose text already contains the answer the practices check for
 "1536", "3072", the rejected alternative, the follow-up), then even the raw model just has to
 summarize faithfully — so baseline scores high and lift is small (`non_discriminating` flags mark
 the practices that no longer discriminate). The lever is **the task, not baseline isolation**: to
@@ -533,7 +544,7 @@ Record schema (`schema: 1`):
 
 ```jsonc
 { "schema": 1, "run_id": "...", "git_sha": "...", "dirty": false, "config": "candidate",
-  "nodeid": "…/onion-architecture.eval.ts > skill:onion-architecture > review flags ...", "label": "...",
+  "nodeid": "…/dependency-checker.eval.ts > skill:dependency-checker > full report ...", "label": "...",
   "outcome": true, "score": 0.8, "threshold": 0.6,
   "practices": [ { "practice": "...", "passed": true, "evidence": "verbatim quote" } ],
   "grounded": 1, "num_turns": 1,

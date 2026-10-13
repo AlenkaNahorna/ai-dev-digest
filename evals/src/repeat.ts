@@ -4,7 +4,7 @@
  * only -n/--times and --label are consumed here. Aggregates the records written during the runs
  * into per-test pass rate, a per-practice breakdown, and metric stats (mean ± stddev).
  *
- *   pnpm eval:repeat skills/onion-architecture -n 5 --label baseline
+ *   pnpm eval:repeat agents/architecture-reviewer -n 2 --label baseline
  *
  * --label saves the aggregate to results/repeat-<label>.json so two labeled series can be diffed
  * with `pnpm eval:delta baseline candidate`.
