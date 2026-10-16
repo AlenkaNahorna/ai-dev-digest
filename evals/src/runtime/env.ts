@@ -9,6 +9,8 @@
  * only the model inference is redirected. Select with EVAL_BACKEND=openrouter.
  */
 
+import { MAX_OUTPUT_TOKENS } from "../config.js";
+
 const BACKEND = process.env.EVAL_BACKEND ?? "subscription";
 
 /**
@@ -31,6 +33,7 @@ export function subscriptionEnv(): Record<string, string> {
     if (!key) throw new Error("EVAL_BACKEND=openrouter but OPENROUTER_API_KEY is not set");
     env.ANTHROPIC_BASE_URL = (process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api").replace(/\/$/, "");
     env.ANTHROPIC_AUTH_TOKEN = key;
+    env.CLAUDE_CODE_MAX_OUTPUT_TOKENS ??= String(MAX_OUTPUT_TOKENS);
     env.ANTHROPIC_API_KEY = ""; // blank, not deleted — stops the SDK falling back to Anthropic auth
     return env;
   }

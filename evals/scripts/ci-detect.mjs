@@ -75,15 +75,14 @@ const agents = uniqueAgents.filter((n) => hasEvals("agents", n));
 const skippedAgents = uniqueAgents.filter((n) => !hasEvals("agents", n));
 
 // The workflow tier measures the LIVE harness, so anything that changes it re-triggers it:
-// the root or .claude CLAUDE.md, any agent definition, the workflow cases, or the engine itself.
+// the root or .claude CLAUDE.md, any agent definition, or the workflow cases. Engine-only changes (evals/src) do not re-run it: it is the most expensive tier.
 const runWorkflow = changed.some(
   (f) =>
     f === "CLAUDE.md" ||
     f === "AGENTS.md" ||
     f === ".claude/CLAUDE.md" ||
     /^\.claude\/agents\/.+\.md$/.test(f) ||
-    /^evals\/workflow\//.test(f) ||
-    /^evals\/src\//.test(f),
+    /^evals\/workflow\//.test(f),
 );
 
 const out = process.env.GITHUB_OUTPUT;
