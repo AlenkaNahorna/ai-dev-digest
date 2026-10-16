@@ -1,6 +1,6 @@
 # Spec: Eval Pipeline (regression protection for review agents)
 Spec ID: SPEC-2026-10-16-eval-pipeline
-Status: draft
+Status: approved
 Modules: server, client, shared contracts (`server/src/vendor/shared`)
 
 > File name follows the course checklist (`specs/eval-pipeline.md`); the ID above follows `specs/README.md`.
