@@ -80,5 +80,190 @@
     "crumbEvals": "Evals",
     "crumbNewCase": "New case",
     "crumbEvalCase": "Eval case"
+  },
+  "pipeline": {
+    "tab": {
+      "runAll": "Run all evals",
+      "running": "Running…",
+      "import": "Import from decisions",
+      "importResult": "Import finished: {created} created · {skipped} already cases · {failed} skipped",
+      "dashboardLink": "View full dashboard →",
+      "metricsTitle": "Latest run",
+      "vsPrevious": "vs previous run",
+      "noRuns": "Run the evals to see recall, precision and citation accuracy.",
+      "runDone": "Eval run finished: {passed}/{total} cases passed",
+      "runFailed": "The eval run failed"
+    },
+    "metrics": {
+      "recall": "Recall",
+      "precision": "Precision",
+      "citation": "Citation accuracy",
+      "passed": "Cases passed"
+    },
+    "cases": {
+      "heading": "Eval cases",
+      "passing": "{passing} / {total} passing",
+      "loading": "Loading cases…",
+      "error": "Couldn't load the eval cases.",
+      "empty": "No eval cases yet. Accept or dismiss a finding and press “Turn into eval case”, or import them from your decisions.",
+      "neverRun": "never run",
+      "mustFind": "must find",
+      "mustNotFlag": "must not flag",
+      "delete": "Delete case",
+      "passed": "passed",
+      "failed": "failed",
+      "run": "Run",
+      "running": "Running…",
+      "edit": "Edit",
+      "runFailed": "Couldn't run the case",
+      "got": "got {kept} kept · {hits} on target · {noise} noise",
+      "runError": "run failed: {message}",
+      "badge": {
+        "must_find": "Must find",
+        "must_not_flag": "Must not flag"
+      }
+    },
+    "history": {
+      "heading": "Run history",
+      "empty": "No runs yet.",
+      "compare": "Compare",
+      "selected": "{count} selected",
+      "selectTwo": "Select exactly two runs to compare",
+      "columns": {
+        "ranAt": "Ran at",
+        "version": "Version",
+        "recall": "Recall",
+        "precision": "Precision",
+        "citation": "Citation",
+        "pass": "Pass",
+        "cost": "Cost",
+        "select": "Select run {time}"
+      },
+      "loading": "Loading runs…",
+      "error": "Couldn't load the run history."
+    },
+    "compare": {
+      "title": "Compare runs · {a} → {b}",
+      "subtitle": "Old prompt vs new — metric deltas and prompt diff on the same cases",
+      "cost": "Cost",
+      "promptDiff": "System prompt diff",
+      "promptSame": "The system prompt did not change between these runs.",
+      "promptMissing": "The prompt of one of the versions was not recorded.",
+      "model": "Model: {from} → {to}",
+      "cases": "Case changes",
+      "noCaseChanges": "No case changed its result.",
+      "nowPassing": "now passing",
+      "nowFailing": "now failing",
+      "close": "Close",
+      "loading": "Comparing…",
+      "error": "Couldn't compare these runs."
+    },
+    "overview": {
+      "title": "Eval Dashboard",
+      "subtitle": "Regression harness across all reviewer agents · pick an agent to see its runs",
+      "agents": "Agents",
+      "recent": "Recent eval runs · all agents",
+      "loading": "Loading eval metrics…",
+      "error": "Couldn't load the eval dashboard.",
+      "noAgents": "No agents yet.",
+      "lastRun": "Last run {version} · {time} · {passed}/{total} pass",
+      "neverRun": "No runs yet · {count, plural, one {# case} other {# cases}}",
+      "noRecent": "No eval run has been made yet. Open an agent and press “Run all evals”."
+    },
+    "detail": {
+      "back": "All agents",
+      "trend": "Metric trend",
+      "runEval": "Run eval ({count})",
+      "openCases": "Open cases",
+      "noCases": "This agent has no eval cases yet.",
+      "notFound": "Agent not found.",
+      "description": "Regression harness · {count, plural, one {# run} other {# runs}}"
+    },
+    "toast": {
+      "created": "Eval case created",
+      "exists": "This finding is already an eval case",
+      "undecided": "Accept or dismiss the finding first",
+      "diff": "The diff of this finding is not available",
+      "failed": "Couldn't create the eval case",
+      "updated": "Eval case updated"
+    },
+    "modal": {
+      "title": "New eval case",
+      "subtitle": "Seeded from {decision} finding · assert the expected output",
+      "decision": {
+        "accepted": "an accepted",
+        "dismissed": "a dismissed"
+      },
+      "positive": "Positive case",
+      "negative": "Negative case",
+      "mustFind": "MUST find “{title}” at {where}",
+      "mustNotFlag": "must NOT flag “{title}” at {where}",
+      "name": "Name",
+      "input": "Input",
+      "tabs": {
+        "diff": "Diff",
+        "files": "Files",
+        "meta": "PR meta"
+      },
+      "diffHint": "The agent reviews exactly this fragment. Edit it to make the case narrower or broader.",
+      "filesEmpty": "No files found in the diff.",
+      "meta": {
+        "agent": "Agent",
+        "model": "Model",
+        "pr": "Pull request",
+        "finding": "Finding"
+      },
+      "expected": "Expected output",
+      "validJson": "valid JSON",
+      "invalid": {
+        "invalid_json": "not valid JSON",
+        "not_object": "must be a JSON object",
+        "kind": "kind must be must_find or must_not_flag",
+        "file": "file is required",
+        "lines": "start_line and end_line must be whole numbers ≥ 1",
+        "line_order": "start_line must not be after end_line",
+        "fields": "title, severity and category must be text"
+      },
+      "skeleton": "Finding skeleton",
+      "actual": "Actual output",
+      "neverRun": "Never run yet",
+      "running": "Running the agent on this case…",
+      "result": {
+        "pass": "PASS",
+        "fail": "FAIL",
+        "counts": "{emitted} emitted · {kept} kept · {dropped} dropped · {hits} on target · {noise} noise",
+        "cost": "cost {cost}",
+        "duration": "{seconds}s",
+        "findings": "Kept findings",
+        "none": "No findings were kept.",
+        "error": "The run failed: {message}",
+        "notStored": "A trial run — nothing was stored."
+      },
+      "runOnSave": "Run on save",
+      "cancel": "Cancel",
+      "runCase": "Run case",
+      "save": "Save",
+      "saving": "Saving…",
+      "loadFailed": "Couldn't prepare the eval case",
+      "runFailed": "Couldn't run the case",
+      "saveFailed": "Couldn't save the eval case",
+      "editTitle": "Edit eval case",
+      "editSubtitle": "Change the diff or the expectation, run it again, then save",
+      "update": "Save changes"
+    },
+    "skill": {
+      "withSkill": "With skill",
+      "withoutSkill": "Without skill",
+      "skill": "Skill",
+      "runOn": "Ran on {agent} · {model}",
+      "modalSubtitle": "Judged with and without the skill “{skill}”. Nothing is stored until you Save.",
+      "newCase": "New eval case",
+      "hint": "Each case runs twice on the first enabled agent that uses this skill: once with the skill, once without. The row passes when it passes with the skill.",
+      "empty": "No eval cases yet. Click “New eval case” to write one.",
+      "caseCount": "{count, plural, one {# case} other {# cases}}",
+      "rowResult": "expected {expected} finding, got {got} · With skill {withSkill} / Without skill {withoutSkill}",
+      "runDone": "{withSkill}/{total} cases pass with the skill",
+      "notLinked": "Link this skill to an enabled agent first — evals run on that agent."
+    }
   }
 }

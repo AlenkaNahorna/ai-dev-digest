@@ -5,8 +5,12 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { Toggle, EmptyState } from "@devdigest/ui";
-import type { FindingRecord } from "@devdigest/shared";
+import type { EvalCaseDraft, FindingRecord } from "@devdigest/shared";
 import { FindingCard } from "../FindingCard";
+import { NewEvalCaseModal } from "../../../../../../../features/evals/ui/NewEvalCaseModal";
+import { useEvalCaseDraft } from "../../../../../../../features/evals/api/hooks";
+import { notify } from "../../../../../../../lib/toast";
+import { ApiError } from "../../../../../../../lib/api";
 import { useFindingAction } from "../../../../../../../lib/hooks/reviews";
 import { KEY_TO_ACTION } from "./constants";
 import { visibleFindings } from "./helpers";
@@ -27,7 +31,27 @@ export function FindingsPanel({
   severityFilter?: string | null;
 }) {
   const t = useTranslations("prReview");
+  const te = useTranslations("eval");
   const action = useFindingAction();
+  const evalDraft = useEvalCaseDraft();
+  const [draft, setDraft] = React.useState<EvalCaseDraft | null>(null);
+  /** Opens the "New eval case" modal seeded from the finding; nothing is stored until Save. */
+  const turnIntoEval = (findingId: string) =>
+    evalDraft.mutate(findingId, {
+      onSuccess: setDraft,
+      onError: (e) => {
+        const code = e instanceof ApiError ? e.code : undefined;
+        notify.error(
+          code === "eval_case_exists"
+            ? te("pipeline.toast.exists")
+            : code === "finding_undecided"
+              ? te("pipeline.toast.undecided")
+              : code === "diff_unavailable"
+                ? te("pipeline.toast.diff")
+                : te("pipeline.modal.loadFailed"),
+        );
+      },
+    });
   const [hideLow, setHideLow] = React.useState(false);
   const [focusIdx, setFocusIdx] = React.useState(0);
 
@@ -73,11 +97,14 @@ export function FindingsPanel({
               pending={action.isPending}
               repoFullName={repoFullName}
               headSha={headSha}
+              onTurnIntoEval={() => turnIntoEval(f.id)}
+              evalPending={evalDraft.isPending && evalDraft.variables === f.id}
               onAction={(act) => action.mutate({ findingId: f.id, action: act, prId })}
             />
           ))
         )}
       </div>
+      {draft && <NewEvalCaseModal key={draft.source_finding_id} draft={draft} onClose={() => setDraft(null)} />}
     </div>
   );
 }

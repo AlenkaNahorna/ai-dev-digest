@@ -1,10 +1,12 @@
-import { pgTable, uuid, text, integer, boolean, jsonb, timestamp, doublePrecision } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, boolean, jsonb, timestamp, doublePrecision, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { workspaces } from './core';
 import { pullRequests } from './pulls';
 
 // ============================================================ Eval / Conformance / Compose
 
-export const evalCases = pgTable('eval_cases', {
+export const evalCases = pgTable(
+  'eval_cases',
+  {
   id: uuid('id').primaryKey().defaultRandom(),
   workspaceId: uuid('workspace_id')
     .notNull()
@@ -17,9 +19,19 @@ export const evalCases = pgTable('eval_cases', {
   inputMeta: jsonb('input_meta'),
   expectedOutput: jsonb('expected_output'),
   notes: text('notes'),
-});
+  /** L06: the decided finding this case was born from (one case per owner + finding). */
+  sourceFindingId: uuid('source_finding_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    ownerIdx: index('eval_cases_owner_idx').on(t.ownerKind, t.ownerId),
+    sourceFindingUq: uniqueIndex('eval_cases_owner_finding_uq').on(t.ownerId, t.sourceFindingId),
+  }),
+);
 
-export const evalRuns = pgTable('eval_runs', {
+export const evalRuns = pgTable(
+  'eval_runs',
+  {
   id: uuid('id').primaryKey().defaultRandom(),
   caseId: uuid('case_id')
     .notNull()
@@ -32,7 +44,17 @@ export const evalRuns = pgTable('eval_runs', {
   citationAccuracy: doublePrecision('citation_accuracy'),
   durationMs: integer('duration_ms'),
   costUsd: doublePrecision('cost_usd'),
-});
+  /** L06: all rows of one "Run all evals" press share a batch id. */
+  batchId: uuid('batch_id'),
+  agentVersion: integer('agent_version'),
+  provider: text('provider'),
+  model: text('model'),
+  },
+  (t) => ({
+    batchIdx: index('eval_runs_batch_idx').on(t.batchId),
+    caseIdx: index('eval_runs_case_idx').on(t.caseId, t.ranAt),
+  }),
+);
 
 export const conformanceChecks = pgTable('conformance_checks', {
   id: uuid('id').primaryKey().defaultRandom(),

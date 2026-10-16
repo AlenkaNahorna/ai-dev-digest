@@ -127,6 +127,13 @@
       "when": 1791745200000,
       "tag": "0017_onboarding_generator",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792170000000,
+      "tag": "0018_eval_pipeline",
+      "breakpoints": true
     }
   ]
 }
