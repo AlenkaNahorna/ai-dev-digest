@@ -7,7 +7,7 @@
 // --- Models -----------------------------------------------------------------
 // Cheap model under test by default; the judge is a stronger family to soften self-preference.
 export const EVAL_MODEL = process.env.EVAL_MODEL ?? "claude-haiku-4-5";
-export const EVAL_JUDGE_MODEL = process.env.EVAL_JUDGE_MODEL ?? "claude-sonnet-5";
+export const EVAL_JUDGE_MODEL = process.env.EVAL_JUDGE_MODEL ?? "openai/gpt-4.1-mini";
 export const MAX_TURNS = Number(process.env.EVAL_MAX_TURNS ?? "8");
 // Output cap per model call. OpenRouter reserves credits for the REQUESTED max (the Agent SDK asks
 // for 32000), so an uncapped call can 402 while the balance is still positive.

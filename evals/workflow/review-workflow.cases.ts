@@ -47,8 +47,8 @@ export const cases: WorkflowCase[] = [
     prompt:
       "Я збираюся змінити review pipeline у reviewer-core. Перш ніж торкатися коду: " +
       "(1) за сесійним протоколом прочитай INSIGHTS модуля reviewer-core; " +
-      "(2) звірся з AGENTS.md модуля щодо того, яку документацію треба прочитати для змін у pipeline, " +
-      "і прочитай саме ці документи.",
+      "(2) звірся з AGENTS.md модуля і прочитай docs/architecture.md, на який він посилається " +
+      "для змін у pipeline.",
     expectFilesRead: ["reviewer-core/INSIGHTS.md", "reviewer-core/docs/architecture.md"],
     // Scope check: the change is in reviewer-core, so no other module's INSIGHTS should be read.
     forbidFilesRead: ["client/INSIGHTS.md", "e2e/INSIGHTS.md", "mcp/INSIGHTS.md"],

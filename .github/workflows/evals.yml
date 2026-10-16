@@ -187,6 +187,9 @@ jobs:
       OPENROUTER_BASE_URL: http://localhost:4000
       EVAL_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
       EVAL_JUDGE_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
+      # Subagents declare `model: sonnet` in .claude/agents/*.md; route them to the eval model
+      # so dispatched architecture-reviewer/security-reviewer don't call claude-sonnet-5 via the proxy.
+      CLAUDE_CODE_SUBAGENT_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
