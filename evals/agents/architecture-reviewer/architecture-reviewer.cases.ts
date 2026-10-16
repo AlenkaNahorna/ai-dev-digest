@@ -3,15 +3,13 @@ import { fixtureReader } from "../../src/index.js";
 
 const fx = fixtureReader(import.meta.url);
 
-// Shared by two agents so they are graded on exactly the same task:
-//   - architecture-reviewer     (primary, skill: onion-architecture v1)
-//   - architecture-reviewer-v2  (variant,  skill: onion-architecture-v2, adds the per-layer checklist)
-// Any difference between them is therefore attributable to the onion skill version.
+// Graded for architecture-reviewer (skill: onion-architecture 2.0.0, with the per-layer checklist).
+// To compare skill versions, run `pnpm eval:repeat` + `pnpm eval:delta` on two git revisions.
 //
 // Every fixture is a real file from this repo with one minimal change (see fixtures/). Rules these
 // cases expect exist in the repo and nowhere else:
 //   - server/.dependency-cruiser.js (e.g. domain-and-application-cannot-import-fastify)
-//   - the onion architecture skill (v1 or v2): "Non-negotiable dependency direction", "Forbidden patterns"
+//   - the onion architecture skill: "Non-negotiable dependency direction", "Forbidden patterns"
 //   - reviewer-core/AGENTS.md: "No database, GitHub, or filesystem"; "The grounding step is mandatory"
 // The agents never issue a PASS/BLOCKED merge verdict, and emit severity critical/high/medium/low only.
 

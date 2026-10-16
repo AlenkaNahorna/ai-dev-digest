@@ -58,7 +58,7 @@ const agentNames = touched(
 // architecture-reviewer): the agent's behaviour is partly the skill's content.
 const AGENTS_SRC = join(REPO_ROOT, ".claude", "agents");
 if (existsSync(AGENTS_SRC)) {
-  for (const f of readdirSync(AGENTS_SRC).filter((f) => f.endsWith(".md"))) {
+  for (const f of readdirSync(AGENTS_SRC).filter((f) => f.endsWith(".md") && f !== "README.md")) {
     const body = readFileSync(join(AGENTS_SRC, f), "utf8");
     const uses = skillNames.some((s) => {
       const esc = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

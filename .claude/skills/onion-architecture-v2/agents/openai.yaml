@@ -1,4 +1,0 @@
-interface:
-  display_name: Onion Architecture v2
-  short_description: Enforce Onion Architecture in server modules (v2 — with review checklist)
-  default_prompt: Use $onion-architecture-v2 to design, migrate, or review a backend module under server/.

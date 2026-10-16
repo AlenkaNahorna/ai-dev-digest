@@ -337,9 +337,8 @@ describeSkill("dependency-checker", () => runSkillCases("dependency-checker", ca
 // vitest output groups as:  skill:dependency-checker > full report follows the required report template with a Mermaid graph
 ```
 
-The agent pair `architecture-reviewer` (primary, onion-architecture v1) and `architecture-reviewer-v2`
-(onion-architecture-v2) shares one `architecture-reviewer.cases.ts` and the same real-file fixtures, so
-the only variable between them is the onion skill version.
+The `architecture-reviewer` agent (skill `onion-architecture` 2.0.0) uses `architecture-reviewer.cases.ts`
+and real-file fixtures. To measure a skill change, run `eval:repeat` + `eval:delta` on two git revisions.
 
 ### Skill / agent case (`SkillCase` / `AgentCase`)
 

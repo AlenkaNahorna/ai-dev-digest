@@ -1,8 +1,8 @@
 ---
 name: onion-architecture
-description: Enforce and review module-local Onion Architecture in the Fastify/TypeScript backend under server/, including dependency direction, ports, adapters, composition-root wiring, migration, and architecture checks.
+description: Enforce and review module-local Onion Architecture in the Fastify/TypeScript backend under server/, including dependency direction, ports, adapters, composition-root wiring, migration, and architecture checks. Adds an explicit per-layer review checklist (including type-only imports) for reviewing code that pnpm architecture:check cannot reach.
 metadata:
-  version: 1.0.0
+  version: 2.0.0
   scope: server
 ---
 
@@ -68,12 +68,32 @@ Keep cross-cutting adapters in `src/adapters/` only when they are genuinely reus
 ## Forbidden patterns
 
 - route files importing `drizzle-orm` or `src/db/schema`;
-- domain/application imports from Fastify, Drizzle, provider SDKs, or concrete filesystem/Git implementations;
+- domain/application importing Fastify (e.g. `import type { FastifyRequest } from 'fastify'`, `import type { FastifyPluginAsync } from 'fastify'` — **type-only imports count**, not just runtime calls into Fastify);
+- domain/application importing Drizzle or `src/db/*` directly (e.g. `import { eq } from 'drizzle-orm'`, `import { db } from '../db/client.js'`);
+- domain/application importing a concrete provider SDK directly (e.g. `new OpenAI(...)`, `new Octokit(...)`) instead of depending on an `application/ports/` interface;
+- domain/application importing a concrete filesystem or Git implementation (e.g. `import simpleGit from 'simple-git'`, raw `node:fs` calls) instead of a port;
 - application code receiving the complete `Container`;
 - a repository returning HTTP DTOs or throwing transport-specific errors;
 - a shared utility used only by one feature;
 - barrel exports that hide dependency direction;
 - copying provider-specific logic into multiple use cases.
+
+**Type-only imports are still violations.** An `import type { FastifyRequest } from 'fastify'` in `domain/` or `application/` has no runtime call, but it still couples that layer's public signatures to Fastify's types — if Fastify's API shape changes, the inner layer breaks. Flag it exactly like a runtime import.
+
+## Review checklist (when `pnpm architecture:check` can't reach the code)
+
+`pnpm architecture:check` only runs against committed files inside `server/`. When you're reviewing something it can't see — a diff, a pasted snippet, a fixture, code in a PR from another repo — you have no dependency-cruiser safety net, so do the check manually and mechanically instead of relying on recall of the prose rules above. For every file in the module, open it and check it against every row below; don't stop at the first thing that looks wrong, and don't skip a row because the file "looks fine" for that layer.
+
+| File lives in | Its imports must never include | Including type-only imports? |
+|---|---|---|
+| `domain/` | `fastify`, `drizzle-orm`, `src/db/*`, `Container`, any provider SDK (`openai`, `octokit`, `@anthropic-ai/*`), `simple-git`/`node:fs`/concrete Git or filesystem code | Yes |
+| `application/` (use-cases, ports, dto) | Same list as `domain/`, plus the whole `Container` (only narrow ports) | Yes |
+| `adapters/inbound/http/` | `drizzle-orm`, `src/db/*` (queries must go through a use case, not straight to the DB) | Yes |
+| `index.ts` | `export * from ...` (barrel exports) | — |
+| any file | a same-named helper that duplicates logic already present in a sibling use-case/file (copy-paste provider calls, duplicated DTO shaping) | — |
+| `src/adapters/*` (cross-cutting, outside any module) | for every file here, grep the whole repo for its imports — if only one feature module imports it, it's not actually cross-cutting and belongs inside that module instead | — |
+
+A file passing every row above with no hits is clean. One hit on any row is one violation — report it with the file path and the matching row, even if it's "only" a type import.
 
 ## Required verification
 

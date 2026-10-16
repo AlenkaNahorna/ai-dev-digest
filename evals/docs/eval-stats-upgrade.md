@@ -101,7 +101,7 @@ nothing and cost owned-path gymnastics.
 
 | Req | Status | Evidence |
 |-----|--------|----------|
-| R0 modular `src/`, barrel, `*.cases.ts` | done | `src/index.ts`, `src/dsl/case.ts`, `*.cases.ts` next to each `*.eval.ts`. The lite variant was recreated as `architecture-reviewer-v2` (uses `onion-architecture-v2`), with the same cases as `architecture-reviewer`. |
+| R0 modular `src/`, barrel, `*.cases.ts` | done | `src/index.ts`, `src/dsl/case.ts`, `*.cases.ts` next to each `*.eval.ts`. The v2 variant (`architecture-reviewer-v2` / `onion-architecture-v2`) was later promoted into `architecture-reviewer` / `onion-architecture` 2.0.0. |
 | R1–R3 records, metrics, practice-level repeat/delta | modules present | `src/records/record.ts`, `src/records/stats.ts`, `src/repeat.ts`, `src/delta.ts` (not re-verified line by line) |
 | R4 `eval:benchmark` with baseline | done | `src/records/benchmark.ts` writes `benchmark.json` and `benchmark.md` |
 | R5 analyst flags | done | `src/records/stats.ts` defines `non_discriminating`, `always_failing`, `flaky`, `cost_regression`, `missing_data` |
