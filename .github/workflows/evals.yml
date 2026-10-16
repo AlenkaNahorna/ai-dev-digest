@@ -9,7 +9,8 @@
 # Models (all on OpenRouter; override via workflow_dispatch inputs or repo variables):
 #   skills          → deepseek/deepseek-chat  (cheap; verified for the content tier)
 #   agents          → openai/gpt-4.1-mini     (follows the strict report template better); judge stays deepseek
-#   workflow        → openai/gpt-4.1-mini     (gemini-2.5-flash stopped after the first Read and never dispatched subagents)
+#   workflow        → anthropic/claude-haiku-5.5  (activation + dispatch traces need a Claude-family model: gpt-4.1-mini
+#                     never calls the Skill tool and gemini-2.5-flash never dispatched subagents; only 4 short cases)
 #
 # Requires the Actions secret OPENROUTER_API_KEY. PRs from forks have no secrets → jobs are skipped.
 name: evals
@@ -38,7 +39,7 @@ on:
         default: 'deepseek/deepseek-chat'
       workflow_model:
         description: 'OpenRouter model for the workflow tier'
-        default: 'openai/gpt-4.1-mini'
+        default: 'anthropic/claude-haiku-5.5'
       scope:
         description: 'Which suites to run'
         type: choice
@@ -186,11 +187,11 @@ jobs:
         working-directory: evals
     env:
       OPENROUTER_BASE_URL: http://localhost:4000
-      EVAL_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
-      EVAL_JUDGE_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
+      EVAL_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'anthropic/claude-haiku-5.5' }}
+      EVAL_JUDGE_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'anthropic/claude-haiku-5.5' }}
       # Subagents declare `model: sonnet` in .claude/agents/*.md; route them to the eval model
       # so dispatched architecture-reviewer/security-reviewer don't call claude-sonnet-5 via the proxy.
-      CLAUDE_CODE_SUBAGENT_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
+      CLAUDE_CODE_SUBAGENT_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'anthropic/claude-haiku-5.5' }}
       EVAL_RETRY: 2
     steps:
       - uses: actions/checkout@v4

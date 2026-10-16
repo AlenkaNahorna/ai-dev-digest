@@ -32,7 +32,12 @@ export const WORKFLOW_ALLOWED_TOOLS = ["Read", "Grep", "Glob", "Task", "Agent", 
 // `allowedTools` only AUTO-APPROVES tools; with permissionMode "bypassPermissions" every other tool is
 // still available to the model. Task-management tools are the one that matters for workflow evals:
 // weaker models answer "record this discovery" with TaskCreate instead of invoking the skill.
-export const WORKFLOW_DISALLOWED_TOOLS = ["TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "TaskStop", "TodoWrite"];
+// Bash/Write/Edit are removed too: workflowTask runs against the LIVE repo, and CI traces showed the model
+// writing a file (Write) and running Bash/Grep instead of engaging the skill. Read/Grep/Glob/Agent/Skill remain.
+export const WORKFLOW_DISALLOWED_TOOLS = [
+  "TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "TaskStop", "TodoWrite",
+  "Bash", "Write", "Edit", "NotebookEdit",
+];
 
 // --- Output verbosity -------------------------------------------------------
 // Set EVAL_QUIET to suppress per-run trace/verdict spam during multi-run aggregation.
