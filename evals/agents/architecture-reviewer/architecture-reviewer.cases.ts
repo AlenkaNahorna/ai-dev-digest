@@ -13,20 +13,24 @@ const fx = fixtureReader(import.meta.url);
 //   - reviewer-core/AGENTS.md: "No database, GitHub, or filesystem"; "The grounding step is mandatory"
 // The agents never issue a PASS/BLOCKED merge verdict, and emit severity critical/high/medium/low only.
 
-const LAYERING_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
+// Cheaper models read `/reviewer-core/...` as an absolute path (not found) or invent a
+// `server/src/<module>/` prefix, then give up. The cwd IS the repo root, so say so.
+const PATH_HINT = "File paths in the diff are relative to the repository root, which is your working directory; read them as relative paths (no leading slash, no extra prefix).";
+
+const LAYERING_PROMPT = `Audit this diff against DevDigest's documented structural contracts. ${PATH_HINT}
 
 ${fx("domain-fastify-type-import.diff")}
 ${fx("route-drizzle-import.diff")}`;
 
-const SECURITY_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
+const SECURITY_PROMPT = `Audit this diff against DevDigest's documented structural contracts. ${PATH_HINT}
 
 ${fx("security-open-redirect.diff")}`;
 
-const REVIEWER_CORE_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
+const REVIEWER_CORE_PROMPT = `Audit this diff against DevDigest's documented structural contracts. ${PATH_HINT}
 
 ${fx("reviewer-core-gate.diff")}`;
 
-const BENIGN_PROMPT = `Audit this diff against DevDigest's documented structural contracts.
+const BENIGN_PROMPT = `Audit this diff against DevDigest's documented structural contracts. ${PATH_HINT}
 
 ${fx("benign-refactor.diff")}`;
 

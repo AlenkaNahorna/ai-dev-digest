@@ -9,7 +9,7 @@
 # Models (all on OpenRouter; override via workflow_dispatch inputs or repo variables):
 #   skills          → deepseek/deepseek-chat  (cheap; verified for the content tier)
 #   agents          → openai/gpt-4.1-mini     (follows the strict report template better); judge stays deepseek
-#   workflow        → google/gemini-2.5-flash (the only cheap model verified to dispatch subagents)
+#   workflow        → openai/gpt-4.1-mini     (gemini-2.5-flash stopped after the first Read and never dispatched subagents)
 #
 # Requires the Actions secret OPENROUTER_API_KEY. PRs from forks have no secrets → jobs are skipped.
 name: evals
@@ -38,7 +38,7 @@ on:
         default: 'deepseek/deepseek-chat'
       workflow_model:
         description: 'OpenRouter model for the workflow tier'
-        default: 'google/gemini-2.5-flash'
+        default: 'openai/gpt-4.1-mini'
       scope:
         description: 'Which suites to run'
         type: choice
@@ -185,8 +185,8 @@ jobs:
         working-directory: evals
     env:
       OPENROUTER_BASE_URL: http://localhost:4000
-      EVAL_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-2.5-flash' }}
-      EVAL_JUDGE_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'google/gemini-2.5-flash' }}
+      EVAL_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
+      EVAL_JUDGE_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
