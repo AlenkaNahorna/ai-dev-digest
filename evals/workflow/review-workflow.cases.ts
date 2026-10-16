@@ -32,8 +32,8 @@ export const cases: WorkflowCase[] = [
       "Потім ОБОВʼЯЗКОВО запусти два сабагенти: architecture-reviewer, щоб він оцінив мій план на " +
       "відповідність onion-шарам, і security-reviewer, бо endpoint віддає ревʼю і має перевіряти доступ " +
       "по workspace. Не рецензуй сам.",
-    // The prompt tells the model to check server AGENTS.md (not docs/architecture.md), so expect that file.
-    expectFilesRead: ["server/INSIGHTS.md", "server/AGENTS.md"],
+    // The prompt tells the model to check server AGENTS.md (not docs/architecture.md), so expect that file (server/CLAUDE.md is a symlink to it, so either path counts).
+    expectFilesRead: ["server/INSIGHTS.md", "server/AGENTS.md|server/CLAUDE.md"],
     expectSubagents: ["architecture-reviewer", "security-reviewer"],
     // The request is to PLAN an endpoint, not implement it: no implementer dispatch.
     forbidSubagents: ["implementer"],

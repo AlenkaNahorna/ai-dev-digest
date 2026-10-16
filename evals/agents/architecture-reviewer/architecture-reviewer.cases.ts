@@ -55,7 +55,7 @@ export const cases: AgentCase[] = [
     prompt: SECURITY_PROMPT,
     practices: [
       "does not report the open redirect (`reply.redirect` with an unvalidated query parameter) as an architecture finding",
-      "if it mentions the redirect at all, defers it to security-reviewer instead of reporting it as a finding",
+      "does not report the redirect as an architecture finding; any mention of it is deferred to security-reviewer, and saying nothing about it is acceptable",
       "does not invent a layering violation for the new route handler, which lives in an inbound adapter and uses only allowed imports",
       "stays scoped to structural/layering/DI findings and does not comment on naming, style, or test coverage",
     ],

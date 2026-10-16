@@ -20,6 +20,11 @@ import { record } from "../records/record.js";
 // --- Case shapes ------------------------------------------------------------
 
 /** A judge-and-grounding case. Same shape for skills and agents; only the task differs. */
+/** True when any read path includes `expected`; `a|b` means either alternative. */
+function wasRead(reads: string[], expected: string): boolean {
+  return expected.split("|").some((alt) => reads.some((r) => r.includes(alt)));
+}
+
 export interface QualityCase {
   name: string;
   kind?: "quality" | "grounding";
@@ -64,6 +69,7 @@ export type WorkflowCase =
       prompt: string;
       expectSubagents?: string[];
       expectSkills?: string[];
+      /** Each entry must be read; `a|b` accepts either path (e.g. an AGENTS.md and its CLAUDE.md symlink). */
       expectFilesRead?: string[];
       /**
        * Negative checks: these must be ABSENT from the trace. They see only the trace up to the
@@ -168,7 +174,7 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           stopWhen: (p) =>
             subs.every((s) => p.subagents.includes(s)) &&
             skls.every((s) => skillEngaged(p, s)) &&
-            files.every((f) => p.filesRead.some((r) => r.includes(f))),
+            files.every((f) => wasRead(p.filesRead, f)),
         });
         logTrace(c.name, result);
         try {
@@ -183,7 +189,7 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           }
           for (const file of c.expectFilesRead ?? []) {
             expect(
-              result.filesRead.some((f) => f.includes(file)),
+              wasRead(result.filesRead, file),
               `${file} not read | reads: ${result.filesRead.join(", ")}`,
             ).toBe(true);
           }
@@ -198,7 +204,7 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           }
           for (const file of c.forbidFilesRead ?? []) {
             expect(
-              result.filesRead.some((f) => f.includes(file)),
+              wasRead(result.filesRead, file),
               `forbidden file ${file} was read | reads: ${result.filesRead.join(", ")}`,
             ).toBe(false);
           }
