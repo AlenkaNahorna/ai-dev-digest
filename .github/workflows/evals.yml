@@ -7,7 +7,8 @@
 # An artifact with no written evals is reported as a "SKIP" notice, never as a failure.
 #
 # Models (all on OpenRouter; override via workflow_dispatch inputs or repo variables):
-#   skills + agents → deepseek/deepseek-chat  (cheap; verified for content + agent tiers)
+#   skills          → deepseek/deepseek-chat  (cheap; verified for the content tier)
+#   agents          → openai/gpt-4.1-mini     (follows the strict report template better); judge stays deepseek
 #   workflow        → google/gemini-2.5-flash (the only cheap model verified to dispatch subagents)
 #
 # Requires the Actions secret OPENROUTER_API_KEY. PRs from forks have no secrets → jobs are skipped.
@@ -27,7 +28,13 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: 'OpenRouter model for skills + agents evals'
+        description: 'OpenRouter model for skills evals'
+        default: 'deepseek/deepseek-chat'
+      agent_model:
+        description: 'OpenRouter model for the agents tier (the model under test)'
+        default: 'openai/gpt-4.1-mini'
+      judge_model:
+        description: 'OpenRouter model for the agents-tier judge'
         default: 'deepseek/deepseek-chat'
       workflow_model:
         description: 'OpenRouter model for the workflow tier'
@@ -140,8 +147,8 @@ jobs:
         working-directory: evals
     env:
       OPENROUTER_BASE_URL: http://localhost:4000
-      EVAL_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-chat' }}
-      EVAL_JUDGE_MODEL: ${{ inputs.model || vars.EVAL_MODEL || 'deepseek/deepseek-chat' }}
+      EVAL_MODEL: ${{ inputs.agent_model || vars.EVAL_AGENT_MODEL || 'openai/gpt-4.1-mini' }}
+      EVAL_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-chat' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
