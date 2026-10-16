@@ -112,7 +112,7 @@ export default async function evalPipelineRoutes(appBase: FastifyInstance) {
   // No body → the seeded case (one click); a body carries the edits made in the modal.
   app.post(
     '/findings/:id/eval-case',
-    { schema: { params: IdParams, body: EvalCaseOverrides.optional(), response: { 201: EvalCaseRecord } } },
+    { schema: { params: IdParams, body: EvalCaseOverrides.nullish(), response: { 201: EvalCaseRecord } } },
     async (req, reply) => {
       const { workspaceId } = await getContext(container, req);
       const created = await guard(() =>
