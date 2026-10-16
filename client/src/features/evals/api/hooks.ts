@@ -90,6 +90,16 @@ export function useTryEvalCase(agentId: string | null | undefined) {
   });
 }
 
+/** "New eval case" on the agent page: a hand-written case, no finding. */
+export function useCreateManualEvalCase(agentId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; expectation: EvalCaseOverrides["expectation"]; input_diff: string }) =>
+      api.post<EvalCaseRecord>(`/agents/${agentId}/eval-cases`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evalKeys.all }),
+  });
+}
+
 export function useDeleteEvalCase() {
   const qc = useQueryClient();
   return useMutation({

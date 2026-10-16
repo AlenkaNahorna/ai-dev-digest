@@ -120,6 +120,14 @@ export class MemoryStore implements EvalStorePort {
     this.cases.push(row);
     return row;
   }
+  async insertManualCase(ws: string, input: { agentId: string; name: string; inputDiff: string; expectation: unknown }) {
+    const row = {
+      id: randomUUID(), workspaceId: ws, ownerKind: 'agent' as const, agentId: input.agentId, name: input.name, inputDiff: input.inputDiff,
+      expectation: input.expectation, sourceFindingId: null, sourcePrId: null, createdAt: new Date(this.clock++),
+    };
+    this.cases.push(row);
+    return row;
+  }
   async listSkillCases(ws: string, skillId: string) {
     return this.cases.filter((c) => c.workspaceId === ws && c.agentId === skillId && c.ownerKind === 'skill');
   }

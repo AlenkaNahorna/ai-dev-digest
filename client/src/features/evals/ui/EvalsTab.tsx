@@ -52,6 +52,29 @@ export function EvalsTab({
         source_pr_id: c.source_pr_id ?? "",
       },
     });
+  const newCase = () =>
+    setEditing({
+      caseId: "",
+      draft: {
+        agent_id: agentId,
+        agent_name: agent?.name ?? "",
+        provider: agent?.provider ?? "",
+        model: agent?.model ?? "",
+        name: "",
+        expectation: {
+          kind: "must_find",
+          file: "src/example.ts",
+          start_line: 1,
+          end_line: 1,
+          severity: "WARNING",
+          category: "bug",
+          title: "Describe the expected finding",
+        },
+        input_diff: "",
+        source_finding_id: "",
+        source_pr_id: "",
+      },
+    });
   const list = batches.data?.batches ?? [];
   const total = cases.data?.cases.length ?? 0;
 
@@ -75,6 +98,9 @@ export function EvalsTab({
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Button kind="primary" icon="Play" loading={run.isPending} disabled={total === 0 || run.isPending} onClick={onRun}>
           {run.isPending ? t("pipeline.tab.running") : t("pipeline.tab.runAll")}
+        </Button>
+        <Button kind="secondary" icon="Plus" onClick={newCase}>
+          {t("pipeline.skill.newCase")}
         </Button>
         <Button kind="secondary" icon="RefreshCw" loading={importer.isPending} onClick={onImport}>
           {t("pipeline.tab.import")}
@@ -131,7 +157,7 @@ export function EvalsTab({
         )}
       </section>
       {editing && (
-        <NewEvalCaseModal key={editing.caseId} caseId={editing.caseId} draft={editing.draft} onClose={() => setEditing(null)} />
+        <NewEvalCaseModal key={editing.caseId || "new"} caseId={editing.caseId || undefined} draft={editing.draft} onClose={() => setEditing(null)} />
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api";
 import { formatCost } from "@/lib/format-cost";
 import { notify } from "@/lib/toast";
 import { useCreateEvalCase, useTryEvalCase, useUpdateEvalCase } from "../api/hooks";
+import { useCreateManualEvalCase } from "../api/hooks";
 import { useCreateSkillEvalCase, useTrySkillCase } from "../api/skill-hooks";
 import { diffFiles, formatExpectation, parseExpectationText } from "../lib/draft";
 
@@ -95,6 +96,7 @@ export function NewEvalCaseModal({
   const tryCase = useTryEvalCase(draft.agent_id);
   const trySkill = useTrySkillCase(skill?.id);
   const createSkill = useCreateSkillEvalCase(skill?.id);
+  const createManual = useCreateManualEvalCase(draft.agent_id);
   const isRunning = tryCase.isPending || trySkill.isPending;
   const seeded = React.useMemo(() => formatExpectation(draft.expectation), [draft.expectation]);
 
@@ -155,6 +157,13 @@ export function NewEvalCaseModal({
       });
       return;
     }
+    if (!draft.source_finding_id) {
+      createManual.mutate(overrides, {
+        onSuccess: () => done(t("pipeline.toast.created")),
+        onError: () => notify.error(t("pipeline.modal.saveFailed")),
+      });
+      return;
+    }
     create.mutate(
       { findingId: draft.source_finding_id, overrides },
       {
@@ -194,8 +203,8 @@ export function NewEvalCaseModal({
           <Button kind="secondary" icon="Play" disabled={!ready || isRunning} loading={isRunning} onClick={run}>
             {t("pipeline.modal.runCase")}
           </Button>
-          <Button kind="primary" disabled={!ready || create.isPending || createSkill.isPending || update.isPending || saved} loading={create.isPending || createSkill.isPending || update.isPending} onClick={save}>
-            {create.isPending || createSkill.isPending || update.isPending ? t("pipeline.modal.saving") : editing ? t("pipeline.modal.update") : t("pipeline.modal.save")}
+          <Button kind="primary" disabled={!ready || create.isPending || createSkill.isPending || createManual.isPending || update.isPending || saved} loading={create.isPending || createSkill.isPending || createManual.isPending || update.isPending} onClick={save}>
+            {create.isPending || createSkill.isPending || createManual.isPending || update.isPending ? t("pipeline.modal.saving") : editing ? t("pipeline.modal.update") : t("pipeline.modal.save")}
           </Button>
         </div>
       }

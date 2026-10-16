@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createCaseFromFinding,
+  createManualCase,
   createDeleteCase,
   createImportFromDecisions,
   createListCases,
@@ -434,5 +435,29 @@ describe('history and dashboard (AC-34, AC-38)', () => {
     expect(overview.agents.find((a) => a.agent_id === 'agent-2')?.latest).toBeNull();
     expect(overview.recent).toHaveLength(2);
     expect(PR_DIFF.length).toBeGreaterThan(0);
+  });
+});
+
+describe('manual agent case ("New eval case" button)', () => {
+  it('stores a hand-written case without a finding and lists it', async () => {
+    const { deps } = setup({});
+    const rec = await createManualCase(deps)(WS, 'agent-1', {
+      name: 'by-hand',
+      input_diff: 'diff --git a/a.ts b/a.ts',
+      expectation: { kind: 'must_find', file: 'a.ts', start_line: 1, end_line: 2, title: 't', severity: 'WARNING', category: 'bug' },
+    });
+    expect(rec.name).toBe('by-hand');
+    expect(rec.source_finding_id).toBeNull();
+    expect((await createListCases(deps)(WS, 'agent-1')).cases).toHaveLength(1);
+  });
+  it('rejects an unknown agent', async () => {
+    const { deps } = setup({});
+    await expect(
+      createManualCase(deps)(WS, 'nope', {
+        name: 'x',
+        input_diff: 'd',
+        expectation: { kind: 'must_find', file: 'a.ts', start_line: 1, end_line: 1, title: 't', severity: 'WARNING', category: 'bug' },
+      }),
+    ).rejects.toMatchObject({ kind: 'not_found' });
   });
 });

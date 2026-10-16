@@ -25,7 +25,7 @@ import { IdParams } from '../../../../_shared/schemas.js';
 import { AppError, NotFoundError } from '../../../../../platform/errors.js';
 import { EvalError } from '../../../application/errors.js';
 import type { EvalLogPort } from '../../../application/ports/eval-ports.js';
-import { createCaseFromFinding, createDeleteCase, createImportFromDecisions, createListCases, createRunStoredCase, createTryCase, createUpdateCase } from '../../../application/use-cases/cases.js';
+import { createCaseFromFinding, createDeleteCase, createImportFromDecisions, createListCases, createManualCase, createRunStoredCase, createTryCase, createUpdateCase } from '../../../application/use-cases/cases.js';
 import { createCompare, createGetBatch, createListBatches, createOverview, createRunBatch } from '../../../application/use-cases/batches.js';
 import {
   createListSkillCases,
@@ -118,6 +118,17 @@ export default async function evalPipelineRoutes(appBase: FastifyInstance) {
       const created = await guard(() =>
         createCaseFromFinding(deps(req)).fromFindingId(workspaceId, req.params.id, req.body ?? undefined),
       );
+      return reply.code(201).send(created);
+    },
+  );
+
+  // Hand-written case from the "New eval case" button.
+  app.post(
+    '/agents/:id/eval-cases',
+    { schema: { params: IdParams, body: SkillEvalCaseInput, response: { 201: EvalCaseRecord } } },
+    async (req, reply) => {
+      const { workspaceId } = await getContext(container, req);
+      const created = await guard(() => createManualCase(deps(req))(workspaceId, req.params.id, req.body));
       return reply.code(201).send(created);
     },
   );

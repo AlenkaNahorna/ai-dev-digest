@@ -119,6 +119,8 @@ export interface EvalStorePort {
   findCaseBySource(workspaceId: string, agentId: string, findingId: string): Promise<StoredCase | undefined>;
   /** `'duplicate'` when the unique (agent, finding) index rejects the insert. */
   insertCase(workspaceId: string, input: NewCase): Promise<StoredCase | 'duplicate'>;
+  /** A hand-written agent case: no source finding, so the unique (agent, finding) index never applies. */
+  insertManualCase(workspaceId: string, input: { agentId: string; name: string; inputDiff: string; expectation: unknown }): Promise<StoredCase>;
   listSkillCases(workspaceId: string, skillId: string): Promise<StoredCase[]>;
   insertSkillCase(workspaceId: string, input: NewSkillCase): Promise<StoredCase>;
   /** Newest run per case and variant (`with_skill` / `without_skill`, read from `actual_output.variant`). */

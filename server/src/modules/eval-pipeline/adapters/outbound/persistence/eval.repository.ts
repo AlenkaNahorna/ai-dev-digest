@@ -140,6 +140,24 @@ export class EvalRepository implements EvalStorePort {
     return rows.map(toCase);
   }
 
+  async insertManualCase(
+    workspaceId: string,
+    input: { agentId: string; name: string; inputDiff: string; expectation: unknown },
+  ): Promise<StoredCase> {
+    const [row] = await this.db
+      .insert(t.evalCases)
+      .values({
+        workspaceId,
+        ownerKind: 'agent',
+        ownerId: input.agentId,
+        name: input.name,
+        inputDiff: input.inputDiff,
+        expectedOutput: input.expectation,
+      })
+      .returning();
+    return toCase(row!);
+  }
+
   async insertSkillCase(workspaceId: string, input: NewSkillCase): Promise<StoredCase> {
     const [row] = await this.db
       .insert(t.evalCases)

@@ -8,6 +8,7 @@ import type {
   EvalImportResult,
   EvalTryInput,
   EvalTryResult,
+  SkillEvalCaseInput,
 } from '@devdigest/shared';
 import { uniqueCaseName } from '../../domain/case-name.js';
 import { extractFileFragment } from '../../domain/fragment.js';
@@ -181,6 +182,22 @@ export function createTryCase(deps: { agents: AgentConfigPort; runner: AgentRunn
 }
 
 /** AC-10 / AC-11. */
+/** "New eval case" on the agent page: written by hand, no finding to seed it from. */
+export function createManualCase({ store, agents, log }: Pick<CaseDeps, 'store' | 'agents' | 'log'>) {
+  return async (workspaceId: string, agentId: string, input: SkillEvalCaseInput): Promise<EvalCaseRecord> => {
+    if (!(await agents.getAgent(workspaceId, agentId))) throw new EvalError('not_found', 'Agent not found');
+    const stored = await store.insertManualCase(workspaceId, {
+      agentId,
+      name: input.name,
+      inputDiff: input.input_diff,
+      expectation: input.expectation,
+    });
+    const record = toRecord(stored, undefined, log);
+    if (!record) throw new EvalError('not_found', 'The case could not be stored');
+    return record;
+  };
+}
+
 export function createListCases({ store, agents, log }: CaseDeps) {
   return async (workspaceId: string, agentId: string): Promise<EvalCaseList> => {
     if (!(await agents.getAgent(workspaceId, agentId))) throw new EvalError('not_found', 'Agent not found');
