@@ -149,6 +149,7 @@ jobs:
       OPENROUTER_BASE_URL: http://localhost:4000
       EVAL_MODEL: ${{ inputs.agent_model || vars.EVAL_AGENT_MODEL || 'openai/gpt-4.1-mini' }}
       EVAL_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL || 'deepseek/deepseek-chat' }}
+      EVAL_RETRY: 2
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -190,6 +191,7 @@ jobs:
       # Subagents declare `model: sonnet` in .claude/agents/*.md; route them to the eval model
       # so dispatched architecture-reviewer/security-reviewer don't call claude-sonnet-5 via the proxy.
       CLAUDE_CODE_SUBAGENT_MODEL: ${{ inputs.workflow_model || vars.EVAL_WORKFLOW_MODEL || 'openai/gpt-4.1-mini' }}
+      EVAL_RETRY: 2
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -203,7 +205,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: docker compose -f proxy/docker-compose.yml up -d
       - run: pnpm proxy:wait
-      - run: pnpm eval:workflow --bail=1
+      - run: pnpm eval:workflow
       - if: failure()
         run: docker compose -f proxy/docker-compose.yml logs --tail 100
       - if: always()

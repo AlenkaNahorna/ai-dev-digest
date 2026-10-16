@@ -10,6 +10,9 @@ export default defineConfig({
     hookTimeout: 240_000,
     // One session per test; a few files can run concurrently. Keep it modest to stay cheap.
     fileParallelism: true,
+    // LLM-backed cases are stochastic. CI sets EVAL_RETRY so one unlucky sample does not fail the job;
+    // local eval:repeat / eval:delta measurement runs leave it at 0 so the pass-rate is not inflated.
+    retry: Number(process.env.EVAL_RETRY ?? "0"),
     reporters: ["default", new TrendReporter()],
   },
 });

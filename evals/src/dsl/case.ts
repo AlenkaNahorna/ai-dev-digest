@@ -84,8 +84,13 @@ export type WorkflowCase =
 
 /** Did a skill engage? Either an explicit Skill tool-call, or reading its SKILL.md. */
 export function activated(result: Result, skill: string): boolean {
-  const bySkill = result.skillsInvoked.some((s) => s === skill || s.endsWith(`:${skill}`));
-  const byRead = result.filesRead.some((f) => f.includes(`skills/${skill}/SKILL.md`));
+  return skillEngaged(result, skill);
+}
+
+/** Same test on a partial trace, so it can drive `stopWhen` as well as the final assertion. */
+export function skillEngaged(p: { skillsInvoked: string[]; filesRead: string[] }, skill: string): boolean {
+  const bySkill = p.skillsInvoked.some((s) => s === skill || s.endsWith(`:${skill}`));
+  const byRead = p.filesRead.some((f) => f.includes(`skills/${skill}/SKILL.md`));
   return bySkill || byRead;
 }
 
@@ -146,7 +151,13 @@ export function runWorkflowCases(cases: WorkflowCase[]): void {
           record(c.name, { result });
         }
       } else if (c.kind === "activation") {
-        const result = await workflowTask(c.prompt, { maxTurns: c.maxTurns });
+        const result = await workflowTask(c.prompt, {
+          maxTurns: c.maxTurns,
+          // Activation is decided the moment the skill engages. Stop there: otherwise the skill's own
+          // multi-step protocol (read insights, summarize, append) burns the turn budget of a weaker
+          // model and the run dies on max-turns with no text, which throws instead of asserting.
+          stopWhen: (p) => skillEngaged(p, c.skill),
+        });
         logTrace(c.name, result);
         try {
           // A run that hit max-turns or errored did not reach a verdict, so its absence of a skill
