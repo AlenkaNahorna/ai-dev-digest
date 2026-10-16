@@ -15,7 +15,7 @@
  * to $GITHUB_OUTPUT. Pure filesystem + string work — no deps.
  */
 
-import { existsSync, readdirSync, appendFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, appendFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -35,10 +35,10 @@ function hasEvals(tier, name) {
 }
 
 /** Collect distinct artifact names touched under a `.claude` and/or `evals` prefix. */
-function touched(reClaude, reEvals) {
+function touched(...res) {
   const names = new Set();
   for (const f of changed) {
-    const m = f.match(reClaude) ?? f.match(reEvals);
+    const m = res.map((re) => f.match(re)).find(Boolean);
     if (m) names.add(m[1]);
   }
   return [...names].sort();
@@ -47,22 +47,39 @@ function touched(reClaude, reEvals) {
 const skillNames = touched(
   /^\.claude\/skills\/([^/]+)\//,
   /^evals\/skills\/([^/]+)\//,
+  /^\.agents\/skills\/([^/]+)(?:\/|$)/,
 );
 const agentNames = touched(
   /^\.claude\/agents\/([^/]+)\.md$/,
   /^evals\/agents\/([^/]+)\//,
 );
 
+// A changed skill also re-tests every agent that references it (e.g. onion-architecture →
+// architecture-reviewer): the agent's behaviour is partly the skill's content.
+const AGENTS_SRC = join(REPO_ROOT, ".claude", "agents");
+if (existsSync(AGENTS_SRC)) {
+  for (const f of readdirSync(AGENTS_SRC).filter((f) => f.endsWith(".md"))) {
+    const body = readFileSync(join(AGENTS_SRC, f), "utf8");
+    const uses = skillNames.some((s) => {
+      const esc = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`(?<![\\w-])${esc}(?![\\w-])`).test(body);
+    });
+    if (uses) agentNames.push(f.replace(/\.md$/, ""));
+  }
+}
+const uniqueAgents = [...new Set(agentNames)].sort();
+
 const skills = skillNames.filter((n) => hasEvals("skills", n));
 const skippedSkills = skillNames.filter((n) => !hasEvals("skills", n));
-const agents = agentNames.filter((n) => hasEvals("agents", n));
-const skippedAgents = agentNames.filter((n) => !hasEvals("agents", n));
+const agents = uniqueAgents.filter((n) => hasEvals("agents", n));
+const skippedAgents = uniqueAgents.filter((n) => !hasEvals("agents", n));
 
 // The workflow tier measures the LIVE harness, so anything that changes it re-triggers it:
 // the root or .claude CLAUDE.md, any agent definition, the workflow cases, or the engine itself.
 const runWorkflow = changed.some(
   (f) =>
     f === "CLAUDE.md" ||
+    f === "AGENTS.md" ||
     f === ".claude/CLAUDE.md" ||
     /^\.claude\/agents\/.+\.md$/.test(f) ||
     /^evals\/workflow\//.test(f) ||
@@ -77,6 +94,11 @@ write("agents", JSON.stringify(agents));
 write("run_workflow", String(runWorkflow));
 write("skipped_skills", skippedSkills.join(" "));
 write("skipped_agents", skippedAgents.join(" "));
+write("has_work", String(skills.length + agents.length > 0 || runWorkflow));
+
+// Annotations show up on the run page: a missing eval is a visible SKIP, never a failure.
+for (const n of skippedSkills) console.log(`::notice title=evals SKIP::skill "${n}" changed but has no evals (evals/skills/${n})`);
+for (const n of skippedAgents) console.log(`::notice title=evals SKIP::agent "${n}" changed but has no evals (evals/agents/${n})`);
 
 // Human-readable summary in the step log.
 console.error("── eval change detection ──");
