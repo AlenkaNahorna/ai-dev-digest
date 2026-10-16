@@ -15,7 +15,9 @@ const fx = fixtureReader(import.meta.url);
 
 // Cheaper models read `/reviewer-core/...` as an absolute path (not found) or invent a
 // `server/src/<module>/` prefix, then give up. The cwd IS the repo root, so say so.
-const PATH_HINT = "File paths in the diff are relative to the repository root, which is your working directory; read them as relative paths (no leading slash, no extra prefix).";
+const PATH_HINT = "File paths in the diff are relative to the repository root, which is your working directory; read them as relative paths (no leading slash, no extra prefix). " +
+  "The diff is the complete change under review and is NOT applied to the working tree, so the files on disk do not contain its added lines: " +
+  "read files only for surrounding context and for the rules in AGENTS.md, and quote offending lines from the diff itself.";
 
 const LAYERING_PROMPT = `Audit this diff against DevDigest's documented structural contracts. ${PATH_HINT}
 
