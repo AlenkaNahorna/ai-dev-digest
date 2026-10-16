@@ -86,17 +86,21 @@ d('L06 eval pipeline (Testcontainers pg)', () => {
       .returning();
 
     // undecided → 422
-    expect((await a.inject({ method: 'POST', url: `/findings/${kept!.id}/eval-case` })).statusCode).toBe(422);
+    const undecided = await a.inject({ method: 'POST', url: `/findings/${kept!.id}/eval-case` });
+    expect(undecided.statusCode, undecided.body).toBe(422);
+    expect(undecided.json().error.code).toBe('finding_undecided');
 
-    await a.inject({ method: 'POST', url: `/findings/${kept!.id}/accept` });
-    await a.inject({ method: 'POST', url: `/findings/${noise!.id}/dismiss` });
+    const acc = await a.inject({ method: 'POST', url: `/findings/${kept!.id}/accept` });
+    expect(acc.statusCode, acc.body).toBe(200);
+    const dis = await a.inject({ method: 'POST', url: `/findings/${noise!.id}/dismiss` });
+    expect(dis.statusCode, dis.body).toBe(200);
 
     const c1 = await a.inject({ method: 'POST', url: `/findings/${kept!.id}/eval-case` });
-    expect(c1.statusCode).toBe(201);
+    expect(c1.statusCode, c1.body).toBe(201);
     expect(c1.json().expectation.kind).toBe('must_find');
     expect(c1.json().input_diff).toContain('stripeKey');
     const c2 = await a.inject({ method: 'POST', url: `/findings/${noise!.id}/eval-case` });
-    expect(c2.statusCode).toBe(201);
+    expect(c2.statusCode, c2.body).toBe(201);
     expect(c2.json().expectation.kind).toBe('must_not_flag');
     expect((await a.inject({ method: 'POST', url: `/findings/${kept!.id}/eval-case` })).statusCode).toBe(409);
 
