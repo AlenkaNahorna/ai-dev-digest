@@ -29,6 +29,10 @@ export const COST_REGRESSION_RATIO = 1.25; // candidate mean tokens > 125% of ba
 export const SPAWN_TOOLS = new Set(["Task", "Agent"]);
 // workflowTask runs against the LIVE repo with bypassPermissions — keep this read-only.
 export const WORKFLOW_ALLOWED_TOOLS = ["Read", "Grep", "Glob", "Task", "Agent", "Skill"];
+// `allowedTools` only AUTO-APPROVES tools; with permissionMode "bypassPermissions" every other tool is
+// still available to the model. Task-management tools are the one that matters for workflow evals:
+// weaker models answer "record this discovery" with TaskCreate instead of invoking the skill.
+export const WORKFLOW_DISALLOWED_TOOLS = ["TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "TaskStop", "TodoWrite"];
 
 // --- Output verbosity -------------------------------------------------------
 // Set EVAL_QUIET to suppress per-run trace/verdict spam during multi-run aggregation.
