@@ -10,6 +10,14 @@ const tryRun = vi.fn();
 vi.mock("../api/hooks", () => ({
   useCreateEvalCase: () => ({ mutate: create, isPending: false }),
   useTryEvalCase: () => ({ mutate: tryRun, isPending: false }),
+  // The modal also wires the edit / manual / skill flows; these tests only drive the finding flow,
+  // so those hooks are idle stubs (the modal reads just `mutate` and `isPending`).
+  useUpdateEvalCase: () => ({ mutate: vi.fn(), isPending: false }),
+  useCreateManualEvalCase: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+vi.mock("../api/skill-hooks", () => ({
+  useCreateSkillEvalCase: () => ({ mutate: vi.fn(), isPending: false }),
+  useTrySkillCase: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 import { NewEvalCaseModal } from "./NewEvalCaseModal";
