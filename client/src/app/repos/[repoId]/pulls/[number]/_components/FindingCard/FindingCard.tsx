@@ -28,6 +28,8 @@ export function FindingCard({
   focused,
   defaultExpanded,
   onAction,
+  onTurnIntoEval,
+  evalPending,
   pending,
   repoFullName,
   headSha,
@@ -36,6 +38,9 @@ export function FindingCard({
   focused?: boolean;
   defaultExpanded?: boolean;
   onAction?: (action: FindingActionKind, reply?: string) => void;
+  /** One-click eval case from a decided finding (L06). Shown on every card, enabled once decided. */
+  onTurnIntoEval?: () => void;
+  evalPending?: boolean;
   pending?: boolean;
   repoFullName?: string | null;
   headSha?: string | null;
@@ -109,6 +114,19 @@ export function FindingCard({
             >
               {t("finding.dismiss")}
             </Button>
+            {onTurnIntoEval && (
+              <Button
+                kind="ghost"
+                size="sm"
+                icon="FlaskConical"
+                disabled={!muted || evalPending}
+                loading={evalPending}
+                title={muted ? undefined : t("finding.turnIntoEvalHint")}
+                onClick={onTurnIntoEval}
+              >
+                {t("finding.turnIntoEval")}
+              </Button>
+            )}
           </div>
         </div>
       )}

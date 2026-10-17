@@ -28,7 +28,7 @@ Use this table to decide where a piece of documentation goes. It is the single s
 | What is documented | Where | Type (Diátaxis) | Note |
 |---|---|---|---|
 | Server-only behavior/architecture (DI, layers, DB) | `server/docs/architecture.md` (update a section) or `server/docs/<topic>.md` | Explanation | `server/AGENTS.md` "Read When" already points to `docs/architecture.md` |
-| New/changed HTTP endpoints | `server/README.md#api-map` (table row) + `server/docs/` as needed | Reference | shipped only |
+| New/changed HTTP endpoints | `server/README.md#api-map-starter` (table row) + `server/docs/` as needed | Reference | shipped only |
 | UI structure, feature boundaries | `client/docs/ui-architecture.md` | Explanation | |
 | UI routes/pages | `client/README.md` (UI route map); `client/specs/pages.md` — only on explicit request | Reference | Don't mix list-page preview and detail-page actions (per root `INSIGHTS.md`) |
 | Review pipeline / grounding | `reviewer-core/docs/architecture.md`, `reviewer-core/README.md` | Explanation | |

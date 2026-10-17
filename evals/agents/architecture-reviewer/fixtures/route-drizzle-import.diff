@@ -1,0 +1,9 @@
+diff --git a/server/src/modules/repos/adapters/inbound/http/routes.ts b/server/src/modules/repos/adapters/inbound/http/routes.ts
+--- a/server/src/modules/repos/adapters/inbound/http/routes.ts
++++ b/server/src/modules/repos/adapters/inbound/http/routes.ts
+@@ -1,4 +1,5 @@
+ import type { FastifyInstance } from 'fastify';
++import { eq } from 'drizzle-orm';
+ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+ import { RepoInput } from '@devdigest/shared';
+ import { getContext } from '../../../../_shared/context.js';

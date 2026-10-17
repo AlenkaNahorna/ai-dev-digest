@@ -87,7 +87,10 @@ Produce a concise report with:
 - for each finding: skill, file, changed line or nearest diff hunk, evidence,
   impact, confidence, and a concrete remediation direction;
 - suppressed or baseline findings, including their reason and expiration;
-- a short explanation of why the final status was selected.
+- a short explanation of why the final status was selected;
+- a `Coverage limitations` section, **always present, including for `PASS`**: what was
+  not reviewed or not run (tests, grounding, files outside the diff, unavailable or
+  skipped skills). Write "none" only when nothing applies.
 
 For GitHub enforcement, the local result must be exposed as a required status
 check. A local non-zero exit code alone cannot prevent a GitHub merge; branch
@@ -106,6 +109,10 @@ protection must require the PR Self Review check. See
 - Support repository-owned suppressions with an owner, reason, and expiry date.
 - For oversized diffs, report reduced coverage and do not claim a complete
   review.
+- Claim only what the diff and the files actually read support. Do not state that
+  tests pass, grounding is preserved, or an invariant holds unless it was run or is
+  visible in the diff; say "not verified" instead. Reserve the word "verified" for
+  checks that actually ran; label reasoning from the diff alone as "inferred from the diff".
 
 ## Repository configuration
 

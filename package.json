@@ -1,0 +1,8 @@
+{
+  "name": "ai-dev-digest",
+  "private": true,
+  "description": "Root scripts only — each package (server, client, …) keeps its own dependencies and pnpm lockfile.",
+  "scripts": {
+    "verify:l06": "node scripts/verify-l06.mjs"
+  }
+}

@@ -57,4 +57,20 @@ describe("FindingCard (smoke, both themes)", () => {
     fireEvent.click(screen.getByText("Dismiss"));
     expect(onAction).toHaveBeenCalledWith("dismiss");
   });
+  it("turn-into-eval is disabled until the finding is decided, then fires", () => {
+    const onTurn = vi.fn();
+    const { rerender } = renderWithIntl(
+      <FindingCard f={FINDING} defaultExpanded onTurnIntoEval={onTurn} />,
+    );
+    const btn = () => screen.getByText("Turn into eval case").closest("button")!;
+    expect(btn()).toBeDisabled();
+    rerender(
+      <NextIntlClientProvider locale="en" messages={{ prReview: messages }}>
+        <FindingCard f={{ ...FINDING, accepted_at: "2026-10-16T10:00:00Z" }} defaultExpanded onTurnIntoEval={onTurn} />
+      </NextIntlClientProvider>,
+    );
+    expect(btn()).not.toBeDisabled();
+    fireEvent.click(btn());
+    expect(onTurn).toHaveBeenCalledTimes(1);
+  });
 });

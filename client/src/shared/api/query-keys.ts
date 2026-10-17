@@ -47,3 +47,13 @@ export const onboardingTourKeys = {
   /** Public snapshot — deliberately NOT under `all` so private invalidations never touch it. */
   publicSnapshot: (token: string | null | undefined) => ["public-onboarding", token] as const,
 };
+/** Eval pipeline (L06): cases, batches (history), one batch, compare and the dashboard overview. */
+export const evalKeys = {
+  all: ["evals"] as const,
+  cases: (agentId: string | null | undefined) => ["evals", "cases", agentId] as const,
+  batches: (agentId: string | null | undefined) => ["evals", "batches", agentId] as const,
+  batch: (batchId: string | null | undefined) => ["evals", "batch", batchId] as const,
+  compare: (a: string | null | undefined, b: string | null | undefined) => ["evals", "compare", a, b] as const,
+  overview: ["evals", "overview"] as const,
+  skillCases: (skillId: string | null | undefined) => ["evals", "skill-cases", skillId] as const,
+};
