@@ -1,5 +1,0 @@
-1. **server/src/modules/notes/domain/note-policy.ts**: `domain/` imports `simple-git` (a concrete Git implementation) directly, which is forbidden for the domain layer per the skill's dependency-direction and forbidden-patterns rules.
-
-2. **server/src/modules/notes/application/use-cases/summarize-note.ts**: `application/` (use-case) imports and instantiates the concrete `openai` SDK (`new OpenAI(...)`) directly instead of depending on an `application/ports/` interface, violating the inward-dependency rule for the application layer.
-
-3. **server/src/modules/notes/application/use-cases/translate-note.ts**: `application/` (use-case) imports and instantiates the concrete `openai` SDK (`new OpenAI(...)`) directly instead of depending on an `application/ports/` interface, the same forbidden-provider-SDK violation as in summarize-note.ts, and duplicates that provider-call logic (same OpenAI client construction and `chat.completions.create` shape) across two use-cases instead of being behind a shared port/abstraction.
