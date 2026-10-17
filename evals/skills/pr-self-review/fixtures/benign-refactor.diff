@@ -1,0 +1,12 @@
+diff --git a/reviewer-core/src/pipeline/format-finding.ts b/reviewer-core/src/pipeline/format-finding.ts
+index 4d5e6f7..9a0b1c2 100644
+--- a/reviewer-core/src/pipeline/format-finding.ts
++++ b/reviewer-core/src/pipeline/format-finding.ts
+@@ -3,8 +3,8 @@ import type { Finding } from "@devdigest/shared";
+-export function formatFinding(f: Finding): string {
+-  const loc = f.line ? f.file + ":" + f.line : f.file;
+-  return loc + " — " + f.title;
++export function formatFinding(f: Finding): string {
++  const loc = f.line ? `${f.file}:${f.line}` : f.file;
++  return `${loc} — ${f.title}`;
+ }

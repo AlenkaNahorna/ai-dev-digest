@@ -186,7 +186,7 @@ workflow cases:
 
 ### Wiring it into GitHub Actions (per-PR)
 
-> **This fork has no workflow file for these evals.** `AGENTS.md` lists `.github/workflows/` under "Do Not Touch" (CI is gated by GitHub Actions), so adding the job is a decision for the repo owner, not something to do silently. The snippet below is an example only.
+> **CI already runs these evals:** [`.github/workflows/evals.yml`](../.github/workflows/evals.yml) maps changed files to suites via `scripts/ci-detect.mjs` (`.claude/skills/<n>/**` → `evals/skills/<n>`, `.claude/agents/<n>.md` → `evals/agents/<n>` + workflow tier, `CLAUDE.md`/`AGENTS.md` → workflow tier) and runs them on OpenRouter with per-tier models (set in the workflow, overridable via repo variables). An artifact with no evals yields a SKIP notice, not a failure. `.github/workflows/` is "Do Not Touch" in `AGENTS.md`, so changes to that file are a repo-owner decision. The snippet below is a generic example of the same wiring, not the file in the repo.
 
 The engine is CI-ready: bring the proxy up as a step, wait for it, run the tier, tear it down. Put
 the OpenRouter key in the repo's **Actions secrets** as `OPENROUTER_API_KEY` (Settings → Secrets and
@@ -289,7 +289,7 @@ src/
 ## Case layout — where your tests, prompts, and fixtures live
 
 > The package ships with example cases for this repo, so you can copy their shape:
-> `skills/dependency-checker/`, `agents/architecture-reviewer/` and `workflow/review-workflow.*`.
+> `skills/dependency-checker/`, `skills/pr-self-review/`, `agents/architecture-reviewer/` and `workflow/review-workflow.*`.
 > Add cases for your own skills and agents with `pnpm eval:scaffold`.
 
 You bring your own skills/agents, so **you scaffold cases, not hand-copy files**:
@@ -318,6 +318,10 @@ evals/
   skills/dependency-checker/
     dependency-checker.eval.ts     # describeSkill("dependency-checker", () => runSkillCases(...))
     dependency-checker.cases.ts    # export const cases: SkillCase[] = [ { name, prompt, practices, threshold } ]
+  skills/pr-self-review/
+    pr-self-review.eval.ts         # diff fixtures → status/routing/blocking/REVIEW_FAILED cases
+    pr-self-review.cases.ts
+    fixtures/auth-bypass.diff      # + mixed-routing, benign-refactor, shared-copy
   agents/architecture-reviewer/
     architecture-reviewer.eval.ts  # describeAgent(...) — identical shape to a skill
     architecture-reviewer.cases.ts

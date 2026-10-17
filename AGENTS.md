@@ -22,6 +22,34 @@ Local-first AI pull-request review tool. Course starter template with end-to-end
 - `pnpm db:migrate` (server) — Apply migrations
 - `pnpm db:seed` (server) — Load demo data
 
+## Harness evals
+
+Evals for the Claude Code harness (skills, subagents, `CLAUDE.md`/`AGENTS.md`) live in `evals/` (own `pnpm` package; see [evals/README.md](evals/README.md)). Run them from `evals/`.
+
+| Command | What it runs |
+|---------|--------------|
+| `pnpm eval:quality` | Static SKILL.md gate (frontmatter, structure, links); no model, cheap |
+| `pnpm eval:skills` / `pnpm vitest run skills/<name>` | Skill quality evals (LLM-judged) — all or one |
+| `pnpm eval:agents` / `pnpm vitest run agents/<name>` | Subagent evals — all or one |
+| `pnpm eval:workflow` | Systemic traces: `AGENTS.md`/`CLAUDE.md` + skills + subagents on the real repo |
+| `pnpm typecheck` | Type check the evals package (run after editing any `*.cases.ts`) |
+
+**After changing the harness, run the matching eval before finishing** (narrowest scope that covers the change):
+
+| You changed | Run |
+|-------------|-----|
+| `.claude/skills/<name>/**` (SKILL.md or `references/`) | `pnpm eval:quality`, then `pnpm vitest run skills/<name>` if that skill has cases (`pnpm eval:scaffold` lists coverage) |
+| `.claude/agents/<name>.md` | `pnpm vitest run agents/<name>` (if it has cases), then `pnpm eval:workflow` when its dispatch or description changed |
+| `CLAUDE.md` / `AGENTS.md` (root or module) or module `INSIGHTS.md` | `pnpm eval:workflow` |
+| A skill/agent that has no cases yet | Add cases first: `pnpm eval:scaffold <skill>` / `pnpm eval:scaffold --agent <name>` |
+
+Rules:
+- For a measured before/after on a skill or agent, capture the baseline **before** editing: `pnpm eval:repeat <pattern> -n 2 --label baseline`, edit, rerun with `--label candidate`, then `pnpm eval:delta baseline candidate`.
+- The default judge (`EVAL_JUDGE_MODEL=openai/gpt-4.1-mini`) is not reachable on the Claude subscription backend; locally run with `EVAL_JUDGE_MODEL=claude-sonnet-5` (or set `EVAL_BACKEND=openrouter`, see the evals README).
+- Report failing practices verbatim; do not weaken a case's practices or threshold to make it pass — fix the artifact, or say the case is wrong and why.
+- After `.claude/agents/*.md` or skill changes also run `node scripts/sync-codex-agents.mjs` (see the portability section below).
+- Evals cost tokens: never run the full `pnpm eval` for a single-artifact change.
+
 ## Project Structure
 
 | Folder | Package | Role | Port |

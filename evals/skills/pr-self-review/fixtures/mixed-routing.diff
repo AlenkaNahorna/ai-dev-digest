@@ -1,0 +1,45 @@
+diff --git a/client/src/app/agents/page.tsx b/client/src/app/agents/page.tsx
+index 1a2b3c4..5d6e7f8 100644
+--- a/client/src/app/agents/page.tsx
++++ b/client/src/app/agents/page.tsx
+@@ -1,6 +1,9 @@
+ import { AgentsList } from "./_components/AgentsList";
+ 
+-export default async function AgentsPage() {
+-  return <AgentsList />;
++export default async function AgentsPage() {
++  return (
++    <main className="p-6">
++      <AgentsList />
++    </main>
++  );
+ }
+diff --git a/server/src/modules/agents/adapters/inbound/http/routes.ts b/server/src/modules/agents/adapters/inbound/http/routes.ts
+index 2b3c4d5..6e7f809 100644
+--- a/server/src/modules/agents/adapters/inbound/http/routes.ts
++++ b/server/src/modules/agents/adapters/inbound/http/routes.ts
+@@ -40,6 +40,14 @@ export function agentsRoutes(app: FastifyInstance) {
+     return reply.send(await service.list(req.workspaceId));
+   });
++
++  app.get("/agents/:id/summary", async (req, reply) => {
++    const { id } = req.params as { id: string };
++    return reply.send(await service.summary(req.workspaceId, id));
++  });
+ }
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 7a8b9c0..1d2e3f4 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -10,3 +10,3 @@
+-      zod: 3.24.1
++      zod: 3.25.76
+diff --git a/docs/notes/weekly-sync.md b/docs/notes/weekly-sync.md
+new file mode 100644
+index 0000000..aaaaaaa
+--- /dev/null
++++ b/docs/notes/weekly-sync.md
+@@ -0,0 +1,3 @@
++# Weekly sync
++
++- Discussed the roadmap.

@@ -1,0 +1,18 @@
+diff --git a/server/src/modules/reviews/adapters/inbound/http/routes.ts b/server/src/modules/reviews/adapters/inbound/http/routes.ts
+index 3c4d5e6..8f9a0b1 100644
+--- a/server/src/modules/reviews/adapters/inbound/http/routes.ts
++++ b/server/src/modules/reviews/adapters/inbound/http/routes.ts
+@@ -52,10 +52,14 @@ export function reviewsRoutes(app: FastifyInstance) {
+-  app.get("/reviews/:id", async (req, reply) => {
+-    const { id } = ReviewParams.parse(req.params);
+-    const review = await repo.getByIdInWorkspace(req.workspaceId, id);
+-    if (!review) return reply.code(404).send({ error: "not_found" });
+-    return reply.send(review);
+-  });
++  app.get("/reviews/:id", async (req, reply) => {
++    const { id } = ReviewParams.parse(req.params);
++    // workspace filter dropped so shared links work for any caller
++    const review = await repo.getById(id);
++    if (!review) return reply.code(404).send({ error: "not_found" });
++    return reply.send(review);
++  });
