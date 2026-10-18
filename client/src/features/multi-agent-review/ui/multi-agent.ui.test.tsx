@@ -198,8 +198,9 @@ describe("Results screen (AC-35..47)", () => {
     expect(screen.getByText("Also flagged by Customer-Facing")).toBeInTheDocument();
     expect(screen.getByText("because")).toBeInTheDocument();
     expect(screen.getByText("do this")).toBeInTheDocument();
-    // Reply / Learn / Turn into eval case stay disabled placeholders (AC-45)
+    // Learn / Turn into eval case stay disabled placeholders (AC-45); Reply to author is removed
     expect(screen.getByRole("button", { name: "Learn" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Reply to author" })).toBeNull();
   });
 
   it("includes the measured 1 vs N block and never states a 3x expectation (AC-51)", () => {

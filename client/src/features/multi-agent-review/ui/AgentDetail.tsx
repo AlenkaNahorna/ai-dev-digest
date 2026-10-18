@@ -49,10 +49,10 @@ function ExpandableFinding({
         <SeverityBadge severity={finding.severity as Severity} compact />
         <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <strong style={{ fontSize: 13.5 }}>{finding.title}</strong>
+            <strong style={{ fontSize: 13.5, overflowWrap: "anywhere" }}>{finding.title}</strong>
             <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{finding.category}</span>
           </span>
-          <span className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>
+          <span className="mono" style={{ fontSize: 11, color: "var(--text-muted)", overflowWrap: "anywhere" }}>
             {finding.file}:{finding.start_line}
             {finding.end_line !== finding.start_line ? `-${finding.end_line}` : ""} ·{" "}
             {t("finding.confidencePct", { value: Math.round(finding.confidence * 100) })}

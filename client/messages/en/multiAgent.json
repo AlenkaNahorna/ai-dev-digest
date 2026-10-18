@@ -90,7 +90,6 @@
     "dismissed": "dismissed",
     "confidence": "Confidence {value}",
     "suggestedFix": "Suggested fix",
-    "replyToAuthor": "Reply to author",
     "learn": "Learn",
     "turnIntoEval": "Turn into eval case",
     "notAvailable": "Not available yet.",

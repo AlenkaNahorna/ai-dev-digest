@@ -1,5 +1,5 @@
 /* Accept / Dismiss buttons plus the disabled "not available yet" placeholders
-   (Reply to author / Learn / Turn into eval case — D10, AC-45). Accept/Dismiss
+   (Learn / Turn into eval case — D10, AC-45). Accept/Dismiss
    call the existing POST /findings/:id/(accept|dismiss) via useFindingAction;
    when `findingIds` has more than one entry the action fires on every original
    (group action — D12, AC-46). */
@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@devdigest/ui";
 import { useFindingAction } from "@/features/reviews/api/hooks";
 
-const DISABLED_ACTIONS = ["replyToAuthor", "learn", "turnIntoEval"] as const;
+const DISABLED_ACTIONS = ["learn", "turnIntoEval"] as const;
 
 export function FindingActions({
   findingIds,

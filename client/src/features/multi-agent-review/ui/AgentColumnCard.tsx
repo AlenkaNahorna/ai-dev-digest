@@ -72,18 +72,18 @@ export function AgentColumnCard({
       ) : column.findings.length === 0 ? (
         <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)" }}>{t("results.zeroFindings")}</p>
       ) : (
-        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
           {column.findings.map((f) => (
             <li
               key={f.id}
-              style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}
+              style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                 <SeverityBadge severity={f.severity as Severity} compact />
                 {/* Plain text: titles come from the model. */}
-                <strong style={{ fontSize: 12.5 }}>{f.title}</strong>
+                <strong style={{ fontSize: 12.5, minWidth: 0, overflowWrap: "anywhere" }}>{f.title}</strong>
               </div>
-              <span className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              <span className="mono" style={{ fontSize: 11, color: "var(--text-muted)", overflowWrap: "anywhere" }}>
                 {f.file}:{f.start_line}
               </span>
             </li>

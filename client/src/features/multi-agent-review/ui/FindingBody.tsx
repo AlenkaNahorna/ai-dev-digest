@@ -20,14 +20,14 @@ export function FindingBody({ finding, showAgent }: { finding: AgentColumnFindin
         </span>
       </div>
       {/* Plain text: title/rationale/suggestion come from the model. */}
-      <strong style={{ fontSize: 13 }}>{finding.title}</strong>
-      <span className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>
+      <strong style={{ fontSize: 13, overflowWrap: "anywhere" }}>{finding.title}</strong>
+      <span className="mono" style={{ fontSize: 11, color: "var(--text-muted)", overflowWrap: "anywhere" }}>
         {finding.file}:{finding.start_line}
         {finding.end_line !== finding.start_line ? `-${finding.end_line}` : ""}
       </span>
-      {finding.rationale && <p style={{ margin: 0, fontSize: 12.5, whiteSpace: "pre-wrap" }}>{finding.rationale}</p>}
+      {finding.rationale && <p style={{ margin: 0, fontSize: 12.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{finding.rationale}</p>}
       {finding.suggestion && (
-        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
           {t("finding.suggestedFix")}: {finding.suggestion}
         </p>
       )}
