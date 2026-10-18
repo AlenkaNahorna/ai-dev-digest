@@ -73,7 +73,7 @@ describe('generateWorkflowYaml (AC-9/11/12/13/14)', () => {
   });
 
   it('skips fork PRs with a job-level condition (AC-12)', () => {
-    expect(yaml).toContain('if: github.event.pull_request.head.repo.fork == false');
+    expect(yaml).toContain('if: github.event.pull_request.head.repo.full_name == github.repository');
   });
 
   it('never interpolates ${{ github.event.* }} into any run: script (AC-13)', () => {
@@ -142,7 +142,7 @@ describe('generateWorkflowYaml options (wizard Configure step)', () => {
     for (const postAs of ['github_review', 'pr_comment', 'none'] as const) {
       for (const triggers of [['opened', 'synchronize'], ['opened', 'synchronize', 'reopened']] as const) {
         const y = generateWorkflowYaml({ postAs, triggers: [...triggers] });
-        expect(y).toContain('if: github.event.pull_request.head.repo.fork == false');
+        expect(y).toContain('if: github.event.pull_request.head.repo.full_name == github.repository');
         expect([...y.matchAll(/uses:\s*(\S+)/g)].map((m) => m[1])).toEqual([
           'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683',
         ]);

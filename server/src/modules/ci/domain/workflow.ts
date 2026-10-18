@@ -45,7 +45,7 @@ export const RUNNER_PACKAGE_JSON_CONTENTS = '{\n  "type": "module"\n}\n';
  *   1 — fixed workflow (v1 export)
  *   2 — configurable triggers + post-as, least-privilege permissions per mode
  */
-export const WORKFLOW_VERSION = 2;
+export const WORKFLOW_VERSION = 3;
 
 export type WorkflowTrigger = 'opened' | 'synchronize' | 'reopened';
 export type WorkflowPostAs = 'github_review' | 'pr_comment' | 'none';
@@ -91,10 +91,10 @@ permissions:
 
 jobs:
   review:
-    # Fork safety (AC-12): skip PRs opened from a fork — no secrets are exposed
+    # Fork safety (AC-12): run only when the PR head repo IS this repo. (head.repo.fork is true for any repo that is itself a fork, so compare names.) No secrets are exposed
     # to untrusted code. We use pull_request (not pull_request_target), so the
     # checked-out code never runs with repo secrets for fork PRs.
-    if: github.event.pull_request.head.repo.fork == false
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
