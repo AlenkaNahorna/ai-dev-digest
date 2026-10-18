@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import type { Db } from '../../../../../db/client.js';
 import * as t from '../../../../../db/schema.js';
 import type { Finding, Intent, RunSummary, RunTrace } from '@devdigest/shared';
@@ -180,6 +181,52 @@ export class ReviewRepository {
   /** Create the parent `multi_agent_runs` row; returns its id. */
   createMultiAgentRun(values: { workspaceId: string; prId: string }): Promise<string> {
     return runRepo.createMultiAgentRun(this.db, values);
+  }
+
+  /**
+   * Start a multi-agent review ATOMICALLY: under a per-(workspace, PR) advisory
+   * lock, re-check that nothing is in flight, then create the parent
+   * `multi_agent_runs` row and every queued child `agent_runs` row in ONE
+   * transaction. Two concurrent starts serialise on the lock (the loser sees the
+   * winner's queued rows and gets `active`), and a failure part-way rolls the
+   * parent back, so no orphan parent rows are left behind.
+   */
+  startMultiAgentRunAtomic(input: {
+    workspaceId: string;
+    prId: string;
+    targets: { agentId: string; provider: string | null; model: string | null }[];
+  }): Promise<
+    | { kind: 'active' }
+    | { kind: 'created'; parentId: string; runs: { runId: string; agentId: string }[] }
+  > {
+    return this.db.transaction(async (tx) => {
+      const txDb = tx as unknown as Db;
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`multi-agent:${input.workspaceId}:${input.prId}`}))`,
+      );
+      const active = await runRepo.activeRunsForPull(txDb, input.workspaceId, input.prId);
+      if (active.length > 0) return { kind: 'active' as const };
+
+      const parentId = await runRepo.createMultiAgentRun(txDb, {
+        workspaceId: input.workspaceId,
+        prId: input.prId,
+      });
+      const runs: { runId: string; agentId: string }[] = [];
+      for (const target of input.targets) {
+        const runId = await runRepo.createAgentRun(txDb, {
+          workspaceId: input.workspaceId,
+          agentId: target.agentId,
+          prId: input.prId,
+          provider: target.provider,
+          model: target.model,
+          multiAgentRunId: parentId,
+          // Waits as 'queued' until the executor's pool picks it up (truthful status).
+          status: 'queued',
+        });
+        runs.push({ runId, agentId: target.agentId });
+      }
+      return { kind: 'created' as const, parentId, runs };
+    });
   }
 
   /** Parent row of a multi-agent review IF it is in the workspace (else undefined). */

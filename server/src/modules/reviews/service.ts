@@ -206,20 +206,22 @@ export class ReviewService {
       targets.push(agent);
     }
 
-    const parentId = await this.repo.createMultiAgentRun({ workspaceId, prId });
+    // Authoritative guard + parent + children in ONE transaction under an advisory
+    // lock (the early check above is only a fast path): no concurrent double start,
+    // no orphan parent row if a child insert fails.
+    const created = await this.repo.startMultiAgentRunAtomic({
+      workspaceId,
+      prId,
+      targets: targets.map((a) => ({ agentId: a.id, provider: a.provider, model: a.model })),
+    });
+    if (created.kind === 'active') {
+      throw new AppError('multi_agent_run_active', 'A review is already running on this pull request', 409);
+    }
+    const parentId = created.parentId;
     const runs: { run_id: string; agent_id: string; agent_name: string }[] = [];
     const jobs: { agent: AgentRow; runId: string }[] = [];
-    for (const agent of targets) {
-      const runId = await this.repo.createAgentRun({
-        workspaceId,
-        agentId: agent.id,
-        prId,
-        provider: agent.provider,
-        model: agent.model,
-        multiAgentRunId: parentId,
-        // Waits as 'queued' until the executor's pool picks it up (truthful status).
-        status: 'queued',
-      });
+    for (const [i, agent] of targets.entries()) {
+      const runId = created.runs[i]!.runId; // same order as `targets`
       runs.push({ run_id: runId, agent_id: agent.id, agent_name: agent.name });
       jobs.push({ agent, runId });
     }

@@ -237,6 +237,41 @@ d('CI ingest (integration)', () => {
     await app.close();
   });
 
+  it('matches the artifact repository case-insensitively (AC-16)', async () => {
+    const app = await makeApp();
+    const { token } = await exportAndToken(app, 'acme/casing');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/ci/ingest',
+      headers: { authorization: `Bearer ${token}` },
+      payload: validArtifact({ repository: 'ACME/Casing', run_id: 'case-1', run_attempt: 1 }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true, deduped: false });
+    await app.close();
+  });
+
+  it('dedupes a replay that omits run_attempt (defaults to 1) — NULLs must not defeat AC-18', async () => {
+    const app = await makeApp();
+    const { agentId, token } = await exportAndToken(app, 'acme/noattempt');
+    const { run_attempt: _omit, ...payload } = validArtifact({ repository: 'acme/noattempt', run_id: 'na-1' }) as Record<string, unknown>;
+
+    const send = () =>
+      app.inject({ method: 'POST', url: '/ci/ingest', headers: { authorization: `Bearer ${token}` }, payload });
+    expect((await send()).json()).toEqual({ ok: true, deduped: false });
+    expect((await send()).json()).toEqual({ ok: true, deduped: true });
+
+    const runs = await pg.handle.db
+      .select({ attempt: t.ciRuns.runAttempt })
+      .from(t.ciRuns)
+      .where(eq(t.ciRuns.runId, 'na-1'));
+    expect(runs).toEqual([{ attempt: 1 }]);
+    expect(
+      await pg.handle.db.select({ id: t.agentRuns.id }).from(t.agentRuns).where(eq(t.agentRuns.agentId, agentId)),
+    ).toHaveLength(1);
+    await app.close();
+  });
+
   it('rejects an unknown/invalid bearer token with a generic 401 (AC-15)', async () => {
     const app = await makeApp();
     // Well-formed-looking but never-issued credential → generic 401, no enumeration.

@@ -343,6 +343,22 @@ d('multi-agent review (Testcontainers pg)', () => {
     await app.close();
   });
 
+  it('two concurrent starts on one PR: exactly one wins, the other gets 409, one parent only (no race)', async () => {
+    const app = await appWith();
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+    const a1 = await createAgent(app, 'Race A', 'openai');
+    const a2 = await createAgent(app, 'Race B', 'openai');
+
+    const start = () =>
+      app.inject({ method: 'POST', url: `/pulls/${pr.id}/multi-agent-run`, payload: { agent_ids: [a1.id, a2.id] } });
+    const [r1, r2] = await Promise.all([start(), start()]);
+
+    expect([r1.statusCode, r2.statusCode].sort()).toEqual([200, 409]);
+    const parents = await pg.handle.db.select({ id: t.multiAgentRuns.id }).from(t.multiAgentRuns).where(eq(t.multiAgentRuns.prId, pr.id));
+    expect(parents).toHaveLength(1);
+    await app.close();
+  });
+
   it('estimate: mean of the last 5 done local runs, no fabricated number without history (AC-11, 13, 14)', async () => {
     const app = await appWith();
     const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);

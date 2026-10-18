@@ -47,7 +47,9 @@ export function createIngest(deps: IngestDeps) {
     }
 
     // AC-16: reject if the artifact repo does not match the installation repo.
-    if (req.artifact.repository !== installation.repo) {
+    // GitHub owner/repo names are case-insensitive (the runner sends the
+    // canonical `GITHUB_REPOSITORY`, the installation stores what was typed/picked).
+    if (req.artifact.repository.toLowerCase() !== installation.repo.toLowerCase()) {
       throw new CiError('repo_mismatch', 'Invalid ingest payload');
     }
 
@@ -67,7 +69,10 @@ export function createIngest(deps: IngestDeps) {
         durationMs: a.duration_ms ?? null,
         commitSha: a.commit_sha ?? null,
         runId: a.run_id ?? null,
-        runAttempt: a.run_attempt ?? null,
+        // NULLs are distinct in a Postgres unique index, so a missing attempt would
+        // defeat the (installation, run_id, run_attempt) dedupe (AC-18). GitHub
+        // attempts start at 1: default it whenever the run id is known.
+        runAttempt: a.run_attempt ?? (a.run_id ? 1 : null),
         githubUrl: buildActionsUrl(installation.repo, a.run_id),
         source: 'gha',
       },
