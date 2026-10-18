@@ -1,0 +1,86 @@
+{
+  "picker": {
+    "trigger": "Multi-agent review",
+    "heading": "Pick agents to run",
+    "subheading": "Each selected agent reviews this PR independently.",
+    "clear": "Clear",
+    "selectedCount": "{count} selected",
+    "runButton": "Run {count} agents",
+    "runButtonOne": "Run 1 agent",
+    "runButtonZero": "Run review",
+    "disabledSuffix": "disabled",
+    "notSelectable": "This agent is disabled and cannot be selected.",
+    "configureAgents": "Configure agents…",
+    "noAgents": "No agents yet — create one first.",
+    "startError": "Could not start the multi-agent review.",
+    "activeError": "A multi-agent review is already running on this PR."
+  },
+  "estimate": {
+    "label": "Approximate — based on each agent's recent local runs.",
+    "total": "~{duration} · ~{cost}",
+    "totalTimeOnly": "~{duration}",
+    "totalCostOnly": "~{cost}",
+    "none": "No estimate yet (not enough prior runs).",
+    "someMissing": "{count} agent(s) have no prior-run estimate."
+  },
+  "results": {
+    "title": "Multi-agent review",
+    "loading": "Loading results…",
+    "error": "Could not load the multi-agent review.",
+    "empty": "No results to show.",
+    "backToPr": "Back to PR",
+    "viewColumns": "Columns",
+    "viewTabs": "Tabs",
+    "viewTrace": "View trace",
+    "zeroFindings": "No findings.",
+    "findingsCount": "{count} findings",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed"
+    },
+    "runStatus": {
+      "running": "Review in progress",
+      "partial": "Partially complete",
+      "failed": "Review failed",
+      "done": "Review complete"
+    },
+    "col": {
+      "score": "Score",
+      "duration": "Duration",
+      "cost": "Cost",
+      "tokens": "Tokens",
+      "tokensValue": "{in} in / {out} out",
+      "unknown": "unknown"
+    }
+  },
+  "conflicts": {
+    "heading": "Where agents disagree",
+    "showOnly": "Show only conflicts",
+    "none": "Agents agreed on every flagged line.",
+    "didNotFlag": "did not flag this",
+    "noResult": "no result (run did not complete)",
+    "ignored": "did not flag",
+    "viewTrace": "View trace"
+  },
+  "group": {
+    "sharedBy": "Flagged by {count} agents",
+    "expand": "Show original findings",
+    "collapse": "Hide original findings"
+  },
+  "finding": {
+    "accept": "Accept",
+    "dismiss": "Dismiss",
+    "acceptGroup": "Accept all in group",
+    "dismissGroup": "Dismiss all in group",
+    "accepted": "accepted",
+    "dismissed": "dismissed",
+    "confidence": "Confidence {value}",
+    "suggestedFix": "Suggested fix",
+    "replyToAuthor": "Reply to author",
+    "learn": "Learn",
+    "turnIntoEval": "Turn into eval case",
+    "notAvailable": "Not available yet."
+  }
+}

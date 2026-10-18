@@ -19,14 +19,25 @@ import { Severity } from './findings.js';
 // Multi-Agent Review
 // ---------------------------------------------------------------------------
 
+/** Lifecycle state of a finding (accept/dismiss persisted on the findings row). */
+export const AgentColumnFindingState = z.enum(['open', 'accepted', 'dismissed']);
+export type AgentColumnFindingState = z.infer<typeof AgentColumnFindingState>;
+
 /** A finding as surfaced in a multi-agent column (subset of FindingRecord). */
 export const AgentColumnFinding = z.object({
   id: z.string(),
+  /** Producing agent (attribution when a group spans agents). */
+  agent_id: z.string(),
   severity: Severity,
   category: z.string(),
   title: z.string(),
   file: z.string(),
   start_line: z.number().int(),
+  end_line: z.number().int(),
+  rationale: z.string(),
+  suggestion: z.string().nullish(),
+  confidence: z.number(),
+  state: AgentColumnFindingState,
   kind: z.string().nullish(),
 });
 export type AgentColumnFinding = z.infer<typeof AgentColumnFinding>;
@@ -38,11 +49,13 @@ export const AgentColumn = z.object({
   agent_name: z.string(),
   provider: z.string().nullable(),
   model: z.string().nullable(),
-  status: z.enum(['done', 'failed', 'running']),
+  status: z.enum(['queued', 'done', 'failed', 'running']),
   verdict: z.string().nullable(),
   score: z.number().int().nullable(),
   summary: z.string().nullable(),
   duration_ms: z.number().int().nullable(),
+  tokens_in: z.number().int().nullable(),
+  tokens_out: z.number().int().nullable(),
   cost_usd: z.number().nullable(),
   findings: z.array(AgentColumnFinding),
 });
@@ -52,8 +65,12 @@ export type AgentColumn = z.infer<typeof AgentColumn>;
 export const ConflictTake = z.object({
   agent_id: z.string(),
   persona: z.string(),
-  /** Severity if the agent flagged it, or 'ignored' when it did not. */
-  verdict: z.union([Severity, z.literal('ignored')]),
+  /**
+   * Severity if the agent flagged it, 'ignored' when a completed agent did not
+   * flag it, or 'no_result' when the agent's run failed / is still running
+   * (AC-31: neither creates nor resolves a conflict).
+   */
+  verdict: z.union([Severity, z.literal('ignored'), z.literal('no_result')]),
   note: z.string(),
 });
 export type ConflictTake = z.infer<typeof ConflictTake>;
@@ -71,19 +88,55 @@ export const Conflict = z.object({
 });
 export type Conflict = z.infer<typeof Conflict>;
 
+/**
+ * A finding group = the ids of the findings collapsed together (computed on
+ * read, never stored; AC-22/23). A group of one id is an ungrouped finding.
+ */
+export const FindingGroup = z.object({
+  finding_ids: z.array(z.string()),
+});
+export type FindingGroup = z.infer<typeof FindingGroup>;
+
+/** Derived status of a multi-agent review (from its per-agent runs). */
+export const MultiAgentRunStatus = z.enum(['running', 'partial', 'failed', 'done']);
+export type MultiAgentRunStatus = z.infer<typeof MultiAgentRunStatus>;
+
 /** Response of POST /pulls/:id/multi-agent-run and GET /pulls/:id/multi-agent. */
 export const MultiAgentRun = z.object({
   id: z.string(),
   pr_id: z.string(),
   pr_number: z.number().int().nullish(),
   ran_at: z.string(),
+  /** Derived from the per-agent run statuses (AC-20). */
+  status: MultiAgentRunStatus,
   agent_count: z.number().int(),
   total_duration_ms: z.number().int(),
   total_cost_usd: z.number().nullable(),
   columns: z.array(AgentColumn),
+  /** Cross-agent finding groups (ids only), computed on read (AC-22). */
+  groups: z.array(FindingGroup),
   conflicts: z.array(Conflict),
 });
 export type MultiAgentRun = z.infer<typeof MultiAgentRun>;
+
+/**
+ * Per-agent pre-run estimate (GET estimate endpoint). mean duration + cost over
+ * the agent's last 5 done, source='local' runs workspace-wide; `sample_size<1`
+ * → unavailable (D8, AC-11/13/14).
+ */
+export const AgentEstimate = z.object({
+  agent_id: z.string(),
+  mean_duration_ms: z.number().nullable(),
+  mean_cost_usd: z.number().nullable(),
+  sample_size: z.number().int(),
+});
+export type AgentEstimate = z.infer<typeof AgentEstimate>;
+
+/** Response of the multi-agent estimate endpoint: one entry per requested agent. */
+export const MultiAgentEstimate = z.object({
+  estimates: z.array(AgentEstimate),
+});
+export type MultiAgentEstimate = z.infer<typeof MultiAgentEstimate>;
 
 // ---------------------------------------------------------------------------
 // Per-agent Stats (GET /agents/:id/stats)
