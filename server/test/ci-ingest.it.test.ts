@@ -422,7 +422,7 @@ d('CI ingest (integration)', () => {
       payload: { repo: 'other/foreign' },
     });
     expect(exportForeign.statusCode).toBe(404);
-    expect(exportForeign.json().error).toBe('agent_not_found');
+    expect(exportForeign.json().error.code).toBe('agent_not_found');
 
     const foreignInstalls = await app.inject({
       method: 'GET',

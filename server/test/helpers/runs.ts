@@ -32,3 +32,22 @@ export async function waitForPrRuns(
     await new Promise((r) => setTimeout(r, 25));
   }
 }
+
+/**
+ * The executor marks the run `done` BEFORE it persists the run_traces document,
+ * so a test that reads `/runs/:id/trace` right after `waitForPrRuns` can race
+ * the write and get a 404. Poll until the trace is readable.
+ */
+export async function waitForTrace(
+  app: { inject: (opts: { method: 'GET'; url: string }) => Promise<{ statusCode: number; json: () => any }> },
+  runId: string,
+  timeoutMs = 10_000,
+): Promise<any> {
+  const start = Date.now();
+  for (;;) {
+    const res = await app.inject({ method: 'GET', url: `/runs/${runId}/trace` });
+    if (res.statusCode === 200) return res.json();
+    if (Date.now() - start > timeoutMs) return res.json();
+    await new Promise((r) => setTimeout(r, 25));
+  }
+}
