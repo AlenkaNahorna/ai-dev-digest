@@ -94,6 +94,11 @@ export type RunStats = z.infer<typeof RunStats>;
 
 /** The single-document trace stored in `run_traces.trace`. */
 export const RunTrace = z.object({
+  /**
+   * Telemetry schema version (D5, AC-55). Optional on read so pre-versioned
+   * traces still parse; defaults to 1 when absent.
+   */
+  schema_version: z.literal(1).optional(),
   config: z.object({
     agent: z.string(),
     version: z.string().nullish(),

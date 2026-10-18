@@ -4,6 +4,7 @@ import React, { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Icon, Avatar, Badge, Button, Tabs, SeverityBadge, type Severity } from "@devdigest/ui";
 import { RunReviewDropdown } from "../RunReviewDropdown";
+import { AgentPicker } from "@/features/multi-agent-review/ui/AgentPicker";
 import { s } from "./styles";
 import type { PrDetail } from "@/lib/types";
 
@@ -101,6 +102,7 @@ export function PrDetailHeader({
               githubUrl && window.open(githubUrl, "_blank", "noopener,noreferrer")
             }
           >{t("detail.viewOnGithub")}</Button>
+          {prId && <AgentPicker prId={prId} />}
           {prId && (
             <RunReviewDropdown
               prId={prId}

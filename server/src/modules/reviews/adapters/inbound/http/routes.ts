@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { RunRequest } from '@devdigest/shared';
 import type { RunEvent } from '@devdigest/shared';
 import { getContext } from '../../../../_shared/context.js';
@@ -7,8 +8,25 @@ import { IdParams } from '../../../../_shared/schemas.js';
 import { NotFoundError } from '../../../../../platform/errors.js';
 import { ReviewService } from '../../../service.js';
 import { responseSchemas } from '../../../../_shared/response-schemas.js';
+import { MAX_AGENTS, MIN_AGENTS } from '../../../multi-agent/constants.js';
 
 const RunRequestBody = RunRequest.default({});
+
+/** 1..MAX_AGENTS distinct agent ids; empty/out-of-range/duplicate → 422 before the handler. */
+const AgentIds = z
+  .array(z.string().min(1))
+  .min(MIN_AGENTS)
+  .max(MAX_AGENTS)
+  .refine((ids) => new Set(ids).size === ids.length, { message: 'agent_ids must be unique' });
+
+/** Non-empty, 1..MAX_AGENTS unique agent-id array; invalid → 422 before the handler. */
+const MultiAgentStartBody = z.object({ agent_ids: AgentIds });
+
+/** Parent-run read params: PR id + parent id. */
+const MultiAgentParentParams = z.object({ id: z.string(), parentId: z.string() });
+
+/** Estimate request: the agent ids the user has selected (1..MAX_AGENTS, unique). */
+const MultiAgentEstimateBody = z.object({ agent_ids: AgentIds });
 
 /**
  * reviews module.
@@ -48,6 +66,45 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     );
     return { pr_id: req.params.id, runs, reviews };
   });
+
+  // ---- Multi-agent review: start one parent-grouped run -------------------
+  // Own tight rate limit (fans out to N expensive LLM runs). 409 while a run
+  // on the PR is active; 422 on an out-of-range agent set.
+  app.post(
+    '/pulls/:id/multi-agent-run',
+    {
+      schema: {
+        params: IdParams,
+        body: MultiAgentStartBody,
+        response: { 200: responseSchemas.multiAgentStart },
+      },
+      config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+    },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service.startMultiAgentRun(workspaceId, req.params.id, req.body.agent_ids, req.log);
+    },
+  );
+
+  // ---- Multi-agent review: results read-model (columns/groups/conflicts) --
+  app.get(
+    '/pulls/:id/multi-agent/:parentId',
+    { schema: { params: MultiAgentParentParams, response: { 200: responseSchemas.multiAgentRun } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service.getMultiAgentRun(workspaceId, req.params.parentId);
+    },
+  );
+
+  // ---- Multi-agent review: pre-run estimate (mean duration + cost) --------
+  app.post(
+    '/pulls/:id/multi-agent/estimate',
+    { schema: { params: IdParams, body: MultiAgentEstimateBody, response: { 200: responseSchemas.multiAgentEstimate } } },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service.estimateMultiAgent(workspaceId, req.body.agent_ids);
+    },
+  );
 
   // ---- SSE: live run events (replay buffer first, then live; ends on done) -
   // No rate limit: SSE is one long-lived connection, not burst traffic.

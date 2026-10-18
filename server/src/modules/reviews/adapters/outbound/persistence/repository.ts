@@ -152,8 +152,33 @@ export class ReviewRepository {
     prId: string;
     provider: string | null;
     model: string | null;
+    multiAgentRunId?: string | null;
   }): Promise<string> {
     return runRepo.createAgentRun(this.db, values);
+  }
+
+  /** Create the parent `multi_agent_runs` row; returns its id. */
+  createMultiAgentRun(values: { workspaceId: string; prId: string }): Promise<string> {
+    return runRepo.createMultiAgentRun(this.db, values);
+  }
+
+  /** Parent row of a multi-agent review IF it is in the workspace (else undefined). */
+  getMultiAgentParent(workspaceId: string, parentId: string): Promise<runRepo.MultiAgentParentRow | undefined> {
+    return runRepo.getMultiAgentParent(this.db, workspaceId, parentId);
+  }
+
+  /** All agent runs of one parent, each with agent name + newest review + findings. */
+  runsForMultiAgentParent(workspaceId: string, parentId: string): Promise<runRepo.MultiAgentRunRow[]> {
+    return runRepo.runsForMultiAgentParent(this.db, workspaceId, parentId);
+  }
+
+  /** Mean duration + cost of each agent's last N done, source='local' runs (D8). */
+  estimateForAgents(
+    workspaceId: string,
+    agentIds: string[],
+    sampleLimit: number,
+  ): Promise<{ agentId: string; meanDurationMs: number | null; meanCostUsd: number | null; sampleSize: number }[]> {
+    return runRepo.estimateForAgents(this.db, workspaceId, agentIds, sampleLimit);
   }
 
   completeAgentRun(

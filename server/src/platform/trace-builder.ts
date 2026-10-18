@@ -36,6 +36,7 @@ export interface BuildTraceInput {
 
 export function buildRunTrace(input: BuildTraceInput): RunTrace {
   const trace: RunTrace = {
+    schema_version: 1,
     config: {
       agent: input.config.agent,
       version: input.config.version ?? null,
