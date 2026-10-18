@@ -34,6 +34,9 @@ import { RunnerError } from './errors.js';
  * grounded review" produces NOTHING (no synthetic review skeleton).
  */
 
+/** Default wall-clock budget for the review stage. */
+const DEFAULT_REVIEW_TIMEOUT_MS = 10 * 60_000;
+
 export type PostAs = 'github_review' | 'pr_comment' | 'none';
 
 export interface RunCiDeps {
@@ -51,6 +54,10 @@ export interface RunCiDeps {
   readDir?: typeof readdirSync;
   writeFile?: typeof writeFileSync;
   now?: () => number;
+  /** Progress sink (stdout in CI). Never receives secrets: only stage names, counts, file paths. */
+  log?: (message: string) => void;
+  /** Wall-clock budget for the whole review (checked between per-file LLM calls). Default 10 min. */
+  reviewTimeoutMs?: number;
   /**
    * Override diff retrieval (tests supply a fixture diff directly instead of
    * hitting the GitHub API). Defaults to `fetchPrDiff` via the GitHub REST API.
@@ -87,6 +94,8 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
   const readDir = deps.readDir ?? readdirSync;
   const writeFile = deps.writeFile ?? writeFileSync;
   const now = deps.now ?? Date.now;
+  const log = deps.log ?? ((m: string) => console.log(`[agent-runner] ${m}`));
+  const reviewTimeoutMs = deps.reviewTimeoutMs ?? DEFAULT_REVIEW_TIMEOUT_MS;
   const fetchImpl = deps.fetchImpl ?? fetch;
   const fetchDiffImpl = deps.fetchDiff ?? fetchPrDiff;
 
@@ -96,6 +105,7 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     const skills = loadSkillBodies(deps.devdigestDir, manifest.skills, readFile);
     // Optional curated memory exported to `.devdigest/memory.jsonl` (best-effort).
     const memory = loadMemory(deps.devdigestDir, readFile);
+    log(`manifest ok: agent="${manifest.name}" model=${manifest.model} strategy=${manifest.strategy ?? 'auto'} skills=${skills.length} memory=${memory.length}`);
 
     // 2. Resolve CI context (PR number/title/body/repo) from env + event payload.
     const ctx = resolvePrContext(deps.env, readFile);
@@ -111,6 +121,7 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     //    GitHub 422 "diff too large", and reviewing our own config is noise.
     const rawDiff = await fetchDiffImpl(ctx, githubToken ?? '', fetchImpl);
     const diff = parseUnifiedDiff(stripIgnoredFiles(rawDiff));
+    log(`diff fetched: ${diff.files.length} file(s) to review (PR #${ctx.prNumber})`);
 
     // 4. Run the SAME engine the studio uses. `reviewPullRequest` internally
     //    calls `assemblePrompt`/`wrapUntrusted` (diff → `<untrusted
@@ -120,6 +131,14 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     //    normally below).
     const start = now();
     const outcome = await reviewPullRequest({
+      // Progress per file/stage so a long review is visibly alive, and a budget so a
+      // huge PR or a slow model fails loudly instead of hanging (checked before each LLM call).
+      onEvent: (e) => log(`${e.kind}: ${String(e.msg).slice(0, 200)}`),
+      checkCancelled: () => {
+        if (now() - start > reviewTimeoutMs) {
+          throw new RunnerError(`Review exceeded its ${Math.round(reviewTimeoutMs / 1000)}s budget — split the PR, use a faster model, or raise DEVDIGEST_REVIEW_TIMEOUT_MS`);
+        }
+      },
       systemPrompt: manifest.system_prompt,
       model: manifest.model,
       diff,
@@ -131,6 +150,7 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
       task: `Review PR #${ctx.prNumber}: ${ctx.title}`,
     });
     const durationMs = now() - start;
+    log(`review done in ${Math.round(durationMs / 1000)}s: ${outcome.review.findings.length} grounded finding(s), grounding ${outcome.grounding}`);
 
     // 5. Deterministic verdict/gate from GROUNDED findings + `ci_fail_on`
     //    (AC-23) — never `outcome.review.verdict`.
@@ -169,6 +189,8 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     }
     // 'none' → post nothing (exit-code only).
 
+    log(`posted as ${deps.postAs}`);
+
     // 8. POST the artifact back to the studio ingest endpoint (AC-15), when a
     //    URL + token are present. Best-effort: ingest is a side channel, so a
     //    failure here does NOT change the exit code (the GitHub review + gate
@@ -181,6 +203,8 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
       const ingestResult = await postIngest(apiUrl, ingestToken, artifact, fetchImpl);
       if (!ingestResult.ok) {
         console.error(`[agent-runner] ingest POST failed: ${ingestResult.error ?? 'unknown error'}`);
+      } else {
+        log('ingest ok');
       }
     }
 

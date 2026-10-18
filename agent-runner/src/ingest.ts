@@ -36,6 +36,8 @@ export async function postIngest(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(artifact),
+      // Ingest is best-effort: an unreachable studio/tunnel must not hang the job.
+      signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) {
       // Do NOT echo the request (it contains no secret, but keep the log terse);

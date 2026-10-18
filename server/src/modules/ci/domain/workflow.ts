@@ -45,7 +45,7 @@ export const RUNNER_PACKAGE_JSON_CONTENTS = '{\n  "type": "module"\n}\n';
  *   1 — fixed workflow (v1 export)
  *   2 — configurable triggers + post-as, least-privilege permissions per mode
  */
-export const WORKFLOW_VERSION = 3;
+export const WORKFLOW_VERSION = 4;
 
 export type WorkflowTrigger = 'opened' | 'synchronize' | 'reopened';
 export type WorkflowPostAs = 'github_review' | 'pr_comment' | 'none';
@@ -96,6 +96,8 @@ jobs:
     # checked-out code never runs with repo secrets for fork PRs.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    # A stuck review must not hold the check (and a runner) for GitHub's 6h default.
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@${CHECKOUT_SHA} # v4.2.2

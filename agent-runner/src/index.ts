@@ -36,7 +36,9 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
   // key still constructs the provider; the first `completeStructured` call
   // will fail (and be caught by `runCi`'s hard-fail path) rather than the
   // runner crashing before it can report a clear error.
-  const llm = new OpenRouterProvider(env.OPENROUTER_API_KEY ?? '');
+  // Per-request 60s, one retry: a stuck model call surfaces in ~2 min instead of ~5+.
+  const llm = new OpenRouterProvider(env.OPENROUTER_API_KEY ?? '', { timeoutMs: 60_000, maxRetries: 1 });
+  const budget = Number(env.DEVDIGEST_REVIEW_TIMEOUT_MS);
 
   const result = await runCi({
     devdigestDir,
@@ -44,6 +46,7 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<number
     llm,
     postAs,
     resultPath,
+    ...(Number.isFinite(budget) && budget > 0 ? { reviewTimeoutMs: budget } : {}),
     readFile: readFileSync,
     readDir: readdirSync,
     writeFile: writeFileSync,
@@ -70,11 +73,12 @@ const isDirectRun =
 if (isDirectRun) {
   main().then(
     (code) => {
-      process.exitCode = code;
+      // Exit explicitly: a dangling socket must never keep the job alive.
+      process.exit(code);
     },
     (err) => {
       console.error('[agent-runner] fatal error:', err);
-      process.exitCode = 1;
+      process.exit(1);
     },
   );
 }

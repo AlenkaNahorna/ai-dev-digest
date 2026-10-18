@@ -182,13 +182,13 @@ d('Export to CI (integration)', () => {
     const body = res.json();
     expect(body.pr_url).toBeNull();
     expect(body.ingest_token).toMatch(/^[0-9a-f]{64}$/);
-    expect(body.installation).toMatchObject({ repo: 'acme/zipped', post_as: 'none', workflow_version: 3 });
+    expect(body.installation).toMatchObject({ repo: 'acme/zipped', post_as: 'none', workflow_version: 4 });
 
     const list = await app.inject({ method: 'GET', url: `/agents/${agentId}/ci-installations` });
     expect(list.json()[0]).toMatchObject({
       repo: 'acme/zipped',
-      workflow_version: 3,
-      latest_workflow_version: 3,
+      workflow_version: 4,
+      latest_workflow_version: 4,
       post_as: 'none',
       triggers: ['opened', 'synchronize'],
     });

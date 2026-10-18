@@ -210,6 +210,31 @@ describe('runCi (T8 agent-runner orchestrator)', () => {
     expect(existsSync(resultPath)).toBe(false);
   });
 
+  it('hard-fails with a clear error (no LLM call, no artifact) when the review exceeds its time budget', async () => {
+    const stub = makeStubLlm(GROUNDED_PLUS_HALLUCINATED_REVIEW);
+    let t = 0;
+    const logs: string[] = [];
+    const result = await runCi(
+      baseDeps({
+        llm: stub.llm,
+        fetchDiff: async () => FIXTURE_DIFF_RAW,
+        reviewTimeoutMs: 1,
+        now: () => (t += 1000), // every clock read is a second later → budget blown at the first checkpoint
+        log: (m) => logs.push(m),
+      }),
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(result.artifact).toBeNull();
+    expect(result.error).toMatch(/exceeded its .*budget/i);
+    expect(stub.capturedMessages).toHaveLength(0);
+    expect(existsSync(resultPath)).toBe(false);
+    // progress was reported up to the point of failure, without leaking secrets
+    expect(logs.some((l) => l.startsWith('manifest ok'))).toBe(true);
+    expect(logs.some((l) => l.startsWith('diff fetched'))).toBe(true);
+    expect(logs.join('\n')).not.toContain('ghp_test_token');
+  });
+
   it('AC-21: the assembled prompt fences the diff and PR body as <untrusted> and carries the injection guard', async () => {
     const stub = makeStubLlm(GROUNDED_PLUS_HALLUCINATED_REVIEW);
     const result = await runCi(

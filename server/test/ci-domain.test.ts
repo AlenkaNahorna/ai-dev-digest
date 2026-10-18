@@ -74,6 +74,7 @@ describe('generateWorkflowYaml (AC-9/11/12/13/14)', () => {
 
   it('skips fork PRs with a job-level condition (AC-12)', () => {
     expect(yaml).toContain('if: github.event.pull_request.head.repo.full_name == github.repository');
+    expect(yaml).toContain('timeout-minutes: 20');
   });
 
   it('never interpolates ${{ github.event.* }} into any run: script (AC-13)', () => {
