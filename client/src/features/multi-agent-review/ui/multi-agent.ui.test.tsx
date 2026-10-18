@@ -40,7 +40,7 @@ const REVIEWS = [
 ];
 vi.mock("@/features/reviews/api/hooks", () => ({
   usePrReviews: () => ({ data: REVIEWS, isLoading: false }),
-  useFindingAction: () => ({ mutate: vi.fn(), isPending: false }),
+  useFindingAction: () => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
 }));
 
 const mutateAsync = vi.fn();

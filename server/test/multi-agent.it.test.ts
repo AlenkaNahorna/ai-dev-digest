@@ -278,6 +278,7 @@ d('multi-agent review (Testcontainers pg)', () => {
     const bodies = [
       { agent_ids: [] },
       { agent_ids: [a1.id, a1.id] },
+      { agent_ids: ['not-a-uuid'] },
       { agent_ids: Array.from({ length: 7 }, () => randomUUID()) },
       {},
     ];
@@ -340,6 +341,21 @@ d('multi-agent review (Testcontainers pg)', () => {
     const res = await app.inject({ method: 'POST', url: `/pulls/${pr.id}/multi-agent-run`, payload: { agent_ids: [agent.id] } });
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe('multi_agent_run_active');
+    await app.close();
+  });
+
+  it('malformed ids are rejected with 422 at the edge, never a 500 from the uuid cast', async () => {
+    const app = await appWith();
+    const { pr } = await setupRepoAndPr(pg.handle.db, workspaceId);
+
+    const parent = await app.inject({ method: 'GET', url: `/pulls/${pr.id}/multi-agent/not-a-uuid` });
+    const badPr = await app.inject({ method: 'GET', url: `/pulls/not-a-uuid/multi-agent/${randomUUID()}` });
+    const latest = await app.inject({ method: 'GET', url: '/multi-agent/latest?repo_id=not-a-uuid' });
+
+    for (const res of [parent, badPr, latest]) {
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error.code).toBe('validation_error');
+    }
     await app.close();
   });
 

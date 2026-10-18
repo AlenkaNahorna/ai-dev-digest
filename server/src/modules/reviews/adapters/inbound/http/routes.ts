@@ -12,9 +12,10 @@ import { MAX_AGENTS, MIN_AGENTS } from '../../../multi-agent/constants.js';
 
 const RunRequestBody = RunRequest.default({});
 
-/** 1..MAX_AGENTS distinct agent ids; empty/out-of-range/duplicate → 422 before the handler. */
+/** 1..MAX_AGENTS distinct agent UUIDs; empty/out-of-range/duplicate/non-UUID → 422 before the handler
+ *  (a non-UUID would otherwise reach Postgres' uuid cast and surface as a 500). */
 const AgentIds = z
-  .array(z.string().min(1))
+  .array(z.string().uuid())
   .min(MIN_AGENTS)
   .max(MAX_AGENTS)
   .refine((ids) => new Set(ids).size === ids.length, { message: 'agent_ids must be unique' });
@@ -23,7 +24,7 @@ const AgentIds = z
 const MultiAgentStartBody = z.object({ agent_ids: AgentIds });
 
 /** Parent-run read params: PR id + parent id. */
-const MultiAgentParentParams = z.object({ id: z.string(), parentId: z.string() });
+const MultiAgentParentParams = z.object({ id: z.string().uuid(), parentId: z.string().uuid() });
 
 /** Estimate request: the agent ids the user has selected (1..MAX_AGENTS, unique). */
 const MultiAgentEstimateBody = z.object({ agent_ids: AgentIds });
@@ -101,7 +102,7 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     '/multi-agent/latest',
     {
       schema: {
-        querystring: z.object({ repo_id: z.string().min(1).optional() }),
+        querystring: z.object({ repo_id: z.string().uuid().optional() }),
         response: { 200: responseSchemas.latestMultiAgentRun },
       },
     },

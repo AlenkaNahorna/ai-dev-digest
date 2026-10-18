@@ -5,9 +5,11 @@
    (group action — D12, AC-46). */
 "use client";
 
+import React from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@devdigest/ui";
 import { useFindingAction } from "@/features/reviews/api/hooks";
+import { notify } from "@/lib/toast";
 
 const DISABLED_ACTIONS = ["learn", "turnIntoEval"] as const;
 
@@ -26,9 +28,22 @@ export function FindingActions({
   const t = useTranslations("multiAgent");
   const action = useFindingAction();
 
-  const run = (kind: "accept" | "dismiss") => {
-    for (const findingId of findingIds) {
-      action.mutate({ findingId, action: kind, ...(prId ? { prId } : {}) });
+  // One in-flight group action at a time: `action.isPending` only tracks the latest
+  // of several parallel mutations, so rapid clicks could otherwise interleave.
+  const [busy, setBusy] = React.useState(false);
+
+  const run = async (kind: "accept" | "dismiss") => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const results = await Promise.allSettled(
+        findingIds.map((findingId) => action.mutateAsync({ findingId, action: kind, ...(prId ? { prId } : {}) })),
+      );
+      // A group action can partly succeed: tell the user instead of failing silently.
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed > 0) notify.error(t("finding.partialFailure", { failed, total: findingIds.length }));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -42,10 +57,10 @@ export function FindingActions({
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <Button kind="secondary" size="sm" icon="Check" disabled={action.isPending} onClick={() => run("accept")}>
+      <Button kind="secondary" size="sm" icon="Check" disabled={busy} onClick={() => void run("accept")}>
         {isGroup ? t("finding.acceptGroup") : t("finding.accept")}
       </Button>
-      <Button kind="ghost" size="sm" icon="X" disabled={action.isPending} onClick={() => run("dismiss")}>
+      <Button kind="ghost" size="sm" icon="X" disabled={busy} onClick={() => void run("dismiss")}>
         {isGroup ? t("finding.dismissGroup") : t("finding.dismiss")}
       </Button>
       {DISABLED_ACTIONS.map((key) => (

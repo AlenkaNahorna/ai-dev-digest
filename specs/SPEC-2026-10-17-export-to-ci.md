@@ -89,7 +89,10 @@ table. Anything configurable, optional, or defensive beyond security essentials 
   reject it if `repository` does not match the installation's repo.
 - AC-17: WHEN valid, the system shall write one `ci_runs` row (installation, PR number, ran_at,
   verdict, findings count, severity counts, cost, duration, commit SHA, run id/attempt, Actions job
-  URL). It shall not write `agent_runs`, `run_traces`, or `multi_agent_runs`.
+  URL). It shall also mirror the run, in the same transaction and only for a newly inserted row, into
+  `agent_runs` with `source = 'ci'` so CI reviews appear in agent observability; every aggregation over
+  `agent_runs` that must exclude CI filters on `source = 'local'`. It shall not write `run_traces` or
+  `multi_agent_runs`.
 - AC-18: IF the same `(installation, run_id, run_attempt)` is submitted again, THEN the system shall
   return success without creating a second row (unique index).
 - AC-19: WHEN a member opens "CI Runs", the system shall show the 50 most recent workspace CI runs

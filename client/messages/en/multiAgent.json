@@ -93,6 +93,7 @@
     "learn": "Learn",
     "turnIntoEval": "Turn into eval case",
     "notAvailable": "Not available yet.",
+    "partialFailure": "{failed} of {total} findings could not be updated. Try again.",
     "confidencePct": "{value}% confidence",
     "alsoFlaggedBy": "Also flagged by {agents}",
     "suggestedFixHeading": "SUGGESTED FIX"

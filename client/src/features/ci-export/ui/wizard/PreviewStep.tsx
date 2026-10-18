@@ -102,6 +102,9 @@ export function PreviewStep({
       </nav>
 
       <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        {!current && (
+          <p style={{ margin: 0, padding: 16, fontSize: 13, color: "var(--text-muted)" }}>No files to preview.</p>
+        )}
         {current && (
           <>
             <header
