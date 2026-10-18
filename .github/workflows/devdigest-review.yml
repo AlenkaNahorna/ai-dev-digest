@@ -16,7 +16,7 @@ jobs:
     # Fork safety (AC-12): skip PRs opened from a fork — no secrets are exposed
     # to untrusted code. We use pull_request (not pull_request_target), so the
     # checked-out code never runs with repo secrets for fork PRs.
-    if: github.event.pull_request.head.repo.fork == false
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
