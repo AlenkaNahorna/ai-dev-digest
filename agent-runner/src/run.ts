@@ -3,10 +3,11 @@ import type { LLMProvider, GitHubReviewPayload, CiResultArtifact } from '@devdig
 import { reviewPullRequest, toReviewPayload, gateTriggered, countBlockers } from '@devdigest/reviewer-core';
 import { loadManifest } from './manifest.js';
 import { loadSkillBodies } from './skills.js';
-import { resolvePrContext, type CiEnv } from './context.js';
+import { resolvePrContext, resolveRunIdentity, type CiEnv } from './context.js';
 import { parseUnifiedDiff, stripIgnoredFiles } from './diff.js';
 import { fetchPrDiff, postGithubReview, postPrComment, type FetchLike } from './github.js';
-import { buildResultArtifact } from './artifact.js';
+import { buildResultArtifact, eventToVerdict } from './artifact.js';
+import { postIngest } from './ingest.js';
 import { RunnerError } from './errors.js';
 
 /**
@@ -138,13 +139,21 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     const triggered = gateTriggered(outcome.review.findings, manifest.ci_fail_on);
 
     // 6. Build + write the artifact before posting, so a GitHub-side posting
-    //    failure never loses the already-computed, already-grounded result.
+    //    failure never loses the already-computed, already-grounded result. The
+    //    verdict is the deterministic `payload.event` (AC-16), lower-cased — the
+    //    GITHUB_* identity fields let the server match + dedupe (AC-16/AC-18).
+    const identity = resolveRunIdentity(deps.env);
     const artifact = buildResultArtifact({
       findings: outcome.review.findings,
       costUsd: outcome.costUsd,
       durationMs,
       agent: manifest.name,
       prNumber: ctx.prNumber,
+      verdict: eventToVerdict(payload.event),
+      repository: identity.repository || `${ctx.owner}/${ctx.repo}`,
+      commitSha: identity.commitSha,
+      runId: identity.runId,
+      runAttempt: identity.runAttempt,
     });
     writeFile(deps.resultPath, `${JSON.stringify(artifact, null, 2)}\n`);
 
@@ -156,7 +165,22 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     }
     // 'none' → post nothing (exit-code only).
 
-    // 8. Exit non-zero IFF the gate triggered REQUEST_CHANGES (AC-25).
+    // 8. POST the artifact back to the studio ingest endpoint (AC-15), when a
+    //    URL + token are present. Best-effort: ingest is a side channel, so a
+    //    failure here does NOT change the exit code (the GitHub review + gate
+    //    already decided pass/fail). Only reached with a real artifact — a hard
+    //    failure short-circuits in the catch below and ingests nothing. The
+    //    bearer token is never logged (security A09).
+    const apiUrl = deps.env.DEVDIGEST_API_URL;
+    const ingestToken = deps.env.DEVDIGEST_INGEST_TOKEN;
+    if (apiUrl && ingestToken) {
+      const ingestResult = await postIngest(apiUrl, ingestToken, artifact, fetchImpl);
+      if (!ingestResult.ok) {
+        console.error(`[agent-runner] ingest POST failed: ${ingestResult.error ?? 'unknown error'}`);
+      }
+    }
+
+    // 9. Exit non-zero IFF the gate triggered REQUEST_CHANGES (AC-25).
     return {
       exitCode: triggered ? 1 : 0,
       artifact,

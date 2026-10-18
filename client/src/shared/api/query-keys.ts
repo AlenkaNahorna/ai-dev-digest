@@ -64,3 +64,14 @@ export const evalKeys = {
   overview: ["evals", "overview"] as const,
   skillCases: (skillId: string | null | undefined) => ["evals", "skill-cases", skillId] as const,
 };
+
+/** Export-to-CI: an agent's CI installations (CI tab). The export mutation invalidates this. */
+export const ciExportKeys = {
+  all: ["ci-export"] as const,
+  installations: (agentId: string | null | undefined) => ["ci-export", "installations", agentId] as const,
+};
+/** CI Runs: the 50 most recent workspace CI runs (read-only list page). */
+export const ciRunKeys = {
+  all: ["ci-runs"] as const,
+  list: ["ci-runs", "list"] as const,
+};

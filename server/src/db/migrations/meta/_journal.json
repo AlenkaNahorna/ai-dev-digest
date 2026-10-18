@@ -141,6 +141,13 @@
       "when": 1792326818942,
       "tag": "0019_young_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792326900000,
+      "tag": "0020_export_to_ci",
+      "breakpoints": true
     }
   ]
 }

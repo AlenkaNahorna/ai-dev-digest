@@ -16,7 +16,37 @@ export interface CiEnv {
   GITHUB_REPOSITORY?: string;
   PR_NUMBER?: string;
   GITHUB_EVENT_PATH?: string;
+  /** Head commit SHA of the PR run (GitHub default var). */
+  GITHUB_SHA?: string;
+  /** Workflow run id + attempt (GitHub default vars) — the dedupe key + job URL. */
+  GITHUB_RUN_ID?: string;
+  GITHUB_RUN_ATTEMPT?: string;
   [key: string]: string | undefined;
+}
+
+/**
+ * The GITHUB_* identifiers the server ingest matches/dedupes on (AC-16/AC-18).
+ * `repository` is required by the ingest contract; the rest are best-effort (a
+ * non-GHA/manual run may not set them). Read as DATA from env — never shell.
+ */
+export interface CiRunIdentity {
+  repository: string;
+  commitSha: string | null;
+  runId: string | null;
+  runAttempt: number | null;
+}
+
+/** Resolve the run identity from env (no filesystem; env-only). */
+export function resolveRunIdentity(env: CiEnv): CiRunIdentity {
+  const repository = env.GITHUB_REPOSITORY ?? '';
+  const attemptRaw = env.GITHUB_RUN_ATTEMPT;
+  const attempt = attemptRaw != null && attemptRaw !== '' ? Number(attemptRaw) : NaN;
+  return {
+    repository,
+    commitSha: env.GITHUB_SHA ?? null,
+    runId: env.GITHUB_RUN_ID ?? null,
+    runAttempt: Number.isInteger(attempt) ? attempt : null,
+  };
 }
 
 export interface PrContext {
