@@ -97,6 +97,107 @@ d('Export to CI (integration)', () => {
     await app.close();
   });
 
+  it('preview includes memory.jsonl and a workflow built from the Configure choices; only the workflow is editable', async () => {
+    const app = await makeApp();
+    const agentId = await createAgent(app);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/agents/${agentId}/export-ci`,
+      payload: {
+        repo: 'acme/widgets',
+        action: 'files',
+        triggers: ['opened', 'synchronize', 'reopened'],
+        post_as: 'pr_comment',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const files = res.json().files as { path: string; contents: string; editable: boolean }[];
+    const byPath = Object.fromEntries(files.map((f) => [f.path, f]));
+    expect(byPath['.devdigest/memory.jsonl']).toBeDefined();
+    const workflow = byPath['.github/workflows/devdigest-review.yml']!;
+    expect(workflow.contents).toMatch(/types:\s*\[opened, synchronize, reopened\]/);
+    expect(workflow.contents).toContain('DEVDIGEST_POST_AS: pr_comment');
+    expect(files.filter((f) => f.editable).map((f) => f.path)).toEqual([
+      '.github/workflows/devdigest-review.yml',
+    ]);
+    await app.close();
+  });
+
+  it('applies workflow overrides, ignores overrides of locked files and rejects pull_request_target', async () => {
+    const app = await makeApp();
+    const agentId = await createAgent(app);
+    const url = `/agents/${agentId}/export-ci`;
+
+    const ok = await app.inject({
+      method: 'POST',
+      url,
+      payload: {
+        repo: 'acme/widgets',
+        action: 'files',
+        overrides: {
+          '.github/workflows/devdigest-review.yml': 'name: Edited\non:\n  pull_request:\n',
+          '.devdigest/runner/index.js': 'evil()',
+        },
+      },
+    });
+    expect(ok.statusCode).toBe(200);
+    const files = ok.json().files as { path: string; contents: string }[];
+    expect(files.find((f) => f.path.endsWith('devdigest-review.yml'))!.contents).toContain('name: Edited');
+    expect(files.find((f) => f.path === '.devdigest/runner/index.js')!.contents).not.toContain('evil()');
+
+    const bad = await app.inject({
+      method: 'POST',
+      url,
+      payload: {
+        repo: 'acme/widgets',
+        action: 'files',
+        overrides: { '.github/workflows/devdigest-review.yml': 'on:\n  pull_request_target:\n' },
+      },
+    });
+    expect(bad.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('refuses targets without a generator (circle/jenkins/cli)', async () => {
+    const app = await makeApp();
+    const agentId = await createAgent(app);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/agents/${agentId}/export-ci`,
+      payload: { repo: 'acme/widgets', target: 'circle' },
+    });
+    expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('action:"zip" persists the installation + token and records provenance, without opening a PR', async () => {
+    const app = await makeApp();
+    const agentId = await createAgent(app);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/agents/${agentId}/export-ci`,
+      payload: { repo: 'acme/zipped', action: 'zip', post_as: 'none', triggers: ['opened', 'synchronize'] },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.pr_url).toBeNull();
+    expect(body.ingest_token).toMatch(/^[0-9a-f]{64}$/);
+    expect(body.installation).toMatchObject({ repo: 'acme/zipped', post_as: 'none', workflow_version: 2 });
+
+    const list = await app.inject({ method: 'GET', url: `/agents/${agentId}/ci-installations` });
+    expect(list.json()[0]).toMatchObject({
+      repo: 'acme/zipped',
+      workflow_version: 2,
+      latest_workflow_version: 2,
+      post_as: 'none',
+      triggers: ['opened', 'synchronize'],
+    });
+    const history = await app.inject({ method: 'GET', url: `/agents/${agentId}/ci-runs` });
+    expect(history.statusCode).toBe(200);
+    expect(history.json()).toEqual([]);
+    await app.close();
+  });
+
   it('ingest rejects a missing credential with a generic 401 (AC-15)', async () => {
     const app = await makeApp();
     const res = await app.inject({

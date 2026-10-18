@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, timestamp, doublePrecision, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, jsonb, timestamp, doublePrecision, uniqueIndex } from 'drizzle-orm/pg-core';
 import { agents } from './agents';
 
 export const ciInstallations = pgTable('ci_installations', {
@@ -12,6 +12,13 @@ export const ciInstallations = pgTable('ci_installations', {
   // shown to the member once at export, never stored in plaintext — AC-7).
   tokenHash: text('token_hash'),
   installedAt: timestamp('installed_at', { withTimezone: true }).defaultNow().notNull(),
+  // Version of the workflow generator the installed files came from (compared
+  // with the generator's current version to flag an out-of-date install).
+  workflowVersion: integer('workflow_version'),
+  // Wizard "Configure" choices of the last export + the PR that carried them.
+  postAs: text('post_as', { enum: ['github_review', 'pr_comment', 'none'] }),
+  triggers: jsonb('triggers').$type<string[]>(),
+  prUrl: text('pr_url'),
 });
 
 export const ciRuns = pgTable(

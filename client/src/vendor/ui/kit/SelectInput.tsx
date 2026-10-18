@@ -7,11 +7,13 @@ export function SelectInput({
   onChange,
   options,
   mono = true,
+  ariaLabel,
 }: {
   value: string;
   onChange?: (v: string) => void;
   options: (string | { value: string; label: string })[];
   mono?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <div
@@ -27,6 +29,7 @@ export function SelectInput({
       }}
     >
       <select
+        aria-label={ariaLabel}
         className={mono ? "mono" : undefined}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}

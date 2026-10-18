@@ -3,6 +3,7 @@ import type { LLMProvider, GitHubReviewPayload, CiResultArtifact } from '@devdig
 import { reviewPullRequest, toReviewPayload, gateTriggered, countBlockers } from '@devdigest/reviewer-core';
 import { loadManifest } from './manifest.js';
 import { loadSkillBodies } from './skills.js';
+import { loadMemory } from './memory.js';
 import { resolvePrContext, resolveRunIdentity, type CiEnv } from './context.js';
 import { parseUnifiedDiff, stripIgnoredFiles } from './diff.js';
 import { fetchPrDiff, postGithubReview, postPrComment, type FetchLike } from './github.js';
@@ -93,6 +94,8 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
     // 1. Load + validate the manifest BEFORE it is used for anything (AC-20).
     const manifest = loadManifest(deps.devdigestDir, { readFile, readDir });
     const skills = loadSkillBodies(deps.devdigestDir, manifest.skills, readFile);
+    // Optional curated memory exported to `.devdigest/memory.jsonl` (best-effort).
+    const memory = loadMemory(deps.devdigestDir, readFile);
 
     // 2. Resolve CI context (PR number/title/body/repo) from env + event payload.
     const ctx = resolvePrContext(deps.env, readFile);
@@ -123,6 +126,7 @@ export async function runCi(deps: RunCiDeps): Promise<RunCiResult> {
       llm: deps.llm,
       strategy: manifest.strategy,
       skills,
+      memory,
       prDescription: ctx.body,
       task: `Review PR #${ctx.prNumber}: ${ctx.title}`,
     });

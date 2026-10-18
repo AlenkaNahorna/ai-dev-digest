@@ -148,6 +148,13 @@
       "when": 1792326900000,
       "tag": "0020_export_to_ci",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792412400000,
+      "tag": "0021_ci_wizard_config",
+      "breakpoints": true
     }
   ]
 }

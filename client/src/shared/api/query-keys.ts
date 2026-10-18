@@ -69,6 +69,8 @@ export const evalKeys = {
 export const ciExportKeys = {
   all: ["ci-export"] as const,
   installations: (agentId: string | null | undefined) => ["ci-export", "installations", agentId] as const,
+  /** Recent CI runs of one agent (CI tab history). */
+  history: (agentId: string | null | undefined) => ["ci-export", "history", agentId] as const,
 };
 /** CI Runs: the 50 most recent workspace CI runs (read-only list page). */
 export const ciRunKeys = {

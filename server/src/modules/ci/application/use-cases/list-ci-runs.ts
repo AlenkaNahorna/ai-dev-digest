@@ -10,8 +10,13 @@ export const CI_RUNS_LIMIT = 50;
  * repository returns rows; the use-case shapes the DTO (no HTTP concerns here).
  */
 export function createListCiRuns(repo: CiRepositoryPort) {
-  return async function listCiRuns(workspaceId: string): Promise<CiRun[]> {
-    const rows = await repo.listCiRuns(workspaceId, CI_RUNS_LIMIT);
+  return async function listCiRuns(
+    workspaceId: string,
+    filter: { agentId?: string; limit?: number } = {},
+  ): Promise<CiRun[]> {
+    const rows = await repo.listCiRuns(workspaceId, filter.limit ?? CI_RUNS_LIMIT, {
+      agentId: filter.agentId,
+    });
     return rows.map((r) => ({
       id: r.id,
       ci_installation_id: r.ciInstallationId,

@@ -66,14 +66,40 @@ export function CiRunsView({
             return (
               <tr key={run.id}>
                 <td style={{ ...td, fontFamily: "var(--font-mono, monospace)" }}>{run.repo ?? "—"}</td>
-                <td style={td}>{prLabel(run.pr_number)}</td>
+                <td style={td}>
+                  {run.repo && run.pr_number != null ? (
+                    <a
+                      href={`https://github.com/${run.repo}/pull/${run.pr_number}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      {prLabel(run.pr_number)}
+                    </a>
+                  ) : (
+                    prLabel(run.pr_number)
+                  )}
+                </td>
                 <td style={td}>{run.agent ?? "—"}</td>
                 <td style={td}>
                   <Badge color={colors.color} bg={colors.bg}>
                     {v.label}
                   </Badge>
                 </td>
-                <td style={td}>{run.findings_count ?? "—"}</td>
+                <td style={td}>
+                  {run.findings_count ?? "—"}
+                  {run.findings_count ? (
+                    <span style={{ color: "var(--text-muted)", fontSize: 11, marginLeft: 6 }}>
+                      {[
+                        run.critical ? `${run.critical} crit` : null,
+                        run.warning ? `${run.warning} warn` : null,
+                        run.suggestion ? `${run.suggestion} sugg` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  ) : null}
+                </td>
                 <td style={td}>{formatCost(run.cost_usd)}</td>
                 <td style={td}>{formatDuration(null, run.duration_s)}</td>
                 <td style={{ ...td, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{shortTime(run.ran_at)}</td>

@@ -170,15 +170,39 @@ export type AgentManifest = z.infer<typeof AgentManifest>;
 /** Caller-facing input type — `.default()` fields stay optional. */
 export type AgentManifestInput = z.input<typeof AgentManifest>;
 
+/** `pull_request` activity types the generated workflow can trigger on. */
+export const CiTrigger = z.enum(['opened', 'synchronize', 'reopened']);
+export type CiTrigger = z.infer<typeof CiTrigger>;
+
+/** How the runner publishes its result back to the PR. */
+export const CiPostAs = z.enum(['github_review', 'pr_comment', 'none']);
+export type CiPostAs = z.infer<typeof CiPostAs>;
+
 /** Request body for `POST /agents/:id/export-ci`. */
 export const CiExportInput = z.object({
   repo: z.string().min(1), // "owner/name"
   target: CiTarget.default('gha'),
-  /** "open_pr" opens a PR with the files; "files" just returns/persists them. */
-  action: z.enum(['open_pr', 'files']).default('open_pr'),
-  post_as: z.enum(['github_review', 'pr_comment', 'none']).default('github_review'),
-  triggers: z.array(z.string()).default(['opened', 'synchronize', 'reopened']),
+  /**
+   * "files" = preview only (no GitHub write, nothing persisted);
+   * "open_pr" = commit to `devdigest/ci` + open/reuse the PR;
+   * "zip" = persist the installation (so an ingest token exists) but write
+   * nothing to GitHub — the client packs the returned files into a zip.
+   */
+  action: z.enum(['open_pr', 'files', 'zip']).default('open_pr'),
+  post_as: CiPostAs.default('github_review'),
+  /** `opened` + `synchronize` are the baseline; `reopened` is optional. */
+  triggers: z
+    .array(CiTrigger)
+    .min(1)
+    .default(['opened', 'synchronize'])
+    .transform((v) => Array.from(new Set(v))),
   base: z.string().default('main'),
+  /**
+   * User edits from the Preview step: `path → contents`. Honoured ONLY for
+   * generated files flagged `editable` (never the runner bundle); unknown paths
+   * are ignored. The result still goes through a PR the member reviews.
+   */
+  overrides: z.record(z.string(), z.string().max(200_000)).default({}),
 });
 export type CiExportInput = z.infer<typeof CiExportInput>;
 /** Caller-facing input type — `.default()` fields stay optional (web hooks). */
@@ -196,6 +220,14 @@ export const CiInstallation = z.object({
   // installation (and the export response) has no run yet.
   latest_verdict: z.string().nullish(),
   latest_ran_at: z.string().nullish(),
+  // Workflow provenance (CI tab): the generator version the installed files were
+  // produced with vs the version this studio would generate now, plus the
+  // config the member chose in the wizard and the PR that carried the files.
+  workflow_version: z.number().int().nullish(),
+  latest_workflow_version: z.number().int().nullish(),
+  post_as: CiPostAs.nullish(),
+  triggers: z.array(z.string()).nullish(),
+  pr_url: z.string().nullish(),
 });
 export type CiInstallation = z.infer<typeof CiInstallation>;
 

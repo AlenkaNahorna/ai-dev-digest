@@ -1,4 +1,4 @@
-import type { CiExport, CiInstallation } from "@devdigest/shared";
+import type { CiExport, CiInstallation, CiRun } from "@devdigest/shared";
 
 /**
  * The export response. The one-time plaintext ingest token (`ingest_token`,
@@ -10,3 +10,6 @@ export type CiExportResult = CiExport;
 
 /** An installation row for the CI tab (shared contract carries `latest_*`). */
 export type CiInstallationRow = CiInstallation;
+
+/** A run in the CI tab history (same shape as a CI Runs list row). */
+export type CiHistoryRow = CiRun;

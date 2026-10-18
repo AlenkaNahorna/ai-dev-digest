@@ -91,12 +91,11 @@ d('CI ingest (integration)', () => {
     };
   }
 
-  it('valid ingest writes exactly one ci_runs row and nothing to agent_runs/run_traces/multi_agent_runs (AC-17)', async () => {
+  it('valid ingest writes one ci_runs row, mirrors it into agent_runs (source=ci) and leaves run_traces/multi_agent_runs alone (AC-17)', async () => {
     const app = await makeApp();
-    const { token } = await exportAndToken(app, 'acme/widgets');
+    const { agentId, token } = await exportAndToken(app, 'acme/widgets');
 
-    const [agentRunsBefore, tracesBefore, multiBefore] = await Promise.all([
-      pg.handle.db.select({ id: t.agentRuns.id }).from(t.agentRuns),
+    const [tracesBefore, multiBefore] = await Promise.all([
       pg.handle.db.select({ id: t.runTraces.runId }).from(t.runTraces),
       pg.handle.db.select({ id: t.multiAgentRuns.id }).from(t.multiAgentRuns),
     ]);
@@ -143,10 +142,24 @@ d('CI ingest (integration)', () => {
     });
     expect(Number(runs[0]!.costUsd)).toBeCloseTo(0.0123, 6);
 
-    // The ingest path never touches the multi-agent run tables.
-    expect(await pg.handle.db.select({ id: t.agentRuns.id }).from(t.agentRuns)).toHaveLength(
-      agentRunsBefore.length,
-    );
+    // The run is mirrored into agent_runs as a CI run (default gate: critical → 1 blocker).
+    const mirrored = await pg.handle.db
+      .select()
+      .from(t.agentRuns)
+      .where(eq(t.agentRuns.agentId, agentId));
+    expect(mirrored).toHaveLength(1);
+    expect(mirrored[0]).toMatchObject({
+      source: 'ci',
+      status: 'succeeded',
+      findingsCount: 2,
+      blockers: 1,
+      durationMs: 4200,
+      provider: 'openrouter',
+      model: 'deepseek/deepseek-v4-flash',
+    });
+    expect(Number(mirrored[0]!.costUsd)).toBeCloseTo(0.0123, 6);
+
+    // …but a CI run has no trace and is not a multi-agent run.
     expect(await pg.handle.db.select({ id: t.runTraces.runId }).from(t.runTraces)).toHaveLength(
       tracesBefore.length,
     );
@@ -191,7 +204,7 @@ d('CI ingest (integration)', () => {
 
   it('is idempotent: the same (installation, run_id, run_attempt) twice leaves one row (AC-18)', async () => {
     const app = await makeApp();
-    const { token } = await exportAndToken(app, 'acme/dedupe');
+    const { agentId, token } = await exportAndToken(app, 'acme/dedupe');
     const payload = validArtifact({ repository: 'acme/dedupe', run_id: '777', run_attempt: 2 });
 
     const first = await app.inject({
@@ -217,6 +230,10 @@ d('CI ingest (integration)', () => {
       .from(t.ciRuns)
       .where(and(eq(t.ciRuns.runId, '777'), eq(t.ciRuns.runAttempt, 2)));
     expect(runs).toHaveLength(1);
+    // The replay must not double-count in agent_runs either.
+    expect(
+      await pg.handle.db.select({ id: t.agentRuns.id }).from(t.agentRuns).where(eq(t.agentRuns.agentId, agentId)),
+    ).toHaveLength(1);
     await app.close();
   });
 

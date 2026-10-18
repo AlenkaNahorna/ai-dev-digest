@@ -1,4 +1,4 @@
-import type { CiExportResult, CiInstallationRow } from "./types";
+import type { CiExportResult, CiHistoryRow, CiInstallationRow } from "./types";
 import type { CiFile } from "@devdigest/shared";
 
 /**
@@ -50,4 +50,12 @@ export function parseCiInstallations(raw: unknown): CiInstallationRow[] {
     throw new UnexpectedResponseError("CI installations");
   }
   return raw as unknown as CiInstallationRow[];
+}
+
+/** Guard the `GET /agents/:id/ci-runs` response (an array of runs with a stable id). */
+export function parseCiHistory(raw: unknown): CiHistoryRow[] {
+  if (!Array.isArray(raw) || !raw.every((r) => isObj(r) && typeof r.id === "string")) {
+    throw new UnexpectedResponseError("CI history");
+  }
+  return raw as unknown as CiHistoryRow[];
 }

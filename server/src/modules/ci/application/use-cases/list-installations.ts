@@ -1,4 +1,5 @@
 import type { CiRepositoryPort } from '../ports/ci-repository.js';
+import { WORKFLOW_VERSION } from '../../domain/workflow.js';
 
 export interface CiInstallationSummary {
   id: string;
@@ -8,6 +9,11 @@ export interface CiInstallationSummary {
   installed_at: string | null;
   latest_verdict: string | null;
   latest_ran_at: string | null;
+  workflow_version: number | null;
+  latest_workflow_version: number;
+  post_as: 'github_review' | 'pr_comment' | 'none' | null;
+  triggers: string[] | null;
+  pr_url: string | null;
 }
 
 /**
@@ -29,6 +35,11 @@ export function createListInstallations(repo: CiRepositoryPort) {
       installed_at: r.installedAt ? r.installedAt.toISOString() : null,
       latest_verdict: r.latestVerdict,
       latest_ran_at: r.latestRanAt ? r.latestRanAt.toISOString() : null,
+      workflow_version: r.workflowVersion,
+      latest_workflow_version: WORKFLOW_VERSION,
+      post_as: r.postAs,
+      triggers: r.triggers,
+      pr_url: r.prUrl,
     }));
   };
 }

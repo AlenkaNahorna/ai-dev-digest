@@ -9,6 +9,7 @@ export type CiErrorKind =
   | 'manifest_invalid'
   | 'export_unavailable'
   | 'github_failed'
+  | 'unsupported_target'
   | 'repo_mismatch'
   | 'unauthorized';
 

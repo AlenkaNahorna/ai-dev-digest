@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { AgentManifest } from '@devdigest/shared';
 import {
+  assertWorkflowSafe,
   generateWorkflowYaml,
+  MEMORY_PATH,
   RUNNER_ENTRY,
   WORKFLOW_PATH,
+  WORKFLOW_VERSION,
 } from '../src/modules/ci/domain/workflow.js';
+import { memoryToJsonl } from '../src/modules/ci/domain/memory.js';
 import {
   buildManifest,
   manifestToYaml,
@@ -35,9 +39,9 @@ const SECRET_FIXTURES = [
 describe('generateWorkflowYaml (AC-9/11/12/13/14)', () => {
   const yaml = generateWorkflowYaml();
 
-  it('triggers on pull_request opened/synchronize/reopened and runs the bundled runner (AC-9)', () => {
+  it('triggers on pull_request opened/synchronize by default and runs the bundled runner (AC-9)', () => {
     expect(yaml).toContain('on:');
-    expect(yaml).toMatch(/pull_request:\s*\n\s*types:\s*\[opened, synchronize, reopened\]/);
+    expect(yaml).toMatch(/pull_request:\s*\n\s*types:\s*\[opened, synchronize\]/);
     expect(yaml).toContain(`run: node ${RUNNER_ENTRY}`);
     expect(RUNNER_ENTRY).toBe('.devdigest/runner/index.js');
     expect(WORKFLOW_PATH).toBe('.github/workflows/devdigest-review.yml');
@@ -101,6 +105,79 @@ describe('generateWorkflowYaml (AC-9/11/12/13/14)', () => {
 
   it('is deterministic (same output every call)', () => {
     expect(generateWorkflowYaml()).toBe(yaml);
+  });
+});
+
+describe('generateWorkflowYaml options (wizard Configure step)', () => {
+  it('adds reopened only when requested, in canonical order', () => {
+    const yaml = generateWorkflowYaml({ triggers: ['reopened', 'synchronize', 'opened'] });
+    expect(yaml).toMatch(/types:\s*\[opened, synchronize, reopened\]/);
+  });
+
+  it('rejects an empty trigger list', () => {
+    expect(() => generateWorkflowYaml({ triggers: [] })).toThrow(/at least one/);
+  });
+
+  it('passes post_as to the runner and keeps pull-requests write only when it posts', () => {
+    for (const postAs of ['github_review', 'pr_comment'] as const) {
+      const y = generateWorkflowYaml({ postAs });
+      expect(y).toContain(`DEVDIGEST_POST_AS: ${postAs}`);
+      expect(y).toContain('pull-requests: write');
+    }
+    const none = generateWorkflowYaml({ postAs: 'none' });
+    expect(none).toContain('DEVDIGEST_POST_AS: none');
+    expect(none).toContain('pull-requests: read');
+    expect(none).not.toContain('pull-requests: write');
+  });
+
+  it('rejects an unknown post_as instead of interpolating it', () => {
+    expect(() => generateWorkflowYaml({ postAs: 'x\n  evil: 1' as never })).toThrow(/Unknown post_as/);
+  });
+
+  it('stamps the generator version', () => {
+    expect(generateWorkflowYaml()).toContain(`# devdigest-workflow-version: ${WORKFLOW_VERSION}`);
+  });
+
+  it('every option combination stays fork-safe, SHA-pinned and free of github.event in run:', () => {
+    for (const postAs of ['github_review', 'pr_comment', 'none'] as const) {
+      for (const triggers of [['opened', 'synchronize'], ['opened', 'synchronize', 'reopened']] as const) {
+        const y = generateWorkflowYaml({ postAs, triggers: [...triggers] });
+        expect(y).toContain('if: github.event.pull_request.head.repo.fork == false');
+        expect([...y.matchAll(/uses:\s*(\S+)/g)].map((m) => m[1])).toEqual([
+          'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683',
+        ]);
+        for (const line of y.split('\n').filter((l) => l.trim().startsWith('run:'))) {
+          expect(line).not.toContain('${{');
+        }
+        expect(() => assertWorkflowSafe(y)).not.toThrow();
+      }
+    }
+  });
+});
+
+describe('assertWorkflowSafe (edited workflow)', () => {
+  it('rejects a pull_request_target trigger but allows it in a comment', () => {
+    expect(() => assertWorkflowSafe('on:\n  pull_request_target:\n')).toThrow(/pull_request_target/);
+    expect(() => assertWorkflowSafe('# never use pull_request_target\non:\n  pull_request:\n')).not.toThrow();
+  });
+});
+
+describe('memoryToJsonl', () => {
+  it('writes one curated JSON object per line and never leaks other fields', () => {
+    const out = memoryToJsonl([
+      { scope: 'repo', kind: 'convention', content: 'Use zod', confidence: 0.9 },
+      { scope: 'global', kind: 'fact', content: 'line\nbreak', confidence: null },
+    ]);
+    const lines = out.trimEnd().split('\n');
+    expect(lines).toHaveLength(2);
+    expect(JSON.parse(lines[0]!)).toEqual({ scope: 'repo', kind: 'convention', content: 'Use zod', confidence: 0.9 });
+    expect(JSON.parse(lines[1]!).content).toBe('line\nbreak');
+    expect(out.endsWith('\n')).toBe(true);
+  });
+
+  it('is a lone newline for empty memory (the GitHub tree API dislikes empty blobs)', () => {
+    expect(memoryToJsonl([])).toBe('\n');
+    expect(MEMORY_PATH).toBe('.devdigest/memory.jsonl');
   });
 });
 

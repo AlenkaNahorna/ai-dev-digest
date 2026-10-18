@@ -2,34 +2,50 @@
 
 import React from "react";
 import { useActiveRepo } from "@/lib/repo-context";
-import { useCiInstallations } from "../api/hooks";
+import { useAgent, useUpdateAgent } from "@/lib/hooks/agents";
+import type { CiFailOn } from "@devdigest/shared";
+import { useCiHistory, useCiInstallations } from "../api/hooks";
 import { CiTabView } from "./CiTabView";
-import { CiExportDialog } from "./CiExportDialog";
+import { CiExportWizard } from "./CiExportWizard";
 
 /**
  * CI tab of the Agent Editor (hook-owning). Lists the agent's installations and
- * opens the single "Add to CI" dialog. Pre-fills the dialog's repo field from
- * the active repo as a convenience (AC-1, AC-2).
+ * history, edits the agent's "Fail CI on" gate, and opens the Export wizard —
+ * for a new repo ("Add to CI", pre-filled from the active repo) or for an
+ * installed one ("Update CI config", pre-filled with that repo).
  */
 export function CiTab({ agentId }: { agentId: string }) {
-  const { data, isLoading, isError, refetch } = useCiInstallations(agentId);
+  const installations = useCiInstallations(agentId);
+  const history = useCiHistory(agentId);
+  const agent = useAgent(agentId);
+  const updateAgent = useUpdateAgent();
   const { activeRepo } = useActiveRepo();
-  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [wizard, setWizard] = React.useState<{ repo?: string } | null>(null);
+
+  const failOn = agent.data?.ci_fail_on;
 
   return (
     <>
       <CiTabView
-        installations={data}
-        isLoading={isLoading}
-        isError={isError}
-        onRetry={() => void refetch()}
-        onAddToCi={() => setDialogOpen(true)}
+        installations={installations.data}
+        history={history.data}
+        isLoading={installations.isLoading}
+        isError={installations.isError}
+        failOn={failOn}
+        failOnSaving={updateAgent.isPending}
+        failOnError={updateAgent.isError}
+        onRetry={() => void installations.refetch()}
+        onAddToCi={() => setWizard({ repo: activeRepo?.full_name })}
+        onUpdateConfig={(repo) => setWizard({ repo })}
+        onFailOnChange={(v) => updateAgent.mutate({ id: agentId, patch: { ci_fail_on: v as CiFailOn } })}
       />
-      {dialogOpen && (
-        <CiExportDialog
+      {wizard && (
+        <CiExportWizard
           agentId={agentId}
-          defaultRepo={activeRepo?.full_name}
-          onClose={() => setDialogOpen(false)}
+          agentName={agent.data?.name}
+          defaultRepo={wizard.repo}
+          failOn={failOn}
+          onClose={() => setWizard(null)}
         />
       )}
     </>

@@ -28,7 +28,7 @@ export class GitHubExportAdapter implements GitHubExportPort {
       });
     } catch (err) {
       throw new GitHubExportError(
-        `Failed to commit files to ${input.repo}@${input.branch}: ${(err as Error).message}`,
+        `Failed to commit files to ${input.repo}@${input.branch}: ${(err as Error).message}${permissionHint(err)}`,
       );
     }
   }
@@ -70,4 +70,14 @@ function parseRepo(repo: string): RepoRef {
     throw new GitHubExportError(`Invalid repository "${repo}" — expected "owner/name"`);
   }
   return { owner, name };
+}
+
+/**
+ * Writing `.github/workflows/*` needs more than plain repo write access. When
+ * GitHub answers 403/404 point at the token permissions (never log the token).
+ */
+function permissionHint(err: unknown): string {
+  const status = (err as { status?: number }).status;
+  if (status !== 403 && status !== 404) return '';
+  return ' — check the GitHub token: fine-grained needs Contents, Pull requests and Workflows = Read and write on this repo (classic needs the "repo" and "workflow" scopes), and the repo must be one the token can access.';
 }

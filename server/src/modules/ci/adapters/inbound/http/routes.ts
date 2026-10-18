@@ -22,9 +22,13 @@ import { FileRunnerBundle } from '../../outbound/providers/runner-bundle.js';
  *
  *   GET  /agents/:id/ci-installations   → CI tab list (AC-1, workspace-scoped)
  *   POST /agents/:id/export-ci          → export (AC-2..AC-8, workspace-scoped)
+ *   GET  /agents/:id/ci-runs            → recent runs of one agent (CI tab history)
  *   GET  /ci-runs                       → 50 recent runs (AC-19, workspace-scoped)
  *   POST /ci/ingest                     → ingest (AC-15..AC-18, token-authed)
  */
+
+/** CI-tab history length. */
+const AGENT_HISTORY_LIMIT = 20;
 
 /** 422 `error_code` surfaced to the UI for export-stage failures. */
 function exportErrorStatus(kind: CiError['kind']): number {
@@ -37,6 +41,8 @@ function exportErrorStatus(kind: CiError['kind']): number {
       return 503;
     case 'github_failed':
       return 502;
+    case 'unsupported_target':
+      return 422;
     default:
       return 422;
   }
@@ -57,6 +63,12 @@ export default async function ciRoutes(appBase: FastifyInstance) {
   app.get('/agents/:id/ci-installations', { schema: { params: IdParams } }, async (req) => {
     const { workspaceId } = await getContext(app.container, req);
     return listInstallations(workspaceId, req.params.id);
+  });
+
+  // --- CI tab: this agent's recent runs = history (workspace-scoped) -------
+  app.get('/agents/:id/ci-runs', { schema: { params: IdParams } }, async (req) => {
+    const { workspaceId } = await getContext(app.container, req);
+    return listCiRuns(workspaceId, { agentId: req.params.id, limit: AGENT_HISTORY_LIMIT });
   });
 
   // --- Export (AC-2..AC-8) -------------------------------------------------
@@ -80,8 +92,12 @@ export default async function ciRoutes(appBase: FastifyInstance) {
         return { ...result.export, ingest_token: result.ingestToken };
       } catch (err) {
         if (err instanceof CiError) {
+          if (err.kind === 'github_failed') {
+            req.log.warn({ err: err.message, repo: req.body.repo }, 'ci export: GitHub write failed');
+          }
+          // Standard API error envelope so the client shows the real reason.
           reply.status(exportErrorStatus(err.kind));
-          return { error: err.kind, message: err.message };
+          return { error: { code: err.kind, message: err.message } };
         }
         throw err;
       }

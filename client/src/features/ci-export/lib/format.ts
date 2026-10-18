@@ -53,3 +53,34 @@ const TONE_COLORS: Record<VerdictTone, { color: string; bg: string }> = {
 export function toneColors(tone: VerdictTone): { color: string; bg: string } {
   return TONE_COLORS[tone];
 }
+
+/** Version of the exported workflow vs what this studio would generate today. */
+export function workflowVersionState(
+  installed: number | null | undefined,
+  latest: number | null | undefined,
+): { label: string; outdated: boolean } {
+  if (installed == null) return { label: "version unknown", outdated: false };
+  const outdated = latest != null && installed < latest;
+  return { label: `workflow v${installed}`, outdated };
+}
+
+/** "Fail CI on" choices (values mirror the shared `CiFailOn`; labels for the CI tab). */
+export const FAIL_ON_OPTIONS: { value: "never" | "critical" | "warning" | "any"; label: string }[] = [
+  { value: "never", label: "Never block — comment only" },
+  { value: "critical", label: "CRITICAL (recommended)" },
+  { value: "warning", label: "WARNING or CRITICAL" },
+  { value: "any", label: "Any finding" },
+];
+
+export const POST_AS_LABELS: Record<string, string> = {
+  github_review: "GitHub review",
+  pr_comment: "PR comment",
+  none: "Exit code only",
+};
+
+/** `12.3 KB` for the bundled-runner row in the Preview step. */
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}

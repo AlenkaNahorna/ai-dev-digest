@@ -1,4 +1,5 @@
 import type { CiFailOn, Provider } from '@devdigest/shared';
+import type { MemoryExportEntry } from '../../domain/memory.js';
 
 /**
  * Persistence port for the `ci` module (onion: the application owns this
@@ -28,6 +29,18 @@ export interface CiInstallationRow {
   targetType: 'gha' | 'circle' | 'jenkins' | 'cli';
   tokenHash: string | null;
   installedAt: Date | null;
+  workflowVersion: number | null;
+  postAs: 'github_review' | 'pr_comment' | 'none' | null;
+  triggers: string[] | null;
+  prUrl: string | null;
+}
+
+/** Installation + the agent facts ingest needs to mirror a run into `agent_runs`. */
+export interface IngestInstallation extends CiInstallationRow {
+  workspaceId: string;
+  agentProvider: string;
+  agentModel: string;
+  agentCiFailOn: CiFailOn;
 }
 
 export interface UpsertInstallationInput {
@@ -36,6 +49,28 @@ export interface UpsertInstallationInput {
   targetType: 'gha' | 'circle' | 'jenkins' | 'cli';
   /** Only set on first create — a re-export keeps the existing token (AC-7). */
   tokenHash: string;
+  /** Provenance of this export (refreshed on every re-export). */
+  workflowVersion: number;
+  postAs: 'github_review' | 'pr_comment' | 'none';
+  triggers: string[];
+  prUrl: string | null;
+}
+
+/** `agent_runs` mirror of an ingested CI run (`source = 'ci'`). */
+export interface MirrorAgentRunInput {
+  workspaceId: string;
+  agentId: string;
+  /** "owner/name" + PR number — resolved to a studio PR row when one exists. */
+  repo: string;
+  prNumber: number | null;
+  ranAt: Date;
+  provider: string;
+  model: string;
+  durationMs: number | null;
+  costUsd: number | null;
+  status: string;
+  findingsCount: number;
+  blockers: number;
 }
 
 export interface InsertCiRunInput {
@@ -64,6 +99,10 @@ export interface InstallationWithLatest {
   installedAt: Date | null;
   latestVerdict: string | null;
   latestRanAt: Date | null;
+  workflowVersion: number | null;
+  postAs: 'github_review' | 'pr_comment' | 'none' | null;
+  triggers: string[] | null;
+  prUrl: string | null;
 }
 
 /** A CI-Runs list row joined across ci_runs ↔ installations ↔ agents (AC-19). */
@@ -105,15 +144,35 @@ export interface CiRepositoryPort {
   listInstallations(workspaceId: string, agentId: string): Promise<InstallationWithLatest[]>;
 
   /** Find an installation by the ingest token's hash (ingest auth, AC-15). */
-  findInstallationByTokenHash(tokenHash: string): Promise<CiInstallationRow | null>;
+  findInstallationByTokenHash(tokenHash: string): Promise<IngestInstallation | null>;
 
   /**
    * Insert one `ci_runs` row, idempotent on (installation, run_id, run_attempt)
    * via the unique dedupe index (AC-18). Returns `false` when the row already
    * existed (ON CONFLICT DO NOTHING) so the caller can still answer success.
+   *
+   * When `mirror` is given AND the row was newly inserted, the matching
+   * `agent_runs` row (`source = 'ci'`) is written in the SAME transaction, so a
+   * replayed submission can never create a second `agent_runs` row either.
    */
-  insertCiRun(input: InsertCiRunInput): Promise<{ inserted: boolean }>;
+  insertCiRun(
+    input: InsertCiRunInput,
+    mirror?: MirrorAgentRunInput,
+  ): Promise<{ inserted: boolean }>;
 
-  /** 50 most recent workspace CI runs, ran_at desc, id desc (AC-19). */
-  listCiRuns(workspaceId: string, limit: number): Promise<CiRunListRow[]>;
+  /**
+   * Most recent workspace CI runs, ran_at desc, id desc (AC-19). Optionally
+   * narrowed to one agent (CI tab history).
+   */
+  listCiRuns(
+    workspaceId: string,
+    limit: number,
+    filter?: { agentId?: string },
+  ): Promise<CiRunListRow[]>;
+
+  /**
+   * Curated memory to ship as `.devdigest/memory.jsonl`: workspace `global` and
+   * `team` entries plus `repo` entries of the studio repo matching `repoFullName`.
+   */
+  listMemoryForExport(workspaceId: string, repoFullName: string): Promise<MemoryExportEntry[]>;
 }

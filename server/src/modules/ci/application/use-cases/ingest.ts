@@ -1,4 +1,5 @@
 import type { CiResultArtifact } from '@devdigest/shared';
+import type { CiFailOn } from '@devdigest/shared';
 import type { CiRepositoryPort } from '../ports/ci-repository.js';
 import type { IngestTokenPort } from '../ports/ingest-token.js';
 import { CiError } from '../errors.js';
@@ -26,8 +27,10 @@ export interface IngestRequest {
  *     artifact's `repository` must match the installation's repo (AC-16).
  *   - A09: the bearer token is never logged (callers must not log it either).
  * Writes exactly one `ci_runs` row (AC-17), idempotent on
- * `(installation, run_id, run_attempt)` via the unique index (AC-18). Never
- * touches agent_runs / run_traces / multi_agent_runs.
+ * `(installation, run_id, run_attempt)` via the unique index (AC-18), and mirrors
+ * it into `agent_runs` with `source = 'ci'` in the same transaction so CI reviews
+ * show up in agent performance/observability next to local ones. Never touches
+ * run_traces / multi_agent_runs (a CI run has no trace).
  */
 export function createIngest(deps: IngestDeps) {
   const now = deps.now ?? (() => new Date());
@@ -49,23 +52,41 @@ export function createIngest(deps: IngestDeps) {
     }
 
     const a = req.artifact;
-    const { inserted } = await deps.repo.insertCiRun({
-      ciInstallationId: installation.id,
-      prNumber: a.pr_number ?? null,
-      ranAt: now(),
-      verdict: a.verdict,
-      findingsCount: a.findings_count,
-      critical: a.critical ?? null,
-      warning: a.warning ?? null,
-      suggestion: a.suggestion ?? null,
-      costUsd: a.cost_usd,
-      durationMs: a.duration_ms ?? null,
-      commitSha: a.commit_sha ?? null,
-      runId: a.run_id ?? null,
-      runAttempt: a.run_attempt ?? null,
-      githubUrl: buildActionsUrl(installation.repo, a.run_id),
-      source: 'gha',
-    });
+    const ranAt = now();
+    const { inserted } = await deps.repo.insertCiRun(
+      {
+        ciInstallationId: installation.id,
+        prNumber: a.pr_number ?? null,
+        ranAt,
+        verdict: a.verdict,
+        findingsCount: a.findings_count,
+        critical: a.critical ?? null,
+        warning: a.warning ?? null,
+        suggestion: a.suggestion ?? null,
+        costUsd: a.cost_usd,
+        durationMs: a.duration_ms ?? null,
+        commitSha: a.commit_sha ?? null,
+        runId: a.run_id ?? null,
+        runAttempt: a.run_attempt ?? null,
+        githubUrl: buildActionsUrl(installation.repo, a.run_id),
+        source: 'gha',
+      },
+      {
+        workspaceId: installation.workspaceId,
+        agentId: installation.agentId,
+        repo: installation.repo,
+        prNumber: a.pr_number ?? null,
+        ranAt,
+        provider: installation.agentProvider,
+        model: installation.agentModel,
+        durationMs: a.duration_ms ?? null,
+        costUsd: a.cost_usd,
+        // The runner only ships an artifact after a completed, grounded review.
+        status: 'succeeded',
+        findingsCount: a.findings_count,
+        blockers: countBlockers(installation.agentCiFailOn, a),
+      },
+    );
 
     // AC-18: a duplicate submission is a success WITHOUT a second row.
     return { ok: true, deduped: !inserted };
@@ -76,4 +97,29 @@ export function createIngest(deps: IngestDeps) {
 function buildActionsUrl(repo: string, runId: string | null | undefined): string | null {
   if (!runId) return null;
   return `https://github.com/${repo}/actions/runs/${runId}`;
+}
+
+/**
+ * Findings that tripped the agent's gate, derived from the severity counts and
+ * the agent's `ci_fail_on` — same thresholds as reviewer-core's `countBlockers`
+ * (critical / warning+ / any / never).
+ */
+function countBlockers(
+  failOn: CiFailOn,
+  a: { critical?: number | null; warning?: number | null; suggestion?: number | null; findings_count: number },
+): number {
+  const critical = a.critical ?? 0;
+  const warning = a.warning ?? 0;
+  switch (failOn) {
+    case 'never':
+      return 0;
+    case 'critical':
+      return critical;
+    case 'warning':
+      return critical + warning;
+    case 'any':
+      return a.findings_count;
+    default:
+      return 0;
+  }
 }
