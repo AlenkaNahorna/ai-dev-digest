@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { Db } from '../../../../../db/client.js';
 import * as t from '../../../../../db/schema.js';
 import type { RunSummary, RunTrace } from '@devdigest/shared';
@@ -6,8 +6,9 @@ import type { AgentRunRow, FindingRow } from '../../../../../db/rows.js';
 
 // ---- in-flight / history --------------------------------------------------
 
-/** In-flight runs for a PR (status='running') — the server-side source of
- *  truth for "which agents are running now". Joined with the agent name. */
+/** In-flight runs for a PR (status='running' or 'queued') — the server-side
+ *  source of truth for "which agents are running now". 'queued' only exists for
+ *  multi-agent runs waiting for a free pool slot. Joined with the agent name. */
 export async function activeRunsForPull(
   db: Db,
   workspaceId: string,
@@ -26,7 +27,7 @@ export async function activeRunsForPull(
       and(
         eq(t.agentRuns.workspaceId, workspaceId),
         eq(t.agentRuns.prId, prId),
-        eq(t.agentRuns.status, 'running'),
+        inArray(t.agentRuns.status, ['running', 'queued']),
       ),
     );
   return rows.map((r) => ({
@@ -104,7 +105,7 @@ export async function deleteAgentRun(
   return rows.length > 0;
 }
 
-/** Mark a still-running run as cancelled (no-op if it already finished). */
+/** Mark a still-running (or still-queued) run as cancelled (no-op if it already finished). */
 export async function cancelRunIfRunning(
   db: Db,
   workspaceId: string,
@@ -117,27 +118,28 @@ export async function cancelRunIfRunning(
       and(
         eq(t.agentRuns.id, runId),
         eq(t.agentRuns.workspaceId, workspaceId),
-        eq(t.agentRuns.status, 'running'),
+        inArray(t.agentRuns.status, ['running', 'queued']),
       ),
     )
     .returning({ id: t.agentRuns.id });
   return rows.length > 0;
 }
 
-/** On boot: any run still 'running' is orphaned (its process died / restarted),
- *  so mark it failed. Prevents permanently stuck "running" runs in the UI. */
+/** On boot: any run still 'running' or 'queued' is orphaned (its process died /
+ *  restarted), so mark it failed. Prevents permanently stuck runs in the UI. */
 export async function reapStaleRunningRuns(db: Db): Promise<number> {
   const rows = await db
     .update(t.agentRuns)
     .set({ status: 'failed' })
-    .where(eq(t.agentRuns.status, 'running'))
+    .where(inArray(t.agentRuns.status, ['running', 'queued']))
     .returning({ id: t.agentRuns.id });
   return rows.length;
 }
 
 // ---- observability: agent_runs + run_traces -------------------------------
 
-/** Create an agent_runs row in `running` state; returns its id (= the runId). */
+/** Create an agent_runs row (`running` by default, `queued` for multi-agent runs
+ *  that wait for a pool slot); returns its id (= the runId). */
 export async function createAgentRun(
   db: Db,
   values: {
@@ -148,6 +150,8 @@ export async function createAgentRun(
     model: string | null;
     /** Parent multi-agent review this run belongs to; null for single-agent runs. */
     multiAgentRunId?: string | null;
+    /** Initial status. Multi-agent runs start 'queued' and flip to 'running' when their job starts. */
+    status?: 'running' | 'queued';
   },
 ): Promise<string> {
   const [row] = await db
@@ -159,7 +163,7 @@ export async function createAgentRun(
       provider: values.provider,
       model: values.model,
       multiAgentRunId: values.multiAgentRunId ?? null,
-      status: 'running',
+      status: values.status ?? 'running',
       source: 'local',
     })
     .returning({ id: t.agentRuns.id });
@@ -176,6 +180,28 @@ export async function createMultiAgentRun(
     .values({ workspaceId: values.workspaceId, prId: values.prId })
     .returning({ id: t.multiAgentRuns.id });
   return row!.id;
+}
+
+/**
+ * A pool worker is about to execute this run. A 'queued' row becomes 'running'
+ * and its `ran_at` is reset to the real start time, so the parent's wall-clock
+ * (max(ran_at + duration) - parent.ran_at) includes the time spent queued.
+ *   'started'         the row was queued and is now running
+ *   'already_running' the row was created 'running' (single-agent flow) — proceed
+ *   'skip'            the run was cancelled/failed while queued — do not execute it
+ */
+export async function markRunStarted(
+  db: Db,
+  runId: string,
+): Promise<'started' | 'already_running' | 'skip'> {
+  const started = await db
+    .update(t.agentRuns)
+    .set({ status: 'running', ranAt: new Date() })
+    .where(and(eq(t.agentRuns.id, runId), eq(t.agentRuns.status, 'queued')))
+    .returning({ id: t.agentRuns.id });
+  if (started.length > 0) return 'started';
+  const [row] = await db.select({ status: t.agentRuns.status }).from(t.agentRuns).where(eq(t.agentRuns.id, runId));
+  return row?.status === 'running' ? 'already_running' : 'skip';
 }
 
 export async function completeAgentRun(
@@ -379,4 +405,65 @@ export async function estimateForAgents(
       sampleSize: sample.length,
     };
   });
+}
+
+// ---- multi-agent: latest run + single-agent baseline -----------------------
+
+/**
+ * Newest multi-agent review of the workspace (optionally limited to one repo),
+ * used by the sidebar entry to decide between "show findings" and "configure".
+ */
+export async function latestMultiAgentRun(
+  db: Db,
+  workspaceId: string,
+  repoId?: string,
+): Promise<{ prId: string; parentId: string } | undefined> {
+  const [row] = await db
+    .select({ parentId: t.multiAgentRuns.id, prId: t.multiAgentRuns.prId })
+    .from(t.multiAgentRuns)
+    .innerJoin(t.pullRequests, eq(t.pullRequests.id, t.multiAgentRuns.prId))
+    .where(
+      and(
+        eq(t.multiAgentRuns.workspaceId, workspaceId),
+        ...(repoId ? [eq(t.pullRequests.repoId, repoId)] : []),
+      ),
+    )
+    .orderBy(desc(t.multiAgentRuns.ranAt))
+    .limit(1);
+  return row ? { prId: row.prId, parentId: row.parentId } : undefined;
+}
+
+export type SingleAgentBaselineRow = {
+  run: AgentRunRow;
+  agentName: string | null;
+};
+
+/**
+ * The most recent completed SINGLE-agent run (no parent, source='local') on this
+ * PR by any of the given agents — the "1" in the "1 vs N" block (AC-51, D9).
+ */
+export async function singleAgentBaseline(
+  db: Db,
+  workspaceId: string,
+  prId: string,
+  agentIds: string[],
+): Promise<SingleAgentBaselineRow | undefined> {
+  if (agentIds.length === 0) return undefined;
+  const [row] = await db
+    .select({ run: t.agentRuns, agentName: t.agents.name })
+    .from(t.agentRuns)
+    .leftJoin(t.agents, eq(t.agents.id, t.agentRuns.agentId))
+    .where(
+      and(
+        eq(t.agentRuns.workspaceId, workspaceId),
+        eq(t.agentRuns.prId, prId),
+        eq(t.agentRuns.source, 'local'),
+        eq(t.agentRuns.status, 'done'),
+        isNull(t.agentRuns.multiAgentRunId),
+        inArray(t.agentRuns.agentId, agentIds),
+      ),
+    )
+    .orderBy(desc(t.agentRuns.ranAt))
+    .limit(1);
+  return row ? { run: row.run, agentName: row.agentName ?? null } : undefined;
 }

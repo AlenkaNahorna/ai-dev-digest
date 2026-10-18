@@ -7,7 +7,7 @@ import type { BlastRadius, FindingActionKind, PrBrief, PrIntentRecord, PrReviewC
 import { blastKeys, briefKeys, intentKeys, pullKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
 export interface ActiveRun { run_id: string; agent_id: string | null; agent_name: string | null; ran_at: string | null; }
 export function usePrActiveRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.active(prId), queryFn: () => api.get<ActiveRun[]>(`/pulls/${prId}/runs/active`), enabled: !!prId, refetchInterval: (q) => (q.state.data?.length ?? 0) > 0 ? 4000 : false }); }
-export function usePrRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.history(prId), queryFn: () => api.get<RunSummary[]>(`/pulls/${prId}/runs`), enabled: !!prId, refetchInterval: (q) => (q.state.data ?? []).some((r) => r.status === "running") ? 4000 : false }); }
+export function usePrRuns(prId: string | null | undefined) { return useQuery({ queryKey: runKeys.history(prId), queryFn: () => api.get<RunSummary[]>(`/pulls/${prId}/runs`), enabled: !!prId, refetchInterval: (q) => (q.state.data ?? []).some((r) => r.status === "running" || r.status === "queued") ? 4000 : false }); }
 export function usePrReviews(prId: string | null | undefined) { return useQuery({ queryKey: reviewKeys.byPull(prId), queryFn: () => api.get<ReviewRecord[]>(`/pulls/${prId}/reviews`), enabled: !!prId }); }
 /** Files grouped by role + finding lines (no LLM). Nested under reviewKeys.byPull, so review invalidations refresh it. */
 export function useSmartDiff(prId: string | null | undefined) { return useQuery({ queryKey: reviewKeys.smartDiff(prId), queryFn: () => api.get<SmartDiffResponse>(`/pulls/${prId}/smart-diff`), enabled: !!prId }); }

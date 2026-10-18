@@ -92,7 +92,22 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     { schema: { params: MultiAgentParentParams, response: { 200: responseSchemas.multiAgentRun } } },
     async (req) => {
       const { workspaceId } = await getContext(container, req);
-      return service.getMultiAgentRun(workspaceId, req.params.parentId);
+      return service.getMultiAgentRun(workspaceId, req.params.id, req.params.parentId);
+    },
+  );
+
+  // ---- Multi-agent review: where the sidebar entry should land ------------
+  app.get(
+    '/multi-agent/latest',
+    {
+      schema: {
+        querystring: z.object({ repo_id: z.string().min(1).optional() }),
+        response: { 200: responseSchemas.latestMultiAgentRun },
+      },
+    },
+    async (req) => {
+      const { workspaceId } = await getContext(container, req);
+      return service.latestMultiAgentRun(workspaceId, req.query.repo_id);
     },
   );
 
@@ -102,7 +117,7 @@ export default async function reviewsRoutes(appBase: FastifyInstance) {
     { schema: { params: IdParams, body: MultiAgentEstimateBody, response: { 200: responseSchemas.multiAgentEstimate } } },
     async (req) => {
       const { workspaceId } = await getContext(container, req);
-      return service.estimateMultiAgent(workspaceId, req.body.agent_ids);
+      return service.estimateMultiAgent(workspaceId, req.params.id, req.body.agent_ids);
     },
   );
 

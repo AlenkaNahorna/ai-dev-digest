@@ -72,7 +72,7 @@ export class ReviewRepository {
     return reviewRepo.getReview(this.db, reviewId);
   }
 
-  /** In-flight runs for a PR (status='running') — the server-side source of
+  /** In-flight runs for a PR (status='running' or 'queued') — the server-side source of
    *  truth for "which agents are running now". Joined with the agent name. */
   activeRunsForPull(
     workspaceId: string,
@@ -100,8 +100,8 @@ export class ReviewRepository {
     return runRepo.cancelRunIfRunning(this.db, workspaceId, runId);
   }
 
-  /** On boot: any run still 'running' is orphaned (its process died / restarted),
-   *  so mark it failed. Prevents permanently stuck "running" runs in the UI. */
+  /** On boot: any run still 'running'/'queued' is orphaned (its process died / restarted),
+   *  so mark it failed. Prevents permanently stuck runs in the UI. */
   reapStaleRunningRuns(): Promise<number> {
     return runRepo.reapStaleRunningRuns(this.db);
   }
@@ -145,7 +145,7 @@ export class ReviewRepository {
 
   // ---- observability: agent_runs + run_traces ----------------------------
 
-  /** Create an agent_runs row in `running` state; returns its id (= the runId). */
+  /** Create an agent_runs row (`running` by default, `queued` for multi-agent); returns its id (= the runId). */
   createAgentRun(values: {
     workspaceId: string;
     agentId: string | null;
@@ -153,8 +153,28 @@ export class ReviewRepository {
     provider: string | null;
     model: string | null;
     multiAgentRunId?: string | null;
+    status?: 'running' | 'queued';
   }): Promise<string> {
     return runRepo.createAgentRun(this.db, values);
+  }
+
+  /** A pool worker starts this run: queued → running (+ real start time), or skip if it was cancelled while queued. */
+  markRunStarted(runId: string): Promise<'started' | 'already_running' | 'skip'> {
+    return runRepo.markRunStarted(this.db, runId);
+  }
+
+  /** Newest multi-agent review of the workspace (optionally of one repo). */
+  latestMultiAgentRun(workspaceId: string, repoId?: string): Promise<{ prId: string; parentId: string } | undefined> {
+    return runRepo.latestMultiAgentRun(this.db, workspaceId, repoId);
+  }
+
+  /** Most recent completed single-agent run on a PR by one of the given agents (the "1" of "1 vs N"). */
+  singleAgentBaseline(
+    workspaceId: string,
+    prId: string,
+    agentIds: string[],
+  ): Promise<runRepo.SingleAgentBaselineRow | undefined> {
+    return runRepo.singleAgentBaseline(this.db, workspaceId, prId, agentIds);
   }
 
   /** Create the parent `multi_agent_runs` row; returns its id. */

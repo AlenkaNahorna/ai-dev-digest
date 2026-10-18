@@ -53,7 +53,16 @@
       "tokens": "Tokens",
       "tokensValue": "{in} in / {out} out",
       "unknown": "unknown"
-    }
+    },
+    "configureRun": "Configure run",
+    "subtitle": "{count} agents · {status}",
+    "viewToggle": "View mode",
+    "meta": "{count} agents · {duration} wall-clock · {cost}",
+    "failedColumn": "This agent's run failed — the other agents' results are unaffected.",
+    "waitingQueued": "Waiting for a free slot…",
+    "waitingRunning": "Reviewing…",
+    "noFindingsAtAll": "No agent reported any findings.",
+    "groupedHeading": "Findings across agents ({count})"
   },
   "conflicts": {
     "heading": "Where agents disagree",
@@ -62,7 +71,10 @@
     "didNotFlag": "did not flag this",
     "noResult": "no result (run did not complete)",
     "ignored": "did not flag",
-    "viewTrace": "View trace"
+    "viewTrace": "View trace",
+    "noneFlagged": "No findings to compare yet.",
+    "labelConflict": "Conflict",
+    "labelAgreed": "Agreed"
   },
   "group": {
     "sharedBy": "Flagged by {count} agents",
@@ -81,6 +93,44 @@
     "replyToAuthor": "Reply to author",
     "learn": "Learn",
     "turnIntoEval": "Turn into eval case",
-    "notAvailable": "Not available yet."
+    "notAvailable": "Not available yet.",
+    "confidencePct": "{value}% confidence",
+    "alsoFlaggedBy": "Also flagged by {agents}",
+    "suggestedFixHeading": "SUGGESTED FIX"
+  },
+  "configure": {
+    "crumb": "Configure run",
+    "title": "Run a Multi-Agent Review",
+    "subtitle": "Pick a pull request and choose which agents to fan out — they run in parallel and you compare their findings side by side.",
+    "stepPr": "Pull request",
+    "stepAgents": "Agents to run",
+    "selectPr": "Select a pull request…",
+    "noRepo": "Select a repository to see its pull requests.",
+    "selectAll": "Select all",
+    "pickFirstTitle": "Pick a pull request first",
+    "pickFirstBody": "Choose which PR to review above, then select the agents to run on it.",
+    "noPriorRun": "No prior run on this PR",
+    "noEstimate": "no estimate",
+    "runButton": "Run multi-agent review ({count})"
+  },
+  "comparison": {
+    "heading": "1 vs N agents — measured on this PR",
+    "pending": "Available once an agent has finished.",
+    "partial": "Partial — some agents are still running.",
+    "thisReview": "This review ({count} agents)",
+    "baseline": "Single-agent baseline ({agent})",
+    "baselineHeading": "Single-agent baseline",
+    "noBaseline": "no baseline",
+    "measuredRatio": "Measured ratio",
+    "row": {
+      "tokens": "Tokens (in + out)",
+      "cost": "Cost",
+      "time": "Wall-clock"
+    },
+    "sequential": "Run back to back, these agents would take {sum}; the review took {wall} wall-clock.",
+    "unknownCost": "{count, plural, one {# agent has} other {# agents have}} an unknown cost — excluded from the total, not counted as $0.",
+    "sharedIntent": "Shared intent call (made once for the whole review, not in the totals above): {tokens} tokens · {cost}{cached}",
+    "cached": " · reused (cached)",
+    "note": "Measured, not assumed: caching, the shared diff preparation and different answer lengths mean the ratio need not be N×."
   }
 }

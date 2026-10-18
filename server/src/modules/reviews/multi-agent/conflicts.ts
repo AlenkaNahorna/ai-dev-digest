@@ -11,9 +11,10 @@ import { LINE_TOLERANCE } from './constants.js';
  *   - 'ignored' if its run COMPLETED but it did not flag;
  *   - 'no_result' if its run failed / is still running (AC-31: neither creates
  *     nor resolves a conflict).
- * A conflict = at least one agent flagged AND at least one COMPLETED agent did
- * not (verdict 'ignored'), OR two flagging agents' severities differ by >= 2
- * levels. The "did not flag" note is neutral derived text (AC-34) — no model
+ * A conflict (`is_conflict: true`) = at least one agent flagged AND at least one
+ * COMPLETED agent did not (verdict 'ignored'), OR two flagging agents'
+ * severities differ by >= 2 levels. Flagged locations where everyone agreed are
+ * still listed, with `is_conflict: false`. The "did not flag" note is neutral derived text (AC-34) — no model
  * output.
  */
 
@@ -107,9 +108,9 @@ export function computeConflicts(agents: ConflictAgent[]): Conflict[] {
     const severitySpread =
       flaggedLevels.length >= 2 && Math.max(...flaggedLevels) - Math.min(...flaggedLevels) >= 2;
     const isConflict = (anyFlagged && anyCompletedIgnored) || severitySpread;
-    if (isConflict) {
-      conflicts.push({ file: loc.file, line: loc.line, title: loc.title, takes });
-    }
+    // Every flagged location is returned; `is_conflict` lets the UI's "Show only
+    // conflicts" toggle hide the ones where all reviewing agents agreed (AC-33).
+    conflicts.push({ file: loc.file, line: loc.line, title: loc.title, is_conflict: isConflict, takes });
   }
   return conflicts;
 }

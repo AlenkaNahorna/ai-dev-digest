@@ -62,6 +62,25 @@
       "args": "args",
       "result": "result",
       "previewTruncated": "(preview truncated)"
+    },
+    "grounding": {
+      "title": "Grounding gate",
+      "summary": "{kept} of {total} kept",
+      "explain": "A finding survives only if the lines it cites fall inside a real diff hunk; the intent-scope filter then removes serious out-of-scope noise.",
+      "none": "The model reported no findings.",
+      "kept": "kept",
+      "dropped": "dropped",
+      "gate": {
+        "grounding": "Citation grounding",
+        "scope": "Intent scope"
+      }
+    },
+    "cost": {
+      "title": "Tokens and cost",
+      "review": "Review call: {in} in / {out} out · {cost}",
+      "intent": "Intent call (made once, shared by every agent of the review): {in} in / {out} out · {cost}",
+      "intentCached": "Intent reused from an earlier run — no intent call was made.",
+      "note": "The cost shown in Stats covers the review call only; the shared intent call is listed separately."
     }
   },
   "drawer": {
@@ -71,7 +90,7 @@
     "running": "running",
     "completed": "completed",
     "copyRawOutput": "Copy raw output",
-  "copied": "Copied!",
+    "copied": "Copied!",
     "tracePending": "Trace is written when the run completes — see the Live log tab.",
     "loadingTrace": "Loading trace…",
     "noTrace": "No trace available yet."

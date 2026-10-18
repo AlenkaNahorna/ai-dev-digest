@@ -35,3 +35,23 @@ export function resolveGroups(groups: FindingGroup[], columns: AgentColumn[]): R
 export function ungroupedByColumn(columns: AgentColumn[]): Map<string, AgentColumnFinding[]> {
   return new Map(columns.map((c) => [c.run_id, c.findings]));
 }
+
+/**
+ * finding id → names of the OTHER agents that flagged the same place (members of
+ * the same group). Lets the Tabs view say "also flagged by …" while still
+ * showing every original finding. Ungrouped findings are absent.
+ */
+export function alsoFlaggedByMap(
+  groups: ResolvedGroup[],
+  agentName: (agentId: string) => string,
+): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const g of groups) {
+    if (g.findings.length < 2) continue;
+    for (const f of g.findings) {
+      const others = [...new Set(g.findings.filter((o) => o.agent_id !== f.agent_id).map((o) => agentName(o.agent_id)))];
+      if (others.length > 0) out.set(f.id, others);
+    }
+  }
+  return out;
+}

@@ -59,7 +59,8 @@
     "cancelled": "cancelled",
     "running": "running",
     "findings": "{count} finding(s)",
-    "blockers": " · {count} blockers"
+    "blockers": " · {count} blockers",
+    "queued": "queued"
   },
   "smartDiff": {
     "coreLabel": "Core logic",

@@ -151,6 +151,14 @@ export class ReviewRunExecutor {
     // isolation is preserved: each call catches its own error so one agent's
     // failure/cancel never aborts the others.
     const runJob = async ({ agent, runId }: { agent: AgentRow; runId: string }): Promise<void> => {
+      // Multi-agent rows wait as 'queued' for a pool slot; flip to 'running' only
+      // now so the UI status is truthful. A run cancelled while queued is skipped.
+      const started = await this.repo.markRunStarted(runId).catch(() => 'already_running' as const);
+      if (started === 'skip') {
+        logger?.info({ runId, agent: agent.name }, `review: agent "${agent.name}" skipped (no longer queued)`);
+        this.container.runBus.complete(runId);
+        return;
+      }
       const agentStart = Date.now();
       logger?.info(
         { runId, agent: agent.name, provider: agent.provider, model: agent.model, prId: pull.id },
@@ -392,6 +400,36 @@ export class ReviewRunExecutor {
         specs_detail: injected?.detail ?? [],
         specs_block_tokens: injected?.blockTokens ?? null,
         intent_call: intentCall ?? null,
+        // What the gates decided per finding (kept/dropped + reason) so the trace
+        // can explain the "N/M passed" number, not just state it.
+        grounding_detail: [
+          ...keptFindings.map((f) => ({
+            gate: 'grounding' as const,
+            kept: true,
+            title: f.title,
+            file: f.file,
+            start_line: f.start_line,
+            end_line: f.end_line,
+          })),
+          ...outcome.dropped.map((d) => ({
+            gate: 'grounding' as const,
+            kept: false,
+            title: d.finding.title,
+            file: d.finding.file,
+            start_line: d.finding.start_line,
+            end_line: d.finding.end_line,
+            reason: d.reason,
+          })),
+          ...outcome.scopeDropped.map((d) => ({
+            gate: 'scope' as const,
+            kept: false,
+            title: d.finding.title,
+            file: d.finding.file,
+            start_line: d.finding.start_line,
+            end_line: d.finding.end_line,
+            reason: d.reason,
+          })),
+        ],
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),

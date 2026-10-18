@@ -1,8 +1,9 @@
-/* "Where agents disagree" (AC-29..34). One row per contended file:line, each
+/* "Where agents disagree" (AC-29..34). One row per flagged file:line, each
    agent's take shown as TEXT (severity label, "did not flag", or "no result").
-   Notes come from the server as neutral derived text and are rendered plain
-   (security A05). "Show only conflicts" filters the results view (handled by the
-   parent via the toggle rendered here). */
+   A location where every reviewing agent agreed is still listed but labelled
+   "Agreed"; "Show only conflicts" hides those (AC-33). Notes come from the
+   server as neutral derived text and are rendered plain, never as HTML or
+   Markdown (security A05, AC-32/57). */
 "use client";
 
 import { useTranslations } from "next-intl";
@@ -45,6 +46,7 @@ export function ConflictsBlock({
   onViewTrace: (runId: string) => void;
 }) {
   const t = useTranslations("multiAgent");
+  const shown = showOnlyConflicts ? conflicts.filter((c) => c.is_conflict) : conflicts;
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -56,18 +58,24 @@ export function ConflictsBlock({
         </label>
       </div>
 
-      {conflicts.length === 0 ? (
-        <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)" }}>{t("conflicts.none")}</p>
+      {shown.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-muted)" }}>
+          {conflicts.length === 0 ? t("conflicts.noneFlagged") : t("conflicts.none")}
+        </p>
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          {conflicts.map((c) => (
+          {shown.map((c) => (
             <li key={`${c.file}:${c.line}`}>
               <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                  <strong style={{ fontSize: 13 }}>{c.title}</strong>
                   <span className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>
                     {c.file}:{c.line}
                   </span>
+                  {/* Plain text: titles come from the model. */}
+                  <strong style={{ fontSize: 13 }}>{c.title}</strong>
+                  <Badge bg="transparent" color={c.is_conflict ? "var(--warn)" : "var(--ok)"}>
+                    {c.is_conflict ? t("conflicts.labelConflict") : t("conflicts.labelAgreed")}
+                  </Badge>
                 </div>
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                   {c.takes.map((take) => (

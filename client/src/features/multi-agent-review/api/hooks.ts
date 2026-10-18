@@ -2,12 +2,13 @@
    - useStartMultiAgentRun: POST /pulls/:id/multi-agent-run { agent_ids } → parent id + per-agent runs.
    - useMultiAgentResults:   GET /pulls/:id/multi-agent/:parentId → MultiAgentRun; polls every 2s while a column is still queued/running (AC-36).
    - useMultiAgentEstimate:  POST /pulls/:id/multi-agent/estimate { agent_ids } → per-agent prior means.
+   - useLatestMultiAgentRun: GET /multi-agent/latest?repo_id → newest review (sidebar landing).
    On a run reaching a terminal status, review/run/pulls caches are invalidated so the PR list/detail drop stale score/findings (client INSIGHTS 2026-09-21). */
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { MultiAgentEstimate, MultiAgentRun } from "@devdigest/shared";
+import type { LatestMultiAgentRun, MultiAgentEstimate, MultiAgentRun } from "@devdigest/shared";
 import { multiAgentKeys, pullKeys, reviewKeys, runKeys } from "@/shared/api/query-keys";
 
 const POLL_MS = 2000;
@@ -19,9 +20,26 @@ export interface StartMultiAgentRunResponse {
 
 /** Start one parent-grouped run over the selected agent ids (1..6). */
 export function useStartMultiAgentRun(prId: string | null | undefined) {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (agentIds: string[]) =>
       api.post<StartMultiAgentRunResponse>(`/pulls/${prId}/multi-agent-run`, { agent_ids: agentIds }),
+    onSuccess: () => {
+      // The sidebar entry resolves "newest run" and the PR page lists active runs.
+      qc.invalidateQueries({ queryKey: multiAgentKeys.all });
+      if (prId) qc.invalidateQueries({ queryKey: runKeys.active(prId) });
+    },
+  });
+}
+
+/** Newest multi-agent review of the active repo — where the sidebar entry lands (null → configure). */
+export function useLatestMultiAgentRun(repoId: string | null | undefined, enabled = true) {
+  return useQuery({
+    queryKey: multiAgentKeys.latest(repoId),
+    queryFn: () =>
+      api.get<LatestMultiAgentRun>(`/multi-agent/latest${repoId ? `?repo_id=${encodeURIComponent(repoId)}` : ""}`),
+    enabled,
+    staleTime: 0,
   });
 }
 

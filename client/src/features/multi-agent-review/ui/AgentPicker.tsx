@@ -174,7 +174,7 @@ export function AgentPicker({ prId }: { prId: string }) {
           )}
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <a href="/agents" style={{ fontSize: 12, color: "var(--accent)" }}>
+            <a href={`/multi-agent?configure=1&pr=${encodeURIComponent(prId)}`} style={{ fontSize: 12, color: "var(--accent)" }}>
               {t("picker.configureAgents")}
             </a>
             <Button

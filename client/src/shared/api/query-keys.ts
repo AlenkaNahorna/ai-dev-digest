@@ -43,6 +43,7 @@ export const contextKeys = {
 export const multiAgentKeys = {
   all: ["multi-agent"] as const,
   results: (prId: string | null | undefined, parentId: string | null | undefined) => ["multi-agent", "results", prId, parentId] as const,
+  latest: (repoId: string | null | undefined) => ["multi-agent", "latest", repoId] as const,
   estimate: (prId: string | null | undefined, agentIds: string[]) => ["multi-agent", "estimate", prId, [...agentIds].sort().join(",")] as const,
 };
 /** Onboarding Tour: persisted state per repo, its shares, and a public snapshot by token. */
