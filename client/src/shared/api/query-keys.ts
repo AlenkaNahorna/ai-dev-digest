@@ -39,6 +39,13 @@ export const contextKeys = {
     ["project-context", "attachments", kind, ownerId, repoId] as const,
 };
 
+/** Multi-agent review: a parent run's results (per PR + parent id) and the pre-run estimate (per PR + agent-id set). */
+export const multiAgentKeys = {
+  all: ["multi-agent"] as const,
+  results: (prId: string | null | undefined, parentId: string | null | undefined) => ["multi-agent", "results", prId, parentId] as const,
+  latest: (repoId: string | null | undefined) => ["multi-agent", "latest", repoId] as const,
+  estimate: (prId: string | null | undefined, agentIds: string[]) => ["multi-agent", "estimate", prId, [...agentIds].sort().join(",")] as const,
+};
 /** Onboarding Tour: persisted state per repo, its shares, and a public snapshot by token. */
 export const onboardingTourKeys = {
   all: ["onboarding-tour"] as const,
@@ -56,4 +63,17 @@ export const evalKeys = {
   compare: (a: string | null | undefined, b: string | null | undefined) => ["evals", "compare", a, b] as const,
   overview: ["evals", "overview"] as const,
   skillCases: (skillId: string | null | undefined) => ["evals", "skill-cases", skillId] as const,
+};
+
+/** Export-to-CI: an agent's CI installations (CI tab). The export mutation invalidates this. */
+export const ciExportKeys = {
+  all: ["ci-export"] as const,
+  installations: (agentId: string | null | undefined) => ["ci-export", "installations", agentId] as const,
+  /** Recent CI runs of one agent (CI tab history). */
+  history: (agentId: string | null | undefined) => ["ci-export", "history", agentId] as const,
+};
+/** CI Runs: the 50 most recent workspace CI runs (read-only list page). */
+export const ciRunKeys = {
+  all: ["ci-runs"] as const,
+  list: ["ci-runs", "list"] as const,
 };

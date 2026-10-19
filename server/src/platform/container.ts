@@ -242,6 +242,8 @@ export class Container {
       const key = await this.secrets.get('OPENROUTER_API_KEY');
       if (!key) throw new ConfigError('OPENROUTER_API_KEY is not configured');
       return new OpenRouterProvider(key, {
+        // Large single-pass reviews (~40k tokens) can exceed the 90 s SDK default.
+        timeoutMs: 300_000,
         estimateCost: (model, tokensIn, tokensOut) =>
           this.priceBook.estimate(model, tokensIn, tokensOut),
       });

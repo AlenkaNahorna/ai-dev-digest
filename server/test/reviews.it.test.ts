@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { startPg, dockerAvailable, type PgFixture } from './helpers/pg.js';
-import { waitForPrRuns } from './helpers/runs.js';
+import { waitForPrRuns, waitForTrace } from './helpers/runs.js';
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/platform/config.js';
 import { seed } from '../src/db/seed.js';
@@ -211,7 +211,7 @@ d('A2 reviews + agents (Testcontainers pg)', () => {
 
     // a run_traces document was written (single doc)
     const runId = body.runs[0].run_id;
-    const trace = (await app.inject({ method: 'GET', url: `/runs/${runId}/trace` })).json();
+    const trace = await waitForTrace(app, runId);
     expect(trace.config.model).toBe('gpt-4.1');
     expect(trace.stats.grounding).toBe('1/2 passed');
     expect(trace.log.length).toBeGreaterThan(0);

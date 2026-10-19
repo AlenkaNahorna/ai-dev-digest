@@ -15,6 +15,8 @@ export type FetchLike = typeof fetch;
 
 const GITHUB_API_BASE = 'https://api.github.com';
 const API_VERSION = '2022-11-28';
+/** A hung GitHub request must fail the step, not stall the job for hours. */
+const REQUEST_TIMEOUT_MS = 30_000;
 const USER_AGENT = 'devdigest-agent-runner';
 
 function authHeaders(token: string, accept: string): Record<string, string> {
@@ -35,6 +37,7 @@ export async function fetchPrDiff(
   const url = `${GITHUB_API_BASE}/repos/${ctx.owner}/${ctx.repo}/pulls/${ctx.prNumber}`;
   const res = await fetchImpl(url, {
     headers: authHeaders(token, 'application/vnd.github.v3.diff'),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new RunnerError(
@@ -60,6 +63,7 @@ export async function postGithubReview(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
   // GitHub's Actions token (`GITHUB_TOKEN`) — which the runner always posts with
@@ -108,6 +112,7 @@ export async function postPrComment(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ body }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new RunnerError(

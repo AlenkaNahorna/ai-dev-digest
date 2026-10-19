@@ -25,6 +25,9 @@ function outcomeOf(run: RunSummary): Outcome {
   const status = run.status ?? "";
   if (status === "running")
     return { key: "running", color: "var(--accent)", bg: "var(--accent-bg)", icon: "RefreshCw" };
+  // Multi-agent runs wait as 'queued' for a free pool slot — never show them as "approved".
+  if (status === "queued")
+    return { key: "queued", color: "var(--text-muted)", bg: "var(--bg-hover)", icon: "Clock" };
   if (status === "failed")
     return { key: "error", color: "var(--crit)", bg: "var(--crit-bg)", icon: "XCircle" };
   if (status === "cancelled")
@@ -242,7 +245,7 @@ export function RunHistory({
             >
               <Icon.FileText size={13} />
             </button>
-            {onDelete && r.status !== "running" && (
+            {onDelete && r.status !== "running" && r.status !== "queued" && (
               <span
                 role="button"
                 aria-label={t("timeline.deleteRun")}

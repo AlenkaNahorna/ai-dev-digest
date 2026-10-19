@@ -1,9 +1,26 @@
-import type { Finding } from '@devdigest/shared';
+import type { CiVerdict, Finding, GitHubReviewPayload } from '@devdigest/shared';
 import { CiResultArtifact } from '@devdigest/shared';
 import { RunnerError } from './errors.js';
 
 /** Runner version string embedded in every artifact (informational only). */
 export const RUNNER_VERSION = '1';
+
+/**
+ * Lower-case the deterministic GitHub review event into the persisted
+ * `CiVerdict` the server ingests (AC-16). The event itself comes from
+ * `toReviewPayload` (grounded findings + `ci_fail_on`), NEVER the model's
+ * self-reported verdict — this is a rename, not a re-decision (AC-10).
+ */
+export function eventToVerdict(event: GitHubReviewPayload['event']): CiVerdict {
+  switch (event) {
+    case 'APPROVE':
+      return 'approve';
+    case 'REQUEST_CHANGES':
+      return 'request_changes';
+    case 'COMMENT':
+      return 'comment';
+  }
+}
 
 export interface BuildResultArtifactInput {
   findings: Finding[];
@@ -11,6 +28,13 @@ export interface BuildResultArtifactInput {
   durationMs: number;
   agent: string;
   prNumber: number;
+  /** Deterministic verdict (AC-16) — from `eventToVerdict(payload.event)`. */
+  verdict: CiVerdict;
+  /** "owner/name" (AC-16) — ingest matches this against the installation repo. */
+  repository: string;
+  commitSha?: string | null;
+  runId?: string | null;
+  runAttempt?: number | null;
 }
 
 function severityCounts(findings: Finding[]): { critical: number; warning: number; suggestion: number } {
@@ -41,6 +65,11 @@ export function buildResultArtifact(input: BuildResultArtifactInput): CiResultAr
     agent: input.agent,
     version: RUNNER_VERSION,
     pr_number: input.prNumber,
+    repository: input.repository,
+    verdict: input.verdict,
+    commit_sha: input.commitSha ?? null,
+    run_id: input.runId ?? null,
+    run_attempt: input.runAttempt ?? null,
   };
   const result = CiResultArtifact.safeParse(candidate);
   if (!result.success) {

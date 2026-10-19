@@ -92,8 +92,30 @@ export const RunStats = z.object({
 });
 export type RunStats = z.infer<typeof RunStats>;
 
+/**
+ * One decision of a post-model gate on a finding — what the grounding gate (a
+ * finding must cite lines inside a real diff hunk) or the intent-scope filter
+ * kept or dropped, and why. Titles/locations only: no prompt or diff text.
+ */
+export const GroundingDecision = z.object({
+  gate: z.enum(['grounding', 'scope']),
+  kept: z.boolean(),
+  title: z.string(),
+  file: z.string(),
+  start_line: z.number().int(),
+  end_line: z.number().int(),
+  /** Why it was dropped; absent for kept findings. */
+  reason: z.string().nullish(),
+});
+export type GroundingDecision = z.infer<typeof GroundingDecision>;
+
 /** The single-document trace stored in `run_traces.trace`. */
 export const RunTrace = z.object({
+  /**
+   * Telemetry schema version (D5, AC-55). Optional on read so pre-versioned
+   * traces still parse; defaults to 1 when absent.
+   */
+  schema_version: z.literal(1).optional(),
   config: z.object({
     agent: z.string(),
     version: z.string().nullish(),
@@ -116,6 +138,11 @@ export const RunTrace = z.object({
   specs_block_tokens: z.number().int().nullish(),
   /** Separate intent-classifier call (cheap model); absent on runs without one. */
   intent_call: IntentCallTrace.nullish(),
+  /**
+   * Every finding the model produced and what the gates decided (kept / dropped
+   * + reason). Optional so traces written before this field still parse.
+   */
+  grounding_detail: z.array(GroundingDecision).nullish(),
   log: z.array(RunLogLine),
 });
 export type RunTrace = z.infer<typeof RunTrace>;

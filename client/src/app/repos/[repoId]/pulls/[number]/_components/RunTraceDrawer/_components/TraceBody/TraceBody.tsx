@@ -14,11 +14,15 @@ import { TraceSection } from "../TraceSection";
 import { ToolCallRow } from "../ToolCallRow";
 import { PromptBlock } from "../PromptBlock";
 import { FindingsSection } from "../FindingsSection";
+import { GroundingSection } from "../GroundingSection";
+import { CostSection } from "../CostSection";
 import { Row, Stat } from "../atoms";
 
 export function TraceBody({ trace, findings }: { trace: RunTrace; findings: FindingRecord[] }) {
   const t = useTranslations("runs");
   const stats = trace.stats;
+  // The badge is green only when the grounding gate dropped nothing.
+  const droppedByGate = (trace.grounding_detail ?? []).filter((d) => !d.kept).length;
   const specTokens = new Map((trace.specs_detail ?? []).map((d) => [d.path, d.tokens]));
   // The recorded block is what follows the heading in the user message; show the
   // complete text exactly as sent (heading included). Hidden when nothing was injected.
@@ -73,7 +77,11 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
         icon="Gauge"
         title={t("trace.stats")}
         right={
-          <Badge color="var(--ok)" bg="var(--ok-bg)" icon="Check">
+          <Badge
+            color={droppedByGate > 0 ? "var(--warn)" : "var(--ok)"}
+            bg={droppedByGate > 0 ? "var(--warn-bg)" : "var(--ok-bg)"}
+            icon={droppedByGate > 0 ? "AlertTriangle" : "Check"}
+          >
             {stats.grounding}
           </Badge>
         }
@@ -85,6 +93,10 @@ export function TraceBody({ trace, findings }: { trace: RunTrace; findings: Find
           <Stat label={t("trace.stat.findings")} val={stats.findings} />
         </div>
       </TraceSection>
+
+      <CostSection trace={trace} />
+
+      <GroundingSection trace={trace} />
 
       <FindingsSection findings={findings} />
 

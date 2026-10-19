@@ -1,4 +1,5 @@
-import { BlastRadius, PrBrief, ContextAttachments, ContextDocBody, ProjectContextList, PrDetail, PrIntentRecord, PrMeta, PrReviewComment, Repo, ReviewRecord, ReviewRunResponse, SmartDiffResponse } from '@devdigest/shared';
+import { BlastRadius, PrBrief, ContextAttachments, ContextDocBody, ProjectContextList, PrDetail, PrIntentRecord, PrMeta, PrReviewComment, Repo, ReviewRecord, ReviewRunResponse, SmartDiffResponse, MultiAgentRun, MultiAgentEstimate, LatestMultiAgentRun } from '@devdigest/shared';
+import { z } from 'zod';
 
 /** Response contracts used by the highest-value public endpoints. */
 export const responseSchemas = {
@@ -17,4 +18,11 @@ export const responseSchemas = {
   projectContext: ProjectContextList,
   contextDoc: ContextDocBody,
   contextAttachments: ContextAttachments,
+  multiAgentRun: MultiAgentRun,
+  multiAgentStart: z.object({
+    parent_id: z.string(),
+    runs: z.array(z.object({ run_id: z.string(), agent_id: z.string(), agent_name: z.string() })),
+  }),
+  multiAgentEstimate: MultiAgentEstimate,
+  latestMultiAgentRun: LatestMultiAgentRun,
 };

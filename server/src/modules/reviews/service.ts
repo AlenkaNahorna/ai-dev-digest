@@ -1,6 +1,14 @@
 import type { Container } from '../../platform/container.js';
-import type { FindingActionKind, RunEventKind, RunTrace, SmartDiffResponse } from '@devdigest/shared';
-import { AppError, NotFoundError } from '../../platform/errors.js';
+import type {
+  FindingActionKind,
+  MultiAgentEstimate,
+  MultiAgentRun,
+  MultiAgentSharedIntent,
+  RunEventKind,
+  RunTrace,
+  SmartDiffResponse,
+} from '@devdigest/shared';
+import { AppError, ForbiddenError, NotFoundError } from '../../platform/errors.js';
 import type { AgentRow } from '../../db/rows.js';
 import { ReviewRepository } from './adapters/outbound/persistence/repository.js';
 import { type ReviewDto, type ReviewDtoFinding } from './helpers.js';
@@ -11,6 +19,13 @@ import { ReviewRunExecutor, type Logger } from './run-executor.js';
 import { actOnFinding as actOnFindingImpl } from './findings.js';
 import { reviewToDto } from './helpers.js';
 import { buildSmartDiff, latestReviewFindings } from './smart-diff/build-smart-diff.js';
+import { buildMultiAgentRun } from './multi-agent/build-results.js';
+import {
+  ESTIMATE_SAMPLE_SIZE,
+  MAX_AGENTS,
+  MIN_AGENTS,
+  MULTI_AGENT_POOL_SIZE,
+} from './multi-agent/constants.js';
 
 // Re-export DTO types + converters for backward-compatible imports from
 // './service.js' (these previously lived here; logic now in ./helpers.ts).
@@ -148,6 +163,136 @@ export class ReviewService {
     });
 
     return { runs, reviews: [] };
+  }
+
+  // ===========================================================================
+  // Multi-agent review (one parent, N linked agent_runs)
+  // ===========================================================================
+
+  /**
+   * Start one multi-agent review: resolve the requested agents (must exist in
+   * the workspace), create a parent `multi_agent_runs` row + N linked
+   * `agent_runs`, and kick off the executor with a small concurrency pool (D2).
+   * Rejects a second start while a run on the PR is already active → 409.
+   */
+  async startMultiAgentRun(
+    workspaceId: string,
+    prId: string,
+    agentIds: string[],
+    logger?: Logger,
+  ): Promise<{ parent_id: string; runs: { run_id: string; agent_id: string; agent_name: string }[] }> {
+    if (agentIds.length < MIN_AGENTS || agentIds.length > MAX_AGENTS) {
+      throw new AppError('invalid_run_request', `Select between ${MIN_AGENTS} and ${MAX_AGENTS} agents`, 422);
+    }
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new ForbiddenError('Pull request not accessible');
+    const repo = await this.repo.getRepo(pull.repoId);
+    if (!repo) throw new NotFoundError('Repo not found');
+
+    // 409 guard: reject while any run on this PR is still active ('running' or
+    // 'queued' — both count as in flight).
+    const active = await this.repo.activeRunsForPull(workspaceId, prId);
+    if (active.length > 0) {
+      throw new AppError('multi_agent_run_active', 'A review is already running on this pull request', 409);
+    }
+
+    // Resolve + validate every requested agent up front. `getById` is
+    // workspace-scoped, so a miss means the agent is not in the caller's
+    // workspace → 403 (spec AC-53/D11), never 404 (the PR was already found).
+    const targets: AgentRow[] = [];
+    for (const id of agentIds) {
+      const agent = await this.agents.getById(workspaceId, id);
+      if (!agent) throw new ForbiddenError(`Agent not accessible: ${id}`);
+      targets.push(agent);
+    }
+
+    // Authoritative guard + parent + children in ONE transaction under an advisory
+    // lock (the early check above is only a fast path): no concurrent double start,
+    // no orphan parent row if a child insert fails.
+    const created = await this.repo.startMultiAgentRunAtomic({
+      workspaceId,
+      prId,
+      targets: targets.map((a) => ({ agentId: a.id, provider: a.provider, model: a.model })),
+    });
+    if (created.kind === 'active') {
+      throw new AppError('multi_agent_run_active', 'A review is already running on this pull request', 409);
+    }
+    const parentId = created.parentId;
+    const runs: { run_id: string; agent_id: string; agent_name: string }[] = [];
+    const jobs: { agent: AgentRow; runId: string }[] = [];
+    for (const [i, agent] of targets.entries()) {
+      const runId = created.runs[i]!.runId; // same order as `targets`
+      runs.push({ run_id: runId, agent_id: agent.id, agent_name: agent.name });
+      jobs.push({ agent, runId });
+    }
+
+    void this.executor
+      .executeRuns(workspaceId, pull, repo, jobs, logger, { concurrency: MULTI_AGENT_POOL_SIZE })
+      .catch((err) => {
+        logger?.error({ prId, parentId, err: (err as Error).message }, 'multi-agent: background execution crashed');
+      });
+
+    return { parent_id: parentId, runs };
+  }
+
+  /**
+   * Read-model for a multi-agent review: load the parent (by id) + all its runs
+   * with the newest review + findings, then compute columns, status, totals,
+   * groups and conflicts on read. Cross-workspace parent → 403 (D11).
+   */
+  async getMultiAgentRun(workspaceId: string, prId: string, parentId: string): Promise<MultiAgentRun> {
+    const parent = await this.repo.getMultiAgentParent(workspaceId, parentId);
+    // A parent outside the workspace, or one that belongs to a different PR than
+    // the URL claims, is refused the same way (403, D11) — no data either way.
+    if (!parent || parent.prId !== prId) throw new ForbiddenError('Multi-agent review not accessible');
+    const rows = await this.repo.runsForMultiAgentParent(workspaceId, parentId);
+    const agentIds = rows.map((r) => r.run.agentId).filter((id): id is string => id !== null);
+    const baseline = await this.repo.singleAgentBaseline(workspaceId, parent.prId, agentIds);
+    // The intent call is shared by the whole batch: read it from the first
+    // finished run's trace (all runs of a batch record the same call).
+    let sharedIntent: MultiAgentSharedIntent | null = null;
+    for (const { run } of rows) {
+      if (run.status !== 'done' && run.status !== 'failed') continue;
+      const call = (await this.repo.getRunTrace(workspaceId, run.id))?.intent_call;
+      if (call) {
+        sharedIntent = { tokens_in: call.tokens_in, tokens_out: call.tokens_out, cost_usd: call.cost_usd, cached: call.cached };
+        break;
+      }
+    }
+    return buildMultiAgentRun(parent, rows, { baseline, sharedIntent });
+  }
+
+  /** Where the sidebar entry lands: the newest multi-agent review (optionally of one repo), or none. */
+  async latestMultiAgentRun(
+    workspaceId: string,
+    repoId?: string,
+  ): Promise<{ latest: { pr_id: string; parent_id: string } | null }> {
+    const row = await this.repo.latestMultiAgentRun(workspaceId, repoId);
+    return { latest: row ? { pr_id: row.prId, parent_id: row.parentId } : null };
+  }
+
+  /**
+   * Pre-run estimate: per requested agent, mean duration + cost of its last
+   * `ESTIMATE_SAMPLE_SIZE` done, source='local' runs workspace-wide (D8).
+   * `sample_size<1` → nulls (the UI marks it unavailable).
+   */
+  async estimateMultiAgent(workspaceId: string, prId: string, agentIds: string[]): Promise<MultiAgentEstimate> {
+    // PR and agents must belong to the caller's workspace (AC-53, D11 → 403).
+    const pull = await this.repo.getPull(workspaceId, prId);
+    if (!pull) throw new ForbiddenError('Pull request not accessible');
+    const unique = [...new Set(agentIds)];
+    for (const id of unique) {
+      if (!(await this.agents.getById(workspaceId, id))) throw new ForbiddenError(`Agent not accessible: ${id}`);
+    }
+    const rows = await this.repo.estimateForAgents(workspaceId, unique, ESTIMATE_SAMPLE_SIZE);
+    return {
+      estimates: rows.map((r) => ({
+        agent_id: r.agentId,
+        mean_duration_ms: r.sampleSize > 0 ? r.meanDurationMs : null,
+        mean_cost_usd: r.sampleSize > 0 ? r.meanCostUsd : null,
+        sample_size: r.sampleSize,
+      })),
+    };
   }
 
   private publish(runId: string, kind: RunEventKind, msg: string, data?: unknown) {

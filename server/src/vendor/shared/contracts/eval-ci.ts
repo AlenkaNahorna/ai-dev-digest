@@ -170,15 +170,39 @@ export type AgentManifest = z.infer<typeof AgentManifest>;
 /** Caller-facing input type — `.default()` fields stay optional. */
 export type AgentManifestInput = z.input<typeof AgentManifest>;
 
+/** `pull_request` activity types the generated workflow can trigger on. */
+export const CiTrigger = z.enum(['opened', 'synchronize', 'reopened']);
+export type CiTrigger = z.infer<typeof CiTrigger>;
+
+/** How the runner publishes its result back to the PR. */
+export const CiPostAs = z.enum(['github_review', 'pr_comment', 'none']);
+export type CiPostAs = z.infer<typeof CiPostAs>;
+
 /** Request body for `POST /agents/:id/export-ci`. */
 export const CiExportInput = z.object({
   repo: z.string().min(1), // "owner/name"
   target: CiTarget.default('gha'),
-  /** "open_pr" opens a PR with the files; "files" just returns/persists them. */
-  action: z.enum(['open_pr', 'files']).default('open_pr'),
-  post_as: z.enum(['github_review', 'pr_comment', 'none']).default('github_review'),
-  triggers: z.array(z.string()).default(['opened', 'synchronize', 'reopened']),
+  /**
+   * "files" = preview only (no GitHub write, nothing persisted);
+   * "open_pr" = commit to `devdigest/ci` + open/reuse the PR;
+   * "zip" = persist the installation (so an ingest token exists) but write
+   * nothing to GitHub — the client packs the returned files into a zip.
+   */
+  action: z.enum(['open_pr', 'files', 'zip']).default('open_pr'),
+  post_as: CiPostAs.default('github_review'),
+  /** `opened` + `synchronize` are the baseline; `reopened` is optional. */
+  triggers: z
+    .array(CiTrigger)
+    .min(1)
+    .default(['opened', 'synchronize'])
+    .transform((v) => Array.from(new Set(v))),
   base: z.string().default('main'),
+  /**
+   * User edits from the Preview step: `path → contents`. Honoured ONLY for
+   * generated files flagged `editable` (never the runner bundle); unknown paths
+   * are ignored. The result still goes through a PR the member reviews.
+   */
+  overrides: z.record(z.string(), z.string().max(200_000)).default({}),
 });
 export type CiExportInput = z.infer<typeof CiExportInput>;
 /** Caller-facing input type — `.default()` fields stay optional (web hooks). */
@@ -191,39 +215,89 @@ export const CiInstallation = z.object({
   repo: z.string(),
   target_type: CiTarget,
   installed_at: z.string(),
+  // CI-tab enrichment (AC-1): the repo's latest run outcome + time. Populated by
+  // the list-installations use-case; nullish because a freshly created
+  // installation (and the export response) has no run yet.
+  latest_verdict: z.string().nullish(),
+  latest_ran_at: z.string().nullish(),
+  // Workflow provenance (CI tab): the generator version the installed files were
+  // produced with vs the version this studio would generate now, plus the
+  // config the member chose in the wizard and the PR that carried the files.
+  workflow_version: z.number().int().nullish(),
+  latest_workflow_version: z.number().int().nullish(),
+  post_as: CiPostAs.nullish(),
+  triggers: z.array(z.string()).nullish(),
+  pr_url: z.string().nullish(),
 });
 export type CiInstallation = z.infer<typeof CiInstallation>;
 
-/** Response of `POST /agents/:id/export-ci`. */
+/**
+ * Response of `POST /agents/:id/export-ci`.
+ *
+ * `installation` is nullish because the preview (`action: "files"`, AC-2) does
+ * NOT persist an installation — it returns the generated files only, with no
+ * GitHub write and no ingest token. `ingest_token` is the one-time plaintext
+ * token, present ONLY when an installation was just created (AC-7/AC-8).
+ */
 export const CiExport = z.object({
-  installation: CiInstallation,
+  installation: CiInstallation.nullish(),
   files: z.array(CiFile),
   pr_url: z.string().nullable(),
+  ingest_token: z.string().nullish(),
 });
 export type CiExport = z.infer<typeof CiExport>;
 
 export const CiRunStatus = z.enum(['succeeded', 'failed', 'no_findings', 'running']);
 export type CiRunStatus = z.infer<typeof CiRunStatus>;
 
+/**
+ * The persisted/ingested CI verdict. Derived DETERMINISTICALLY in the runner
+ * from the grounded findings + the manifest's `ci_fail_on` gate (the same
+ * `GitHubReviewPayload['event']` `toReviewPayload` computes, lower-cased) — it
+ * is NEVER the model's self-reported verdict. Mirrors reviewer-core's event:
+ * `APPROVE` → `approve`, `REQUEST_CHANGES` → `request_changes`, `COMMENT` →
+ * `comment` (same enum as `Verdict` in `findings.ts`).
+ */
+export const CiVerdict = Verdict; // ['request_changes', 'approve', 'comment']
+export type CiVerdict = z.infer<typeof CiVerdict>;
+
 /** A CI run row (mirrors `ci_runs`) — ingested from GitHub Actions artifacts. */
 export const CiRun = z.object({
   id: z.string(),
   ci_installation_id: z.string().nullable(),
+  // The installation's repository ("owner/name"), joined from `ci_installations`
+  // so the CI-Runs list can show which repo each run belongs to (AC-19).
+  repo: z.string().nullable(),
   pr_number: z.number().int().nullable(),
   ran_at: z.string().nullable(),
   status: z.string().nullable(),
+  verdict: CiVerdict.nullish(),
   findings_count: z.number().int().nullable(),
+  critical: z.number().int().nullish(),
+  warning: z.number().int().nullish(),
+  suggestion: z.number().int().nullish(),
   cost_usd: z.number().nullable(),
   github_url: z.string().nullable(),
   source: z.string().nullable(),
   agent: z.string().nullish(),
+  commit_sha: z.string().nullish(),
+  run_id: z.string().nullish(),
+  run_attempt: z.number().int().nullish(),
   duration_s: z.number().nullish(),
 });
 export type CiRun = z.infer<typeof CiRun>;
 
 /**
- * The artifact shape uploaded by the CI action (`devdigest-result.json`).
- * Ingested back on refresh to populate `ci_runs` (L06).
+ * The artifact shape uploaded by the CI action (`devdigest-result.json`) and
+ * the body of the ingest request (`POST $DEVDIGEST_API_URL`). Validated with
+ * `CiResultArtifact.safeParse` at BOTH ends: written by the runner
+ * (`agent-runner/src/artifact.ts`) and re-parsed by the server ingest route.
+ *
+ * `repository` and `verdict` are REQUIRED for ingest matching (AC-16):
+ * `repository` is checked against the installation's repo, `verdict` is the
+ * deterministic gate outcome. `commit_sha`/`run_id`/`run_attempt` come from the
+ * `GITHUB_*` env and drive the `(installation, run_id, run_attempt)` dedupe
+ * (AC-18); they are `.nullish()` because a non-GHA/manual run cannot supply them.
  */
 export const CiResultArtifact = z.object({
   findings_count: z.number().int(),
@@ -235,6 +309,12 @@ export const CiResultArtifact = z.object({
   agent: z.string(),
   version: z.string().nullish(),
   pr_number: z.number().int().nullish(),
+  // CI-matching fields (AC-16): read by the runner from GITHUB_* env.
+  repository: z.string().min(1), // "owner/name"
+  verdict: CiVerdict,
+  commit_sha: z.string().nullish(),
+  run_id: z.string().nullish(),
+  run_attempt: z.number().int().nullish(),
 });
 export type CiResultArtifact = z.infer<typeof CiResultArtifact>;
 

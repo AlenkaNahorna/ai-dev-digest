@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import type { Db } from '../../../../../db/client.js';
 import * as t from '../../../../../db/schema.js';
 import type { Finding, Intent, RunSummary, RunTrace } from '@devdigest/shared';
@@ -72,7 +73,7 @@ export class ReviewRepository {
     return reviewRepo.getReview(this.db, reviewId);
   }
 
-  /** In-flight runs for a PR (status='running') — the server-side source of
+  /** In-flight runs for a PR (status='running' or 'queued') — the server-side source of
    *  truth for "which agents are running now". Joined with the agent name. */
   activeRunsForPull(
     workspaceId: string,
@@ -100,8 +101,8 @@ export class ReviewRepository {
     return runRepo.cancelRunIfRunning(this.db, workspaceId, runId);
   }
 
-  /** On boot: any run still 'running' is orphaned (its process died / restarted),
-   *  so mark it failed. Prevents permanently stuck "running" runs in the UI. */
+  /** On boot: any run still 'running'/'queued' is orphaned (its process died / restarted),
+   *  so mark it failed. Prevents permanently stuck runs in the UI. */
   reapStaleRunningRuns(): Promise<number> {
     return runRepo.reapStaleRunningRuns(this.db);
   }
@@ -145,15 +146,106 @@ export class ReviewRepository {
 
   // ---- observability: agent_runs + run_traces ----------------------------
 
-  /** Create an agent_runs row in `running` state; returns its id (= the runId). */
+  /** Create an agent_runs row (`running` by default, `queued` for multi-agent); returns its id (= the runId). */
   createAgentRun(values: {
     workspaceId: string;
     agentId: string | null;
     prId: string;
     provider: string | null;
     model: string | null;
+    multiAgentRunId?: string | null;
+    status?: 'running' | 'queued';
   }): Promise<string> {
     return runRepo.createAgentRun(this.db, values);
+  }
+
+  /** A pool worker starts this run: queued → running (+ real start time), or skip if it was cancelled while queued. */
+  markRunStarted(runId: string): Promise<'started' | 'already_running' | 'skip'> {
+    return runRepo.markRunStarted(this.db, runId);
+  }
+
+  /** Newest multi-agent review of the workspace (optionally of one repo). */
+  latestMultiAgentRun(workspaceId: string, repoId?: string): Promise<{ prId: string; parentId: string } | undefined> {
+    return runRepo.latestMultiAgentRun(this.db, workspaceId, repoId);
+  }
+
+  /** Most recent completed single-agent run on a PR by one of the given agents (the "1" of "1 vs N"). */
+  singleAgentBaseline(
+    workspaceId: string,
+    prId: string,
+    agentIds: string[],
+  ): Promise<runRepo.SingleAgentBaselineRow | undefined> {
+    return runRepo.singleAgentBaseline(this.db, workspaceId, prId, agentIds);
+  }
+
+  /** Create the parent `multi_agent_runs` row; returns its id. */
+  createMultiAgentRun(values: { workspaceId: string; prId: string }): Promise<string> {
+    return runRepo.createMultiAgentRun(this.db, values);
+  }
+
+  /**
+   * Start a multi-agent review ATOMICALLY: under a per-(workspace, PR) advisory
+   * lock, re-check that nothing is in flight, then create the parent
+   * `multi_agent_runs` row and every queued child `agent_runs` row in ONE
+   * transaction. Two concurrent starts serialise on the lock (the loser sees the
+   * winner's queued rows and gets `active`), and a failure part-way rolls the
+   * parent back, so no orphan parent rows are left behind.
+   */
+  startMultiAgentRunAtomic(input: {
+    workspaceId: string;
+    prId: string;
+    targets: { agentId: string; provider: string | null; model: string | null }[];
+  }): Promise<
+    | { kind: 'active' }
+    | { kind: 'created'; parentId: string; runs: { runId: string; agentId: string }[] }
+  > {
+    return this.db.transaction(async (tx) => {
+      const txDb = tx as unknown as Db;
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`multi-agent:${input.workspaceId}:${input.prId}`}))`,
+      );
+      const active = await runRepo.activeRunsForPull(txDb, input.workspaceId, input.prId);
+      if (active.length > 0) return { kind: 'active' as const };
+
+      const parentId = await runRepo.createMultiAgentRun(txDb, {
+        workspaceId: input.workspaceId,
+        prId: input.prId,
+      });
+      const runs: { runId: string; agentId: string }[] = [];
+      for (const target of input.targets) {
+        const runId = await runRepo.createAgentRun(txDb, {
+          workspaceId: input.workspaceId,
+          agentId: target.agentId,
+          prId: input.prId,
+          provider: target.provider,
+          model: target.model,
+          multiAgentRunId: parentId,
+          // Waits as 'queued' until the executor's pool picks it up (truthful status).
+          status: 'queued',
+        });
+        runs.push({ runId, agentId: target.agentId });
+      }
+      return { kind: 'created' as const, parentId, runs };
+    });
+  }
+
+  /** Parent row of a multi-agent review IF it is in the workspace (else undefined). */
+  getMultiAgentParent(workspaceId: string, parentId: string): Promise<runRepo.MultiAgentParentRow | undefined> {
+    return runRepo.getMultiAgentParent(this.db, workspaceId, parentId);
+  }
+
+  /** All agent runs of one parent, each with agent name + newest review + findings. */
+  runsForMultiAgentParent(workspaceId: string, parentId: string): Promise<runRepo.MultiAgentRunRow[]> {
+    return runRepo.runsForMultiAgentParent(this.db, workspaceId, parentId);
+  }
+
+  /** Mean duration + cost of each agent's last N done, source='local' runs (D8). */
+  estimateForAgents(
+    workspaceId: string,
+    agentIds: string[],
+    sampleLimit: number,
+  ): Promise<{ agentId: string; meanDurationMs: number | null; meanCostUsd: number | null; sampleSize: number }[]> {
+    return runRepo.estimateForAgents(this.db, workspaceId, agentIds, sampleLimit);
   }
 
   completeAgentRun(

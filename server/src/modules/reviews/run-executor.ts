@@ -81,6 +81,13 @@ export class ReviewRunExecutor {
     repo: typeof schema.repos.$inferSelect,
     jobs: { agent: AgentRow; runId: string }[],
     logger?: Logger,
+    /**
+     * How many agents to run at once. Default 1 keeps today's strictly
+     * sequential behavior; multi-agent starts pass a small pool (D2). The diff
+     * and intent are still loaded ONCE before the pool; per-agent failure
+     * isolation is unchanged (each job is caught independently).
+     */
+    opts?: { concurrency?: number },
   ): Promise<void> {
     // ONE logger fanned out over every queued run: shared pre-work (diff +
     // intent) is streamed into each target agent's Live Log and persisted into
@@ -140,7 +147,18 @@ export class ReviewRunExecutor {
       runLog.info(`[intent] unavailable — reviewing without intent: ${(err as Error).message}`);
     }
 
-    for (const { agent, runId } of jobs) {
+    // Run ONE job. Mirrors the previous loop body exactly — per-agent failure
+    // isolation is preserved: each call catches its own error so one agent's
+    // failure/cancel never aborts the others.
+    const runJob = async ({ agent, runId }: { agent: AgentRow; runId: string }): Promise<void> => {
+      // Multi-agent rows wait as 'queued' for a pool slot; flip to 'running' only
+      // now so the UI status is truthful. A run cancelled while queued is skipped.
+      const started = await this.repo.markRunStarted(runId).catch(() => 'already_running' as const);
+      if (started === 'skip') {
+        logger?.info({ runId, agent: agent.name }, `review: agent "${agent.name}" skipped (no longer queued)`);
+        this.container.runBus.complete(runId);
+        return;
+      }
       const agentStart = Date.now();
       logger?.info(
         { runId, agent: agent.name, provider: agent.provider, model: agent.model, prId: pull.id },
@@ -167,7 +185,21 @@ export class ReviewRunExecutor {
           `review: agent "${agent.name}" ${cancelled ? 'cancelled' : 'failed'}`,
         );
       }
-    }
+    };
+
+    // Bounded worker pool. concurrency=1 (default) is strictly sequential, i.e.
+    // identical to the previous `for … of jobs` loop; a larger pool overlaps up
+    // to `concurrency` jobs by pulling from a shared queue.
+    const concurrency = Math.max(1, Math.min(opts?.concurrency ?? 1, jobs.length || 1));
+    const queue = [...jobs];
+    const worker = async (): Promise<void> => {
+      for (;;) {
+        const job = queue.shift();
+        if (!job) return;
+        await runJob(job);
+      }
+    };
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
   }
 
   /** Execute a single agent's review against a PR, streaming progress. */
@@ -337,6 +369,7 @@ export class ReviewRunExecutor {
       });
 
       const trace: RunTrace = {
+        schema_version: 1,
         config: {
           agent: agent.name,
           version: String(agent.version),
@@ -367,6 +400,36 @@ export class ReviewRunExecutor {
         specs_detail: injected?.detail ?? [],
         specs_block_tokens: injected?.blockTokens ?? null,
         intent_call: intentCall ?? null,
+        // What the gates decided per finding (kept/dropped + reason) so the trace
+        // can explain the "N/M passed" number, not just state it.
+        grounding_detail: [
+          ...keptFindings.map((f) => ({
+            gate: 'grounding' as const,
+            kept: true,
+            title: f.title,
+            file: f.file,
+            start_line: f.start_line,
+            end_line: f.end_line,
+          })),
+          ...outcome.dropped.map((d) => ({
+            gate: 'grounding' as const,
+            kept: false,
+            title: d.finding.title,
+            file: d.finding.file,
+            start_line: d.finding.start_line,
+            end_line: d.finding.end_line,
+            reason: d.reason,
+          })),
+          ...outcome.scopeDropped.map((d) => ({
+            gate: 'scope' as const,
+            kept: false,
+            title: d.finding.title,
+            file: d.finding.file,
+            start_line: d.finding.start_line,
+            end_line: d.finding.end_line,
+            reason: d.reason,
+          })),
+        ],
         // Persisted log = the run's FULL event buffer (incl. shared pre-work:
         // diff load + intent), not just events recorded inside this method.
         log: runLog.logFor(runId),
@@ -504,6 +567,7 @@ export class ReviewRunExecutor {
     injected?: InjectedContext,
   ): RunTrace {
     return {
+      schema_version: 1,
       config: {
         agent: agent.name,
         version: String(agent.version),
